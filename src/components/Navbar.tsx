@@ -15,6 +15,7 @@ import {
   Sun,
   Moon,
   Cloud,
+  ShieldCheck,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { UserRole } from '../types';

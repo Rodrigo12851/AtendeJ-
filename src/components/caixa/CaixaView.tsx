@@ -232,12 +232,12 @@ export const CaixaView: React.FC = () => {
       }
       if (pedidosSearch) {
         const query = pedidosSearch.toLowerCase();
-        const matchId = order.id.toLowerCase().includes(query);
+        const matchId = order.id.toString().includes(query);
         const matchMesa = order.mesa_numero?.toString().includes(query);
         const matchCliente = order.cliente_nome?.toLowerCase().includes(query);
         const matchGarcom = order.garcom_nome?.toLowerCase().includes(query);
-        const matchTel = order.delivery_info?.telefone?.includes(query);
-        const matchEndereco = order.delivery_info?.endereco?.toLowerCase().includes(query);
+        const matchTel = (order.cliente_telefone || (order.delivery_info as any)?.telefone || '')?.includes(query);
+        const matchEndereco = (order.cliente_endereco || (order.delivery_info as any)?.endereco || '')?.toLowerCase().includes(query);
         if (!matchId && !matchMesa && !matchCliente && !matchGarcom && !matchTel && !matchEndereco) {
           return false;
         }

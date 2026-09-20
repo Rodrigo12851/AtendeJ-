@@ -174,12 +174,24 @@ export interface Order {
 
   // Delivery & Cliente (Anota AI Style)
   tipo_pedido?: 'mesa' | 'delivery' | 'retirada';
+  origem?: string;
   cliente_nome?: string;
   cliente_telefone?: string;
   cliente_endereco?: string;
   forma_pagamento?: string;
   troco_para?: number;
   taxa_entrega?: number;
+  delivery_info?: {
+    cliente_nome?: string;
+    cliente_telefone?: string;
+    cliente_endereco?: string;
+    telefone?: string;
+    endereco?: string;
+    forma_pagamento?: string;
+    troco_para?: number;
+    taxa_entrega?: number;
+    tipo?: string;
+  };
 }
 
 export type PaymentMethod = 'dinheiro' | 'pix' | 'debito' | 'credito' | 'vale';
@@ -247,7 +259,7 @@ export interface CashRegister {
 export interface SystemNotification {
   id: string;
   loja_id?: string;
-  tipo: 'pedido_pronto' | 'novo_pedido' | 'comanda_fechada' | 'alerta_atraso';
+  tipo: 'pedido_pronto' | 'novo_pedido' | 'pedido_novo' | 'pedido_a_caminho' | 'comanda_fechada' | 'alerta_atraso';
   titulo: string;
   mensagem: string;
   data: string;
