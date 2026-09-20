@@ -1,0 +1,6 @@
+{
+  "name": "Pizzaria Itália",
+  "description": "Sistema completo de atendimento, comandas por mesa, painel KDS de cozinha, fechamento de caixa e gestão para a Pizzaria Itália.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
