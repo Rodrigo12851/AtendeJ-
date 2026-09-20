@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Pizza,
   ShoppingBag,
@@ -18,18 +18,33 @@ import {
   ChevronRight,
   Heart,
   ShieldCheck,
+  History,
+  RotateCcw,
+  Sparkles,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, OrderItem, Loja } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
 
+const CUSTOMER_PROFILE_KEY = 'atendeja_customer_profile_v1';
+const CUSTOMER_ORDERS_KEY = 'atendeja_customer_orders_v1';
+
 interface CustomerDeliveryViewProps {
   lojaSlug: string;
 }
 
 export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ lojaSlug }) => {
-  const { lojas, allProducts, categories, createDeliveryOrder, isDarkMode, setDarkMode } = useStore();
+  const {
+    lojas,
+    allProducts,
+    categories,
+    createDeliveryOrder,
+    isDarkMode,
+    setDarkMode,
+    allOrders,
+    orders,
+  } = useStore();
 
   // Bairro Selecionado State
   const [selectedBairroId, setSelectedBairroId] = useState<string>('');
@@ -88,6 +103,58 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   const [trocoPara, setTrocoPara] = useState('');
   const [observacaoGeral, setObservacaoGeral] = useState('');
   const [submittedOrderNumber, setSubmittedOrderNumber] = useState<number | null>(null);
+  const [showOrderHistoryModal, setShowOrderHistoryModal] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [customerOrderIds, setCustomerOrderIds] = useState<number[]>(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOMER_ORDERS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Load saved customer profile on mount
+  useEffect(() => {
+    try {
+      const savedProfile = localStorage.getItem(CUSTOMER_PROFILE_KEY);
+      if (savedProfile) {
+        const parsed = JSON.parse(savedProfile);
+        if (parsed.nome) setClienteNome(parsed.nome);
+        if (parsed.telefone) setClienteTelefone(parsed.telefone);
+        if (parsed.endereco) setClienteEndereco(parsed.endereco);
+        if (parsed.selectedBairroId) setSelectedBairroId(parsed.selectedBairroId);
+        if (parsed.tipoPedido) setTipoPedido(parsed.tipoPedido);
+        setProfileLoaded(true);
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar perfil salvo:', e);
+    }
+  }, []);
+
+  // Customer order history (matched by saved order IDs or customer phone number)
+  const customerOrders = useMemo(() => {
+    const cleanPhone = clienteTelefone.replace(/\D/g, '');
+    const pool = allOrders && allOrders.length > 0 ? allOrders : orders;
+
+    return pool
+      .filter((o) => {
+        if (customerOrderIds.includes(o.id)) return true;
+        if (cleanPhone.length >= 8 && o.cliente_telefone) {
+          const orderPhone = o.cliente_telefone.replace(/\D/g, '');
+          if (orderPhone && (orderPhone.includes(cleanPhone) || cleanPhone.includes(orderPhone))) {
+            return true;
+          }
+        }
+        return false;
+      })
+      .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
+  }, [allOrders, orders, customerOrderIds, clienteTelefone]);
+
+  // Check if there is an active order in progress
+  const activeOrder = useMemo(() => {
+    return customerOrders.find((o) => ['novo', 'em_preparo', 'pronto', 'a_caminho'].includes(o.status));
+  }, [customerOrders]);
 
   // Cart totals
   const cartSubtotal = useMemo(() => cart.reduce((acc, item) => acc + item.preco_total, 0), [cart]);
@@ -217,9 +284,44 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       observacaoGeral
     );
 
+    // Save profile to localStorage so the customer never needs to retype
+    try {
+      localStorage.setItem(
+        CUSTOMER_PROFILE_KEY,
+        JSON.stringify({
+          nome: clienteNome,
+          telefone: clienteTelefone,
+          endereco: clienteEndereco,
+          selectedBairroId,
+          tipoPedido,
+        })
+      );
+      setProfileLoaded(true);
+
+      const updatedIds = [newOrder.id, ...customerOrderIds.filter((id) => id !== newOrder.id)].slice(0, 50);
+      localStorage.setItem(CUSTOMER_ORDERS_KEY, JSON.stringify(updatedIds));
+      setCustomerOrderIds(updatedIds);
+    } catch (err) {
+      console.warn('Erro ao salvar no localStorage:', err);
+    }
+
     setSubmittedOrderNumber(newOrder.id);
     setCart([]);
     setShowCartModal(false);
+  };
+
+  // Repeat Order from History (1-Click)
+  const handleRepeatOrder = (pastOrder: (typeof customerOrders)[0]) => {
+    const clonedItems: OrderItem[] = pastOrder.itens.map((item, idx) => ({
+      ...item,
+      id: `rep_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+      pedido_id: undefined,
+      status: 'ativo' as const,
+    }));
+
+    setCart(clonedItems);
+    setShowOrderHistoryModal(false);
+    setShowCartModal(true);
   };
 
   // Theme Classes
@@ -232,12 +334,12 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   return (
     <div className={`min-h-screen font-sans pb-28 transition-colors duration-200 ${bgClass}`}>
-      {/* Top Delivery Header */}
-      <header className={`sticky top-0 z-30 shadow-md border-b px-4 py-3.5 ${headerBgClass}`}>
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Brand Info */}
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-red-600 via-amber-500 to-red-500 flex items-center justify-center text-white shadow-md shrink-0 overflow-hidden">
+      {/* 1. Slim Sticky Top Bar (Compact & Functional - Not blocking mobile screen) */}
+      <header className={`sticky top-0 z-30 shadow-sm border-b px-3 sm:px-4 py-2 ${headerBgClass}`}>
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
+          {/* Store Mini Identity */}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center text-white shadow-xs shrink-0 overflow-hidden">
               {targetLoja.logo_url ? (
                 <img
                   src={targetLoja.logo_url}
@@ -245,61 +347,59 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <Pizza className="w-7 h-7" />
+                <Pizza className="w-4 h-4" />
               )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="bg-red-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  🛵 Delivery Online
-                </span>
-                <span className="text-emerald-400 text-[11px] font-bold flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Loja Aberta
-                </span>
-              </div>
-              <h1 className="text-lg sm:text-xl font-black tracking-tight text-white mt-0.5">
-                {targetLoja.marca ? (
-                  <>
-                    <span>{targetLoja.marca}</span>
-                    <span className="text-xs sm:text-sm font-medium text-stone-400 ml-2">
-                      ({targetLoja.nome})
-                    </span>
-                  </>
-                ) : (
-                  targetLoja.nome
-                )}
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-sm font-black tracking-tight text-white uppercase truncate">
+                {targetLoja.marca || targetLoja.nome}
               </h1>
-              <p className="text-xs text-stone-400 flex flex-wrap items-center gap-2">
-                <span>📍 {targetLoja.endereco || 'Atendimento Delivery'}</span>
-                <span>•</span>
-                <span>📞 {targetLoja.telefone}</span>
-              </p>
+              <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 leading-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span>Loja Aberta</span>
+              </span>
             </div>
           </div>
 
-          {/* Right Header Stats & Theme Toggle */}
-          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-800">
-            <div className="flex items-center gap-3 bg-stone-950/80 px-3 py-1.5 rounded-2xl border border-stone-800 text-xs font-semibold">
-              <div>
-                <span className="text-stone-400 block text-[9px] uppercase font-bold">Taxa de Entrega</span>
-                <span className="text-emerald-400 font-bold font-mono">
-                  {deliveryFee > 0 ? formatCurrency(deliveryFee) : 'Grátis'}
+          {/* Quick Actions: Meus Pedidos + Cart + Theme */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Meus Pedidos Button */}
+            <button
+              onClick={() => setShowOrderHistoryModal(true)}
+              className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer ${
+                activeOrder
+                  ? 'bg-amber-500 hover:bg-amber-600 text-stone-950 border-amber-400 animate-pulse'
+                  : 'bg-stone-800 hover:bg-stone-700 text-stone-200 border-stone-700'
+              }`}
+              title="Ver histórico de pedidos e acompanhar status"
+            >
+              <History className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[11px] sm:text-xs">
+                {activeOrder ? 'Acompanhar' : 'Meus Pedidos'}
+              </span>
+              {customerOrders.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-stone-900 text-amber-300 font-mono text-[10px] font-black">
+                  {customerOrders.length}
                 </span>
-              </div>
-              <div className="border-l border-stone-800 pl-3">
-                <span className="text-stone-400 block text-[9px] uppercase font-bold">Tempo Estimado</span>
-                <span className="text-amber-300 font-bold flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {targetLoja.tempo_estimado_entrega || '30 - 45 min'}
-                </span>
-              </div>
-            </div>
+              )}
+            </button>
+
+            {/* Cart Shortcut (if cart has items) */}
+            {cart.length > 0 && (
+              <button
+                onClick={() => setShowCartModal(true)}
+                className="px-2.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                title="Abrir carrinho"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span className="font-mono text-xs">{cart.reduce((a, c) => a + c.quantidade, 0)}</span>
+              </button>
+            )}
 
             {/* Light / Dark Mode Toggle */}
             <button
               onClick={() => setDarkMode(!isDarkMode)}
-              className="p-2.5 rounded-2xl bg-stone-800 hover:bg-stone-700 text-amber-300 transition cursor-pointer border border-stone-700 shadow-2xs"
+              className="p-1.5 sm:p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 transition cursor-pointer border border-stone-700 shadow-2xs"
               title={isDarkMode ? 'Mudar para Tema Claro' : 'Mudar para Tema Escuro'}
             >
               {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-300" />}
@@ -309,7 +409,102 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-5xl mx-auto px-4 pt-5 space-y-6">
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 pt-3 sm:pt-5 space-y-4 sm:space-y-6">
+        {/* 2. Store Information Card (IN PAGE FLOW, ROLLS WITH THE PAGE NATURALLY) */}
+        <div className={`p-4 sm:p-5 rounded-3xl border shadow-sm transition ${cardBgClass}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-red-600 via-amber-500 to-red-500 flex items-center justify-center text-white shadow-md shrink-0 overflow-hidden border border-stone-700">
+                {targetLoja.logo_url ? (
+                  <img
+                    src={targetLoja.logo_url}
+                    alt={targetLoja.marca || targetLoja.nome}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Pizza className="w-8 h-8" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="bg-red-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    🛵 Delivery Oficial
+                  </span>
+                  <span className="text-emerald-500 text-xs font-bold flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Aberto Agora
+                  </span>
+                </div>
+                <h2 className="text-lg sm:text-2xl font-black tracking-tight text-stone-900 dark:text-white leading-tight">
+                  {targetLoja.marca ? (
+                    <>
+                      <span>{targetLoja.marca}</span>
+                      <span className="text-xs sm:text-sm font-medium text-stone-500 dark:text-stone-400 ml-2">
+                        📍 {targetLoja.nome}
+                      </span>
+                    </>
+                  ) : (
+                    targetLoja.nome
+                  )}
+                </h2>
+                <p className="text-xs text-stone-500 dark:text-stone-400 flex flex-wrap items-center gap-2">
+                  <span>📍 {targetLoja.endereco || 'Atendimento Delivery e Balcão'}</span>
+                  {targetLoja.telefone && (
+                    <>
+                      <span>•</span>
+                      <a
+                        href={`tel:${targetLoja.telefone.replace(/\D/g, '')}`}
+                        className="text-red-600 dark:text-red-400 hover:underline font-semibold"
+                      >
+                        📞 {targetLoja.telefone}
+                      </a>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Delivery Stats Chips */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-200 dark:border-stone-800">
+              <div className="flex-1 sm:flex-initial px-3 py-2 rounded-2xl bg-stone-100 dark:bg-stone-900/90 border border-stone-200 dark:border-stone-800 text-center sm:text-left">
+                <span className="text-[9px] uppercase font-bold text-stone-500 dark:text-stone-400 block">
+                  Taxa de Entrega
+                </span>
+                <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                  {deliveryFee > 0 ? formatCurrency(deliveryFee) : 'Grátis'}
+                </span>
+              </div>
+
+              <div className="flex-1 sm:flex-initial px-3 py-2 rounded-2xl bg-stone-100 dark:bg-stone-900/90 border border-stone-200 dark:border-stone-800 text-center sm:text-left">
+                <span className="text-[9px] uppercase font-bold text-stone-500 dark:text-stone-400 block">
+                  Tempo Médio
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 flex items-center justify-center sm:justify-start gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {targetLoja.tempo_estimado_entrega || '30 - 45 min'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Welcome Chip if customer profile is loaded */}
+          {profileLoaded && clienteNome && (
+            <div className="mt-3 pt-3 border-t border-dashed border-stone-200 dark:border-stone-800 flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 text-stone-700 dark:text-stone-300 min-w-0">
+                <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="truncate">
+                  Olá, <strong>{clienteNome.split(' ')[0]}</strong>! Seus dados de entrega já estão salvos.
+                </span>
+              </div>
+              <button
+                onClick={() => setShowOrderHistoryModal(true)}
+                className="text-red-600 dark:text-red-400 font-bold hover:underline shrink-0 text-[11px] cursor-pointer"
+              >
+                Ver meus {customerOrders.length} pedidos ➔
+              </button>
+            </div>
+          )}
+        </div>
         {/* Search Bar (Estilo Gama's Burger) */}
         <div className="relative">
           <Search className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -345,12 +540,26 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
               <p>📞 {clienteNome} — {clienteTelefone}</p>
               <p>💰 Forma: <span className="uppercase font-bold">{formaPagamento}</span></p>
             </div>
-            <button
-              onClick={() => setSubmittedOrderNumber(null)}
-              className="mt-4 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
-            >
-              Fazer Outro Pedido
-            </button>
+
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => {
+                  setSubmittedOrderNumber(null);
+                  setShowOrderHistoryModal(true);
+                }}
+                className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-600 text-stone-950 font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <History className="w-3.5 h-3.5" />
+                <span>Acompanhar em Meus Pedidos</span>
+              </button>
+
+              <button
+                onClick={() => setSubmittedOrderNumber(null)}
+                className="flex-1 py-3 px-4 bg-stone-200 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Fazer Outro Pedido
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -625,6 +834,13 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
             {/* Cart Items & Form */}
             <form onSubmit={handleConfirmOrder} className="p-5 overflow-y-auto space-y-4 flex-1">
+              {profileLoaded && clienteNome && (
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center gap-2 text-[11px] text-amber-700 dark:text-amber-300">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span>Seus dados foram preenchidos automaticamente do seu último pedido!</span>
+                </div>
+              )}
+
               {/* Items List */}
               <div className="space-y-2 border-b border-stone-100 dark:border-stone-800 pb-4">
                 <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider">Itens Escolhidos:</h4>
@@ -908,6 +1124,163 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
           onClose={() => setSelectedPizza(null)}
           onConfirm={handleAddPizzaToCart}
         />
+      )}
+
+      {/* Modal Histórico de Pedidos ("Meus Pedidos") */}
+      {showOrderHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/75 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#1A1A22] text-stone-900 dark:text-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-stone-200 dark:border-stone-800 max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-5 duration-150">
+            {/* Header */}
+            <div className="px-5 py-4 bg-stone-900 text-white flex items-center justify-between border-b border-stone-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <History className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white">Meus Pedidos</h3>
+                  <p className="text-[11px] text-stone-400">
+                    Histórico salvo neste aparelho com status em tempo real
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowOrderHistoryModal(false)}
+                className="p-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white rounded-xl cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Orders List Content */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+              {customerOrders.length === 0 ? (
+                <div className="text-center py-10 space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center mx-auto text-2xl">
+                    🍕
+                  </div>
+                  <h4 className="text-sm font-bold text-stone-800 dark:text-stone-200">
+                    Nenhum pedido encontrado neste aparelho
+                  </h4>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 max-w-xs mx-auto">
+                    Assim que você enviar seu primeiro pedido pelo cardápio, ele ficará salvo aqui com status em tempo real e você poderá repeti-lo com apenas 1 clique!
+                  </p>
+                  <button
+                    onClick={() => setShowOrderHistoryModal(false)}
+                    className="mt-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                  >
+                    Ver Cardápio
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {customerOrders.map((ord) => {
+                    const orderDate = new Date(ord.criado_em);
+                    const formattedDate = isNaN(orderDate.getTime())
+                      ? 'Hoje'
+                      : `${orderDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${orderDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+
+                    const totalItemsCount = ord.itens.reduce((acc, it) => acc + it.quantidade, 0);
+                    const orderTotal = ord.itens.reduce((acc, it) => acc + it.preco_total, 0) + (ord.taxa_entrega || 0);
+
+                    // Status Badge config
+                    let statusLabel = 'Aguardando Confirmação';
+                    let statusBadgeClass = 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+                    let statusDotClass = 'bg-amber-400';
+
+                    if (ord.status === 'em_preparo') {
+                      statusLabel = '🔥 No Forno / Em Preparo';
+                      statusBadgeClass = 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+                      statusDotClass = 'bg-orange-400 animate-pulse';
+                    } else if (ord.status === 'pronto') {
+                      statusLabel = '🍕 Pronto para Entrega';
+                      statusBadgeClass = 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                      statusDotClass = 'bg-blue-400';
+                    } else if (ord.status === 'a_caminho') {
+                      statusLabel = '🛵 Saiu para Entrega';
+                      statusBadgeClass = 'bg-purple-500/20 text-purple-300 border-purple-500/40 animate-pulse';
+                      statusDotClass = 'bg-purple-400';
+                    } else if (ord.status === 'entregue') {
+                      statusLabel = '✅ Entregue com Sucesso';
+                      statusBadgeClass = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                      statusDotClass = 'bg-emerald-400';
+                    } else if (ord.status === 'cancelado') {
+                      statusLabel = '❌ Cancelado';
+                      statusBadgeClass = 'bg-red-500/20 text-red-400 border-red-500/30';
+                      statusDotClass = 'bg-red-400';
+                    }
+
+                    return (
+                      <div
+                        key={ord.id}
+                        className={`p-4 rounded-2xl border transition shadow-2xs ${cardBgClass} space-y-3`}
+                      >
+                        {/* Order Header */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-black text-sm text-red-600 dark:text-red-400">
+                                Pedido #{ord.id}
+                              </span>
+                              <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                                • {formattedDate}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+                              {ord.tipo_pedido === 'retirada' ? '🛍️ Retirada no Balcão' : `🛵 ${ord.cliente_endereco || 'Entrega em domicílio'}`}
+                            </p>
+                          </div>
+
+                          <div className={`px-2.5 py-1 rounded-full border text-[11px] font-bold flex items-center gap-1.5 shrink-0 ${statusBadgeClass}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass}`} />
+                            <span>{statusLabel}</span>
+                          </div>
+                        </div>
+
+                        {/* Items preview */}
+                        <div className="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-900/60 border border-stone-200/70 dark:border-stone-800 space-y-1 text-xs">
+                          {ord.itens.map((it, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-[11px]">
+                              <span className="font-medium text-stone-800 dark:text-stone-200">
+                                {it.quantidade}x {it.nome}
+                                {it.sabores && it.sabores.length > 0 && (
+                                  <span className="text-amber-500 ml-1">({it.sabores.join(' + ')})</span>
+                                )}
+                              </span>
+                              <span className="font-mono text-stone-500 dark:text-stone-400">
+                                {formatCurrency(it.preco_total)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Order Footer: Total & Repeat Button */}
+                        <div className="flex items-center justify-between pt-1 border-t border-stone-100 dark:border-stone-800">
+                          <div>
+                            <span className="text-[10px] text-stone-400 uppercase font-bold block">
+                              Total ({totalItemsCount} {totalItemsCount === 1 ? 'item' : 'itens'})
+                            </span>
+                            <span className="font-mono font-black text-sm text-amber-500">
+                              {formatCurrency(orderTotal)}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() => handleRepeatOrder(ord)}
+                            className="px-3.5 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                            title="Adicionar todos os itens deste pedido ao carrinho e finalizar"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Repetir Pedido</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

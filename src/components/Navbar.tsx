@@ -105,10 +105,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
   }, [currentUser]);
 
   return (
-    <div className="w-full sticky top-0 z-40">
+    <div className="w-full relative md:sticky md:top-0 z-40">
       {/* Primary Warm Trattoria Navigation Bar */}
       <header className="bg-stone-900 text-stone-100 border-b border-stone-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-3">
           {/* Trattoria Brand or SaaS Platform Brand */}
           {currentUser?.perfil === 'super_admin' ? (
             <div className="flex items-center gap-2.5 shrink-0">
@@ -297,7 +297,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
             {/* Audio Toggle */}
             <button
               onClick={() => setAudioEnabled(!audioEnabled)}
-              className={`p-2 rounded-lg border transition ${
+              className={`hidden sm:flex p-2 rounded-lg border transition ${
                 audioEnabled
                   ? 'border-emerald-600/70 bg-emerald-950/60 text-emerald-400'
                   : 'border-stone-800 bg-stone-800/50 text-stone-400 hover:text-white hover:bg-stone-800'
@@ -310,7 +310,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
             {/* Reset Demo Data Button */}
             <button
               onClick={handleReset}
-              className="p-2 rounded-lg border border-stone-800 bg-stone-800/50 text-stone-400 hover:text-white hover:bg-stone-800 transition"
+              className="hidden sm:flex p-2 rounded-lg border border-stone-800 bg-stone-800/50 text-stone-400 hover:text-white hover:bg-stone-800 transition"
               title="Restaurar dados de teste"
             >
               <RotateCcw className="w-3.5 h-3.5" />
