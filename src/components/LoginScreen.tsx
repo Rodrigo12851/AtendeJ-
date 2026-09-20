@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pizza, Lock, UserCheck, Shield, ChefHat, Banknote, User } from 'lucide-react';
+import { Pizza, Lock, UserCheck, Shield, ChefHat, Banknote, User, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { UserRole } from '../types';
 
@@ -8,9 +8,10 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  const { users, loginWithPin, setCurrentUser } = useStore();
+  const { users, loginWithPin, setCurrentUser, recordLoginAttempt, isUserLockedOut } = useStore();
   const [enteredPin, setEnteredPin] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
 
   const handlePinClick = (num: string) => {
     if (enteredPin.length < 4) {
@@ -29,16 +30,41 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   const verifyPin = (pin: string) => {
-    const success = loginWithPin(pin);
-    if (success) {
-      onLoginSuccess?.();
-    } else {
-      setErrorMsg('PIN incorreto. Tente novamente ou selecione seu usuário abaixo.');
-      setEnteredPin('');
+    const matchedUser = users.find((u) => u.pin === pin);
+
+    if (matchedUser) {
+      const lockout = isUserLockedOut(matchedUser.usuario);
+      if (lockout.locked) {
+        setIsLocked(true);
+        setErrorMsg(`🔒 Usuário bloqueado por segurança! Aguarde ${lockout.remainingMinutes} min ou solicite ao Dono do App.`);
+        recordLoginAttempt(matchedUser.usuario, false, 'Tentativa em conta bloqueada', matchedUser.loja_id);
+        setEnteredPin('');
+        return;
+      }
+
+      const success = loginWithPin(pin);
+      if (success) {
+        recordLoginAttempt(matchedUser.usuario, true, undefined, matchedUser.loja_id);
+        onLoginSuccess?.();
+        return;
+      }
     }
+
+    // PIN incorreto
+    setErrorMsg('PIN incorreto. Tentativa registrada na auditoria de segurança.');
+    recordLoginAttempt(`pin_invalido_${pin}`, false, 'PIN incorreto informado na tela');
+    setEnteredPin('');
   };
 
   const handleQuickLogin = (u: typeof users[0]) => {
+    const lockout = isUserLockedOut(u.usuario);
+    if (lockout.locked) {
+      setIsLocked(true);
+      setErrorMsg(`🔒 Usuário ${u.nome} bloqueado por excesso de tentativas! Aguarde ${lockout.remainingMinutes} min.`);
+      recordLoginAttempt(u.usuario, false, 'Tentativa de clique em conta bloqueada', u.loja_id);
+      return;
+    }
+    recordLoginAttempt(u.usuario, true, undefined, u.loja_id);
     setCurrentUser(u);
     onLoginSuccess?.();
   };

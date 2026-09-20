@@ -7,6 +7,7 @@ import { GarcomView } from './components/garcom/GarcomView';
 import { CozinhaView } from './components/cozinha/CozinhaView';
 import { CaixaView } from './components/caixa/CaixaView';
 import { AdminView } from './components/admin/AdminView';
+import { SuperAdminView } from './components/superadmin/SuperAdminView';
 import { CustomerDeliveryView } from './components/delivery/CustomerDeliveryView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -23,7 +24,7 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     if (currentUser) {
       if (currentUser.perfil === 'super_admin') {
-        setCurrentModule('admin');
+        setCurrentModule('super_admin');
       } else {
         setCurrentModule(currentUser.perfil);
       }
@@ -40,9 +41,14 @@ const MainApp: React.FC = () => {
     return <LoginScreen onLoginSuccess={() => setIsLoggedOut(false)} />;
   }
 
-  // Determine allowed module to render based on user role (RBAC Security)
+  // Determine allowed module to render based on user role (RBAC Security & LGPD Isolation)
   const renderAllowedModule = () => {
     const role = currentUser.perfil;
+
+    // Super Admin: Dono do App (SaaS Platform Dashboard)
+    if (role === 'super_admin') {
+      return <SuperAdminView />;
+    }
 
     if (role === 'garcom') {
       return <GarcomView />;
@@ -54,7 +60,7 @@ const MainApp: React.FC = () => {
       if (currentModule === 'garcom') return <GarcomView />;
       return <CaixaView />;
     }
-    // admin and super_admin
+    // admin da filial / loja
     if (currentModule === 'garcom') return <GarcomView />;
     if (currentModule === 'cozinha') return <CozinhaView />;
     if (currentModule === 'caixa') return <CaixaView />;

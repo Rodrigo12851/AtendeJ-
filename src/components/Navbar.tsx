@@ -108,98 +108,116 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
       {/* Primary Warm Trattoria Navigation Bar */}
       <header className="bg-stone-900 text-stone-100 border-b border-stone-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3">
-          {/* Trattoria Brand */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            {currentLoja?.logo_url ? (
-              <img
-                src={currentLoja.logo_url}
-                alt={currentLoja.marca || currentLoja.nome || 'Logo da Loja'}
-                className="w-8 h-8 rounded-lg object-cover shadow-sm border border-stone-700 bg-stone-900 shrink-0"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center shadow-sm text-white shrink-0">
-                <Pizza className="w-5 h-5" />
+          {/* Trattoria Brand or SaaS Platform Brand */}
+          {currentUser?.perfil === 'super_admin' ? (
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-yellow-600 flex items-center justify-center shadow-sm text-stone-950 font-bold shrink-0">
+                👑
               </div>
-            )}
-            <div>
-              <h1 className="text-base sm:text-lg font-extrabold tracking-tight leading-none text-white flex items-center gap-1 uppercase">
-                {currentLoja?.marca || 'PIZZARIA ITÁLIA'}
-              </h1>
-              <p className="text-[10px] uppercase tracking-wider text-amber-400 mt-0.5 font-bold">
-                {currentUser?.perfil === 'super_admin' && currentLojaId === 'todas'
-                  ? '👑 Todas as Lojas / Redes'
-                  : (currentLoja?.nome ? `📍 ${currentLoja.nome}` : '📍 Filial')}
-              </p>
+              <div>
+                <h1 className="text-base sm:text-lg font-extrabold tracking-tight leading-none text-white flex items-center gap-1 uppercase">
+                  ATENDEJÁ
+                </h1>
+                <p className="text-[10px] uppercase tracking-wider text-amber-400 mt-0.5 font-bold">
+                  👑 Dono da Plataforma (SaaS)
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2.5 shrink-0">
+              {currentLoja?.logo_url ? (
+                <img
+                  src={currentLoja.logo_url}
+                  alt={currentLoja.marca || currentLoja.nome || 'Logo da Loja'}
+                  className="w-8 h-8 rounded-lg object-cover shadow-sm border border-stone-700 bg-stone-900 shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center shadow-sm text-white shrink-0">
+                  <Pizza className="w-5 h-5" />
+                </div>
+              )}
+              <div>
+                <h1 className="text-base sm:text-lg font-extrabold tracking-tight leading-none text-white flex items-center gap-1 uppercase">
+                  {currentLoja?.marca || 'PIZZARIA ITÁLIA'}
+                </h1>
+                <p className="text-[10px] uppercase tracking-wider text-amber-400 mt-0.5 font-bold">
+                  {currentLoja?.nome ? `📍 ${currentLoja.nome}` : '📍 Filial'}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Module Navigation Tabs — Filtered strictly by User Role permissions */}
-          <nav className="flex items-center gap-1 sm:gap-1.5 shrink-0 py-1">
-            {(currentUser?.perfil === 'garcom' ||
-              currentUser?.perfil === 'caixa' ||
-              currentUser?.perfil === 'admin' ||
-              currentUser?.perfil === 'super_admin') && (
-              <button
-                onClick={() => onChangeModule('garcom')}
-                className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                  currentModule === 'garcom'
-                    ? 'bg-red-600/25 border-red-500 text-white shadow-xs'
-                    : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                }`}
-              >
-                <span className="text-[10px] font-mono text-red-400 font-bold">01</span>
-                <span className="uppercase text-[11px] sm:text-xs">MESAS</span>
-              </button>
-            )}
+          {currentUser?.perfil === 'super_admin' ? (
+            <div className="px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center gap-1.5 shadow-xs">
+              <ShieldCheck className="w-4 h-4 text-amber-400" />
+              <span>PAINEL DO DONO DO APP</span>
+            </div>
+          ) : (
+            <nav className="flex items-center gap-1 sm:gap-1.5 shrink-0 py-1">
+              {(currentUser?.perfil === 'garcom' ||
+                currentUser?.perfil === 'caixa' ||
+                currentUser?.perfil === 'admin') && (
+                <button
+                  onClick={() => onChangeModule('garcom')}
+                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                    currentModule === 'garcom'
+                      ? 'bg-red-600/25 border-red-500 text-white shadow-xs'
+                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-red-400 font-bold">01</span>
+                  <span className="uppercase text-[11px] sm:text-xs">MESAS</span>
+                </button>
+              )}
 
-            {(currentUser?.perfil === 'cozinha' ||
-              currentUser?.perfil === 'admin' ||
-              currentUser?.perfil === 'super_admin') && (
-              <button
-                onClick={() => onChangeModule('cozinha')}
-                className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                  currentModule === 'cozinha'
-                    ? 'bg-amber-500/25 border-amber-500 text-white shadow-xs'
-                    : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                }`}
-              >
-                <span className="text-[10px] font-mono text-amber-400 font-bold">02</span>
-                <span className="uppercase text-[11px] sm:text-xs">
-                  COZINHA {kitchenActiveCount > 0 && `(${kitchenActiveCount})`}
-                </span>
-              </button>
-            )}
+              {(currentUser?.perfil === 'cozinha' ||
+                currentUser?.perfil === 'admin') && (
+                <button
+                  onClick={() => onChangeModule('cozinha')}
+                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                    currentModule === 'cozinha'
+                      ? 'bg-amber-500/25 border-amber-500 text-white shadow-xs'
+                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-amber-400 font-bold">02</span>
+                  <span className="uppercase text-[11px] sm:text-xs">
+                    COZINHA {kitchenActiveCount > 0 && `(${kitchenActiveCount})`}
+                  </span>
+                </button>
+              )}
 
-            {(currentUser?.perfil === 'caixa' ||
-              currentUser?.perfil === 'admin' ||
-              currentUser?.perfil === 'super_admin') && (
-              <button
-                onClick={() => onChangeModule('caixa')}
-                className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                  currentModule === 'caixa'
-                    ? 'bg-emerald-600/25 border-emerald-500 text-white shadow-xs'
-                    : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                }`}
-              >
-                <span className="text-[10px] font-mono text-emerald-400 font-bold">03</span>
-                <span className="uppercase text-[11px] sm:text-xs">CAIXA</span>
-              </button>
-            )}
+              {(currentUser?.perfil === 'caixa' ||
+                currentUser?.perfil === 'admin') && (
+                <button
+                  onClick={() => onChangeModule('caixa')}
+                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                    currentModule === 'caixa'
+                      ? 'bg-emerald-600/25 border-emerald-500 text-white shadow-xs'
+                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">03</span>
+                  <span className="uppercase text-[11px] sm:text-xs">CAIXA</span>
+                </button>
+              )}
 
-            {(currentUser?.perfil === 'admin' || currentUser?.perfil === 'super_admin') && (
-              <button
-                onClick={() => onChangeModule('admin')}
-                className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                  currentModule === 'admin'
-                    ? 'bg-purple-600/25 border-purple-500 text-white shadow-xs'
-                    : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                }`}
-              >
-                <span className="text-[10px] font-mono text-purple-400 font-bold">04</span>
-                <span className="uppercase text-[11px] sm:text-xs">ADMIN</span>
-              </button>
-            )}
-          </nav>
+              {currentUser?.perfil === 'admin' && (
+                <button
+                  onClick={() => onChangeModule('admin')}
+                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                    currentModule === 'admin'
+                      ? 'bg-purple-600/25 border-purple-500 text-white shadow-xs'
+                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-purple-400 font-bold">04</span>
+                  <span className="uppercase text-[11px] sm:text-xs">ADMIN</span>
+                </button>
+              )}
+            </nav>
+          )}
 
           {/* User Profile & Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -324,52 +342,48 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
         </div>
       </header>
 
-      {/* Refined Metric & Status Bar (Trattoria Style) */}
-      <div className="hidden md:block bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm border-b border-stone-200/90 dark:border-stone-800 px-4 sm:px-6 py-2.5 shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-6 sm:gap-10">
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase font-bold text-stone-400 dark:text-stone-400 tracking-wider">
-                Vendas do Dia
-              </span>
-              <span className="text-base sm:text-xl font-mono font-bold tracking-tight text-stone-900 dark:text-stone-100">
-                {formatCurrency(totalSales)}
-              </span>
+      {/* Refined Metric & Status Bar (Trattoria Style) - Apenas para equipe da loja, oculto para Dono do App (LGPD) */}
+      {currentUser?.perfil !== 'super_admin' && (
+        <div className="hidden md:block bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm border-b border-stone-200/90 dark:border-stone-800 px-4 sm:px-6 py-2.5 shadow-xs">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-6 sm:gap-10">
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase font-bold text-stone-400 dark:text-stone-400 tracking-wider">
+                  Vendas do Dia
+                </span>
+                <span className="text-base sm:text-xl font-mono font-bold tracking-tight text-stone-900 dark:text-stone-100">
+                  {formatCurrency(totalSales)}
+                </span>
+              </div>
+
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase font-bold text-stone-400 dark:text-stone-400 tracking-wider">
+                  Mesas Ocupadas
+                </span>
+                <span className="text-base sm:text-xl font-mono font-bold tracking-tight text-stone-900 dark:text-stone-100">
+                  {occupiedCount} / {tables.length}
+                </span>
+              </div>
+
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase font-bold text-stone-400 dark:text-stone-400 tracking-wider">
+                  Ticket Médio
+                </span>
+                <span className="text-base sm:text-xl font-mono font-bold tracking-tight text-stone-900 dark:text-stone-100">
+                  {formatCurrency(ticketMedio)}
+                </span>
+              </div>
             </div>
 
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase font-bold text-stone-400 dark:text-stone-400 tracking-wider">
-                Mesas Ocupadas
-              </span>
-              <span className="text-base sm:text-xl font-mono font-bold tracking-tight text-stone-900 dark:text-stone-100">
-                {occupiedCount} / {tables.length}
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold rounded-full flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Sistema Online
               </span>
             </div>
-
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase font-bold text-stone-400 dark:text-stone-400 tracking-wider">
-                Ticket Médio
-              </span>
-              <span className="text-base sm:text-xl font-mono font-bold tracking-tight text-stone-900 dark:text-stone-100">
-                {formatCurrency(ticketMedio)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold rounded-full flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Sistema Online
-            </span>
-            <button
-              onClick={() => onChangeModule('garcom')}
-              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shadow-sm transition active:scale-95 cursor-pointer flex items-center gap-1"
-            >
-              Novo Pedido +
-            </button>
           </div>
         </div>
-      </div>
+      )}
 
       {showStoresModal && <SuperAdminStoresModal onClose={() => setShowStoresModal(false)} />}
     </div>

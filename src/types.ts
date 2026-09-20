@@ -19,6 +19,21 @@ export interface Loja {
   horario_funcionamento?: string;
   admin_usuario_id?: string;
   taxas_bairro?: TaxaBairro[];
+  plano?: 'basico' | 'pro' | 'enterprise';
+  status_assinatura?: 'ativo' | 'trial' | 'suspenso';
+  data_cadastro?: string;
+}
+
+export interface LoginAttempt {
+  id: string;
+  usuario: string;
+  loja_id?: string;
+  loja_nome?: string;
+  data_hora: string;
+  sucesso: boolean;
+  ip_origem?: string;
+  motivo_falha?: string;
+  bloqueado?: boolean;
 }
 
 export type UserRole = 'super_admin' | 'admin' | 'garcom' | 'cozinha' | 'caixa';

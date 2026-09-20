@@ -17,6 +17,7 @@ import {
   Flame,
   ChevronRight,
   Heart,
+  ShieldCheck,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, OrderItem, Loja } from '../../types';
@@ -878,6 +879,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   <span>Total Final:</span>
                   <span className="font-mono text-amber-500">{formatCurrency(cartTotal)}</span>
                 </div>
+              </div>
+
+              {/* LGPD Consent Disclaimer */}
+              <div className="p-3 bg-stone-100/80 dark:bg-stone-800/80 rounded-xl border border-stone-200/90 dark:border-stone-700/80 text-[11px] text-stone-600 dark:text-stone-300 flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Privacidade & LGPD:</strong> Seus dados de contato e endereço são utilizados exclusivamente para o preparo e entrega deste pedido por este estabelecimento.
+                </span>
               </div>
 
               <button

@@ -14,7 +14,7 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { getAnalytics, isSupported } from 'firebase/analytics';
-import { Loja, Table, Comanda, Order, Product, Category } from '../types';
+import { Loja, Table, Comanda, Order, Product, Category, LoginAttempt } from '../types';
 
 // Web app's Firebase configuration (Projeto: atendeja-83ef5)
 export const firebaseConfig = {
@@ -54,6 +54,7 @@ export const FIRESTORE_COLLECTIONS = {
   ORDERS: 'pedidos',
   PRODUCTS: 'produtos',
   CATEGORIES: 'categorias',
+  LOGIN_ATTEMPTS: 'tentativas_login',
 } as const;
 
 // ==========================================
@@ -98,6 +99,16 @@ export async function saveOrderToFirestore(order: Order): Promise<void> {
     await setDoc(docRef, cleanData, { merge: true });
   } catch (error) {
     console.warn('[Firestore] Falha ao salvar pedido na nuvem:', error);
+  }
+}
+
+export async function saveLoginAttemptToFirestore(attempt: LoginAttempt): Promise<void> {
+  try {
+    const docRef = doc(db, FIRESTORE_COLLECTIONS.LOGIN_ATTEMPTS, attempt.id);
+    const cleanData = JSON.parse(JSON.stringify(attempt));
+    await setDoc(docRef, cleanData, { merge: true });
+  } catch (error) {
+    console.warn('[Firestore] Falha ao salvar tentativa de login na nuvem:', error);
   }
 }
 

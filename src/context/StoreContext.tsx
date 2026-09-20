@@ -18,6 +18,7 @@ import {
   PizzaCrustOption,
   PizzaDoughOption,
   PizzaAddonOption,
+  LoginAttempt,
 } from '../types';
 import {
   INITIAL_CATEGORIES,
@@ -43,6 +44,7 @@ import {
   saveTableToFirestore,
   saveComandaToFirestore,
   saveOrderToFirestore,
+  saveLoginAttemptToFirestore,
   seedInitialFirestoreIfEmpty,
 } from '../services/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -134,10 +136,15 @@ interface StoreContextType {
   toggleUserStatus: (id: string) => void;
   addTaxaBairro: (lojaId: string, bairro: string, valor: number) => void;
   deleteTaxaBairro: (lojaId: string, taxaId: string) => void;
+  toggleLojaAtiva: (lojaId: string) => void;
   createStoreWithAdmin: (
-    lojaData: { nome: string; slug: string; endereco?: string; telefone?: string; taxa_entrega?: number },
+    lojaData: { nome: string; slug: string; marca?: string; cnpj?: string; endereco?: string; telefone?: string; taxa_entrega?: number; plano?: 'basico' | 'pro' | 'enterprise' },
     adminData: { nome: string; usuario: string; senha?: string; pin: string }
   ) => void;
+  loginAttempts: LoginAttempt[];
+  recordLoginAttempt: (usuario: string, sucesso: boolean, motivo?: string, lojaId?: string, lojaNome?: string) => void;
+  isUserLockedOut: (usuario: string) => { locked: boolean; remainingMinutes?: number };
+  resetLoginLockout: (usuario: string) => void;
   createDeliveryOrder: (
     lojaId: string,
     clienteInfo: { nome: string; telefone: string; endereco: string; formaPagamento: string; trocoPara?: number; tipoPedido?: 'delivery' | 'retirada' },
@@ -171,6 +178,7 @@ const STORAGE_KEYS = {
   CRUSTS: 'pizzaria_crusts_v1',
   DOUGHS: 'pizzaria_doughs_v1',
   ADDONS: 'pizzaria_addons_v1',
+  LOGIN_ATTEMPTS: 'pizzaria_login_attempts_v1',
 };
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -296,6 +304,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           lida: false,
         },
       ];
+    } catch {
+      return [];
+    }
+  });
+
+  const [loginAttempts, setLoginAttempts] = useState<LoginAttempt[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.LOGIN_ATTEMPTS);
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -434,6 +451,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     localStorage.setItem(STORAGE_KEYS.LOJAS, JSON.stringify(lojas));
   }, [lojas]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.LOGIN_ATTEMPTS, JSON.stringify(loginAttempts));
+    } catch (e) {
+      console.warn('Erro ao salvar loginAttempts no localStorage:', e);
+    }
+  }, [loginAttempts]);
+
   // Listen to cross-tab storage changes for lojas
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
@@ -537,11 +562,26 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       (err) => console.warn('[Firestore Pedidos Error]:', err.message)
     );
 
+    // 5. Escuta Tentativas de Login da nuvem em tempo real
+    const unsubLoginAttempts = onSnapshot(
+      collection(db, FIRESTORE_COLLECTIONS.LOGIN_ATTEMPTS),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const remoteAttempts = snapshot.docs
+            .map((d) => d.data() as LoginAttempt)
+            .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
+          setLoginAttempts(remoteAttempts);
+        }
+      },
+      (err) => console.warn('[Firestore LoginAttempts Error]:', err.message)
+    );
+
     return () => {
       unsubLojas();
       unsubTables();
       unsubComandas();
       unsubOrders();
+      unsubLoginAttempts();
     };
   }, []);
 
@@ -1317,8 +1357,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateLoja(updatedLoja);
   };
 
+  const toggleLojaAtiva = (lojaId: string) => {
+    const updated = lojas.map((l) => (l.id === lojaId ? { ...l, ativa: !l.ativa } : l));
+    setLojas(updated);
+    const target = updated.find((l) => l.id === lojaId);
+    if (target) saveLojaToFirestore(target);
+    broadcastSync({ lojas: updated });
+  };
+
   const createStoreWithAdmin = (
-    lojaData: { nome: string; slug: string; endereco?: string; telefone?: string; taxa_entrega?: number },
+    lojaData: { nome: string; slug: string; marca?: string; cnpj?: string; endereco?: string; telefone?: string; taxa_entrega?: number; plano?: 'basico' | 'pro' | 'enterprise' },
     adminData: { nome: string; usuario: string; senha?: string; pin: string }
   ) => {
     const lojaId = `loja_${Date.now()}`;
@@ -1328,7 +1376,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: adminId,
       loja_id: lojaId,
       nome: adminData.nome,
-      usuario: adminData.usuario,
+      usuario: adminData.usuario.trim().toLowerCase(),
       senha: adminData.senha || '123',
       pin: adminData.pin,
       perfil: 'admin',
@@ -1338,8 +1386,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const newLoja: Loja = {
       id: lojaId,
-      slug: lojaData.slug.toLowerCase().replace(/\s+/g, '-'),
+      slug: lojaData.slug.toLowerCase().trim().replace(/\s+/g, '-'),
       nome: lojaData.nome,
+      marca: lojaData.marca || lojaData.nome,
+      cnpj: lojaData.cnpj || '',
+      plano: lojaData.plano || 'pro',
+      status_assinatura: 'ativo',
+      data_cadastro: new Date().toISOString(),
       endereco: lojaData.endereco || 'Endereço da Filial',
       telefone: lojaData.telefone || '(11) 3333-0000',
       ativa: true,
@@ -1354,7 +1407,77 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setLojas(updatedLojas);
     setUsers(updatedUsers);
+    saveLojaToFirestore(newLoja);
     broadcastSync({ lojas: updatedLojas, users: updatedUsers });
+  };
+
+  const recordLoginAttempt = (
+    usuario: string,
+    sucesso: boolean,
+    motivo?: string,
+    lojaId?: string,
+    lojaNome?: string
+  ) => {
+    const cleanUser = usuario.trim().toLowerCase();
+    const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
+
+    // Check consecutive recent failures
+    const recentFailures = loginAttempts.filter(
+      (a) => a.usuario.toLowerCase() === cleanUser &&
+             !a.sucesso &&
+             new Date(a.data_hora).getTime() > fifteenMinutesAgo
+    ).length;
+
+    const willBeBlocked = !sucesso && recentFailures >= 4;
+
+    const attempt: LoginAttempt = {
+      id: `attempt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      usuario: cleanUser,
+      loja_id: lojaId,
+      loja_nome: lojaNome,
+      data_hora: new Date().toISOString(),
+      sucesso,
+      motivo_falha: motivo,
+      bloqueado: willBeBlocked,
+    };
+
+    setLoginAttempts((prev) => [attempt, ...prev].slice(0, 100));
+    saveLoginAttemptToFirestore(attempt);
+  };
+
+  const isUserLockedOut = (usuario: string): { locked: boolean; remainingMinutes?: number } => {
+    if (!usuario) return { locked: false };
+    const cleanUser = usuario.trim().toLowerCase();
+    const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
+
+    const userAttempts = loginAttempts.filter(
+      (a) => a.usuario.toLowerCase() === cleanUser &&
+             new Date(a.data_hora).getTime() > fifteenMinutesAgo
+    );
+
+    let consecutiveFailures = 0;
+    let mostRecentFailureTime = 0;
+
+    for (const a of userAttempts) {
+      if (a.sucesso) break;
+      consecutiveFailures++;
+      const time = new Date(a.data_hora).getTime();
+      if (time > mostRecentFailureTime) mostRecentFailureTime = time;
+    }
+
+    if (consecutiveFailures >= 5) {
+      const elapsedMs = Date.now() - mostRecentFailureTime;
+      const remainingMs = 15 * 60 * 1000 - elapsedMs;
+      const remainingMinutes = Math.max(1, Math.ceil(remainingMs / (60 * 1000)));
+      return { locked: true, remainingMinutes };
+    }
+
+    return { locked: false };
+  };
+
+  const resetLoginLockout = (usuario: string) => {
+    const cleanUser = usuario.trim().toLowerCase();
+    setLoginAttempts((prev) => prev.filter((a) => a.usuario.toLowerCase() !== cleanUser));
   };
 
   const createDeliveryOrder = (
@@ -1654,7 +1777,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         toggleUserStatus,
         addTaxaBairro,
         deleteTaxaBairro,
+        toggleLojaAtiva,
         createStoreWithAdmin,
+        loginAttempts,
+        recordLoginAttempt,
+        isUserLockedOut,
+        resetLoginLockout,
         createDeliveryOrder,
         markNotificationRead,
         clearNotifications,
