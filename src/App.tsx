@@ -3,7 +3,7 @@ import { ShieldAlert } from 'lucide-react';
 import { StoreProvider, useStore } from './context/StoreContext';
 import { UserRole } from './types';
 import { LoginScreen } from './components/LoginScreen';
-import { PublicPortalView } from './components/portal/PublicPortalView';
+import { UnrecognizedLinkView } from './components/UnrecognizedLinkView';
 import { Navbar } from './components/Navbar';
 import { GarcomView } from './components/garcom/GarcomView';
 import { CozinhaView } from './components/cozinha/CozinhaView';
@@ -20,10 +20,15 @@ const MainApp: React.FC = () => {
   // Check URL params for direct actions
   const urlParams = new URLSearchParams(window.location.search);
   const publicLojaSlug = urlParams.get('loja') || urlParams.get('loja_id');
-  const portalParam = urlParams.get('portal'); // e.g. 'dono' or 'master'
-  const equipeParam = urlParams.get('equipe') || urlParams.get('login');
+  const portalParam = urlParams.get('portal');
+  const isDonoPortal = portalParam === 'master' || portalParam === 'dono';
+  const isEquipeAcesso =
+    urlParams.get('acesso') === 'equipe' ||
+    urlParams.get('equipe') === 'true' ||
+    urlParams.get('login') === 'equipe' ||
+    urlParams.get('login') === 'true';
 
-  // Verify active session: NEVER auto-login unless explicitly authenticated in sessionStorage
+  // Verify active session in sessionStorage: NEVER auto-login without explicit authentication
   const [isLoggedOut, setIsLoggedOut] = useState<boolean>(() => {
     try {
       const sessionActive = sessionStorage.getItem('atendeja_session_active');
@@ -31,19 +36,6 @@ const MainApp: React.FC = () => {
     } catch {
       return true;
     }
-  });
-
-  // Portal view mode for unauthenticated users: 'portal' | 'login'
-  const [authView, setAuthView] = useState<'portal' | 'login'>(() => {
-    if (portalParam === 'dono' || portalParam === 'master' || equipeParam) {
-      return 'login';
-    }
-    return 'portal';
-  });
-
-  const [initialLoginTab, setInitialLoginTab] = useState<'equipe' | 'dono'>(() => {
-    if (portalParam === 'dono' || portalParam === 'master') return 'dono';
-    return 'equipe';
   });
 
   // Enforce correct initial module based on user role permissions
@@ -62,37 +54,46 @@ const MainApp: React.FC = () => {
     return <CustomerDeliveryView lojaSlug={publicLojaSlug} />;
   }
 
-  // 2. IF not authenticated: show either the Public Portal or the Login Screen
+  // 2. IF user is not logged in:
   if (isLoggedOut || !currentUser) {
-    if (authView === 'portal') {
+    // If user opened secret Master portal for Dono do App:
+    if (isDonoPortal) {
       return (
-        <PublicPortalView
-          lojas={lojas}
-          onSelectLoja={(slug) => {
-            window.location.search = `?loja=${slug}`;
-          }}
-          onOpenLogin={(tab) => {
-            setInitialLoginTab(tab);
-            setAuthView('login');
+        <LoginScreen
+          mode="dono"
+          onLoginSuccess={() => {
+            setIsLoggedOut(false);
+            try {
+              sessionStorage.setItem('atendeja_session_active', 'true');
+            } catch {
+              // ignore
+            }
           }}
         />
       );
     }
 
-    return (
-      <LoginScreen
-        initialTab={initialLoginTab}
-        onLoginSuccess={() => {
-          setIsLoggedOut(false);
-          try {
-            sessionStorage.setItem('atendeja_session_active', 'true');
-          } catch {
-            // ignore
-          }
-        }}
-        onBackToPortal={() => setAuthView('portal')}
-      />
-    );
+    // If user opened restaurant staff PIN terminal:
+    if (isEquipeAcesso) {
+      return (
+        <LoginScreen
+          mode="equipe"
+          onLoginSuccess={() => {
+            setIsLoggedOut(false);
+            try {
+              sessionStorage.setItem('atendeja_session_active', 'true');
+            } catch {
+              // ignore
+            }
+          }}
+        />
+      );
+    }
+
+    // BARE URL / UNRECOGNIZED LINK:
+    // When someone enters the bare link (e.g. https://atendeja-seven.vercel.app/) without parameters,
+    // do NOT show any store list, do NOT show admin or staff login.
+    return <UnrecognizedLinkView />;
   }
 
   // 3. Intercept active session if the user's store is suspended (super_admin is exempt)
@@ -127,11 +128,10 @@ const MainApp: React.FC = () => {
             onClick={() => {
               logout();
               setIsLoggedOut(true);
-              setAuthView('portal');
             }}
             className="w-full py-3 px-4 bg-stone-900 hover:bg-stone-800 text-white font-semibold rounded-xl text-sm transition-all shadow-md cursor-pointer"
           >
-            Sair e Voltar ao Início
+            Sair da Sessão
           </button>
         </div>
       </div>
@@ -172,7 +172,6 @@ const MainApp: React.FC = () => {
         onLogout={() => {
           logout();
           setIsLoggedOut(true);
-          setAuthView('portal');
         }}
       />
 

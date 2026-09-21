@@ -1,20 +1,17 @@
 import React, { useState } from 'react';
-import { Pizza, Lock, Shield, ArrowLeft, KeyRound, User, Eye, EyeOff, Store } from 'lucide-react';
+import { Pizza, Lock, Shield, KeyRound, User, Eye, EyeOff, Store } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
 interface LoginScreenProps {
+  mode: 'equipe' | 'dono';
   onLoginSuccess?: () => void;
-  initialTab?: 'equipe' | 'dono';
-  onBackToPortal?: () => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
+  mode,
   onLoginSuccess,
-  initialTab = 'equipe',
-  onBackToPortal,
 }) => {
   const { users, lojas, loginWithPin, login, recordLoginAttempt, isUserLockedOut } = useStore();
-  const [activeTab, setActiveTab] = useState<'equipe' | 'dono'>(initialTab);
 
   // Equipe PIN State
   const [enteredPin, setEnteredPin] = useState('');
@@ -45,10 +42,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   const verifyPin = (pin: string) => {
-    // 1. O Dono do App nunca pode ser acessado via PIN de equipe!
+    // 1. O Dono da Plataforma nunca utiliza PIN de equipe
     const superAdminUser = users.find((u) => u.perfil === 'super_admin' && u.pin === pin);
     if (superAdminUser) {
-      setPinErrorMsg('🔒 Acesso Master: O Dono da Plataforma deve utilizar a aba "Dono do App" com Usuário e Senha.');
+      setPinErrorMsg('Acesso não autorizado para esta área.');
       setEnteredPin('');
       return;
     }
@@ -70,7 +67,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       // 3. Verificação de bloqueio por excesso de tentativas incorretas
       const lockout = isUserLockedOut(matchedUser.usuario);
       if (lockout.locked) {
-        setPinErrorMsg(`🔒 Usuário bloqueado por segurança! Aguarde ${lockout.remainingMinutes} min.`);
+        setPinErrorMsg(`🔒 Acesso bloqueado por segurança! Aguarde ${lockout.remainingMinutes} min.`);
         recordLoginAttempt(matchedUser.usuario, false, 'Tentativa em conta bloqueada', matchedUser.loja_id);
         setEnteredPin('');
         return;
@@ -85,8 +82,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
 
     // PIN incorreto
-    setPinErrorMsg('PIN incorreto. Tentativa registrada na auditoria de segurança.');
-    recordLoginAttempt(`pin_invalido_${pin}`, false, 'PIN incorreto informado na tela');
+    setPinErrorMsg('PIN incorreto. Tentativa registrada no sistema de segurança.');
+    recordLoginAttempt(`pin_invalido_${pin}`, false, 'PIN incorreto informado no terminal');
     setEnteredPin('');
   };
 
@@ -97,14 +94,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
     const cleanUser = masterUser.trim().toLowerCase();
     if (!cleanUser || !masterPass) {
-      setMasterErrorMsg('Preencha o usuário e a senha do Dono do App.');
+      setMasterErrorMsg('Preencha o usuário e a senha master.');
       return;
     }
 
-    // Verificar se usuário está bloqueado por força bruta
+    // Bloqueio contra força bruta
     const lockout = isUserLockedOut(cleanUser);
     if (lockout.locked) {
-      setMasterErrorMsg(`🔒 Acesso bloqueado por excesso de tentativas! Aguarde ${lockout.remainingMinutes} min.`);
+      setMasterErrorMsg(`🔒 Acesso bloqueado por segurança! Aguarde ${lockout.remainingMinutes} min.`);
       recordLoginAttempt(cleanUser, false, 'Tentativa em conta Master bloqueada');
       return;
     }
@@ -116,8 +113,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       );
 
       if (!targetUser) {
-        setMasterErrorMsg('Usuário inválido ou sem privilégios de Dono da Plataforma.');
-        recordLoginAttempt(cleanUser, false, 'Usuário inexistente ou não-master');
+        setMasterErrorMsg('Credenciais inválidas ou acesso não autorizado.');
+        recordLoginAttempt(cleanUser, false, 'Tentativa inválida no Acesso Master');
         setIsSubmittingMaster(false);
         return;
       }
@@ -127,7 +124,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         recordLoginAttempt(cleanUser, true);
         onLoginSuccess?.();
       } else {
-        setMasterErrorMsg('Senha incorreta. Tentativa registrada no sistema de auditoria.');
+        setMasterErrorMsg('Credenciais inválidas.');
         recordLoginAttempt(cleanUser, false, 'Senha incorreta no Acesso Master');
       }
     } finally {
@@ -142,18 +139,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-md w-full space-y-5 relative z-10">
-        {/* Return to Public Portal Button */}
-        {onBackToPortal && (
-          <button
-            type="button"
-            onClick={onBackToPortal}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 bg-white/80 border border-stone-200/80 px-3 py-1.5 rounded-xl shadow-2xs transition cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Voltar ao Cardápio / Ver Restaurantes</span>
-          </button>
-        )}
-
         {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex p-3 bg-gradient-to-tr from-red-700 via-red-600 to-amber-600 rounded-2xl shadow-lg shadow-red-950/20 text-white animate-bounce-short">
@@ -161,61 +146,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </div>
           <div>
             <span className="text-[11px] font-bold tracking-widest uppercase text-amber-800">
-              AtendeJá • Gestão Segura
+              AtendeJá
             </span>
             <h1 className="text-2xl sm:text-3xl font-serif font-black tracking-tight text-stone-900">
-              Acesso Restrito
+              {mode === 'dono' ? 'Acesso Master da Plataforma' : 'Terminal da Equipe'}
             </h1>
           </div>
           <p className="text-xs text-stone-500 font-medium">
-            Selecione o tipo de acesso autorizado para continuar
+            {mode === 'dono'
+              ? 'Área restrita de governança e gestão multi-lojas'
+              : 'Atendimento, comanda digital, cozinha e caixa'}
           </p>
         </div>
 
-        {/* Auth Mode Toggle Tabs */}
-        <div className="bg-stone-200/70 p-1 rounded-2xl flex items-center gap-1 border border-stone-300/60 shadow-inner">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('equipe');
-              setPinErrorMsg('');
-            }}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'equipe'
-                ? 'bg-white text-stone-900 shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Store className="w-3.5 h-3.5 text-amber-600" />
-            <span>Equipe do Restaurante</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('dono');
-              setMasterErrorMsg('');
-            }}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'dono'
-                ? 'bg-white text-stone-900 shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5 text-red-600" />
-            <span>Dono da Plataforma</span>
-          </button>
-        </div>
-
         {/* ========================================================================= */}
-        {/* ABA 1: EQUIPE DO RESTAURANTE (PIN DE 4 DÍGITOS) */}
+        {/* MODO 1: TERMINAL DA EQUIPE (PIN DE 4 DÍGITOS) */}
         {/* ========================================================================= */}
-        {activeTab === 'equipe' && (
+        {mode === 'equipe' && (
           <div className="bg-white border border-stone-200/90 rounded-3xl p-6 shadow-xl space-y-5">
             <div className="text-center space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-stone-600 flex items-center justify-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-amber-600" />
-                Digite seu PIN de Operador (4 dígitos)
+                Digite seu PIN de 4 dígitos
               </span>
 
               {/* PIN Dots */}
@@ -275,15 +227,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
 
             <div className="pt-2 text-center text-[11px] text-stone-400">
-              <p>O PIN é individual e intransferível de cada garçom, cozinheiro ou caixa.</p>
+              <p>O PIN é individual de cada colaborador do restaurante.</p>
             </div>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* ABA 2: DONO DA PLATAFORMA (ACESSO MASTER) */}
+        {/* MODO 2: DONO DA PLATAFORMA (ACESSO MASTER) */}
         {/* ========================================================================= */}
-        {activeTab === 'dono' && (
+        {mode === 'dono' && (
           <form
             onSubmit={handleMasterLogin}
             className="bg-white border border-stone-200/90 rounded-3xl p-6 shadow-xl space-y-4"
@@ -292,9 +244,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto mb-2">
                 <Shield className="w-5 h-5" />
               </div>
-              <h2 className="text-base font-bold text-stone-900">Acesso Master da Plataforma</h2>
+              <h2 className="text-base font-bold text-stone-900">Autenticação de Segurança</h2>
               <p className="text-xs text-stone-500">
-                Área reservada para o Dono do App gerenciar franquias, planos e auditoria.
+                Insira as credenciais de Dono da Plataforma para gerenciar o sistema.
               </p>
             </div>
 
@@ -314,7 +266,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     type="text"
                     value={masterUser}
                     onChange={(e) => setMasterUser(e.target.value)}
-                    placeholder="Digite seu usuário"
+                    placeholder="Usuário"
                     autoComplete="username"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition"
                   />
@@ -324,14 +276,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1">
-                  Senha
+                  Senha Master
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={masterPass}
                     onChange={(e) => setMasterPass(e.target.value)}
-                    placeholder="Digite sua senha"
+                    placeholder="••••••••"
                     autoComplete="current-password"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition pr-10"
                   />
@@ -352,19 +304,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               className="w-full py-3 bg-stone-900 hover:bg-stone-800 active:bg-black text-white font-bold rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <KeyRound className="w-4 h-4 text-amber-400" />
-              <span>{isSubmittingMaster ? 'Verificando...' : 'Entrar na Área do Dono'}</span>
+              <span>{isSubmittingMaster ? 'Verificando...' : 'Acessar Gestão Master'}</span>
             </button>
-
-            <p className="text-[11px] text-stone-400 text-center pt-1">
-              Tentativas são auditadas pelo protocolo de segurança LGPD.
-            </p>
           </form>
         )}
 
-        {/* Footer info */}
         <div className="text-center text-[11px] text-stone-400 space-y-1">
-          <p className="font-medium text-stone-500">Operação Segura com Isolamento Multi-Tenancy</p>
-          <p>Autenticação criptografada com auditoria em tempo real</p>
+          <p className="font-medium text-stone-500">AtendeJá • Plataforma com Proteção LGPD</p>
         </div>
       </div>
     </div>
