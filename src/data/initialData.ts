@@ -1,5 +1,7 @@
 import { Category, Product, Table, User, Comanda, Order, CashRegister, Ingredient, Loja, PizzaSizeOption, PizzaCrustOption, PizzaDoughOption, PizzaAddonOption } from '../types';
 
+export const MASTER_PORTAL_TOKEN = 'master_9k2m8x7p';
+
 export const INITIAL_LOJAS: Loja[] = [
   {
     id: 'loja_centro',
@@ -14,6 +16,10 @@ export const INITIAL_LOJAS: Loja[] = [
     tempo_estimado_entrega: '30 - 45 min',
     horario_funcionamento: '18:00 às 23:30',
     admin_usuario_id: 'user_admin_centro',
+    token_admin: 'adm_c3n7r0_9k2m',
+    token_garcom: 'gar_c3n7r0_4p1w',
+    token_cozinha: 'coz_c3n7r0_8v5x',
+    token_caixa: 'cax_c3n7r0_2m7q',
     taxas_bairro: [
       { id: 'tb_1', bairro: 'Centro', valor: 5.00 },
       { id: 'tb_2', bairro: 'Jardim América', valor: 7.50 },
@@ -34,6 +40,10 @@ export const INITIAL_LOJAS: Loja[] = [
     tempo_estimado_entrega: '35 - 50 min',
     horario_funcionamento: '17:30 às 23:00',
     admin_usuario_id: 'user_admin_shopping',
+    token_admin: 'adm_5h0pp_1x8y',
+    token_garcom: 'gar_5h0pp_6r2t',
+    token_cozinha: 'coz_5h0pp_9q4v',
+    token_caixa: 'cax_5h0pp_3m8k',
     taxas_bairro: [
       { id: 'tb_5', bairro: 'Centro / Shopping', valor: 6.00 },
       { id: 'tb_6', bairro: 'Bairro Alto', valor: 9.00 },

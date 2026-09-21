@@ -45,9 +45,12 @@ import {
   saveComandaToFirestore,
   saveOrderToFirestore,
   saveLoginAttemptToFirestore,
+  saveProductToFirestore,
+  deleteProductFromFirestore,
+  saveCustomizationsToFirestore,
   seedInitialFirestoreIfEmpty,
 } from '../services/firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
 
 interface StoreContextType {
   lojas: Loja[];
@@ -181,11 +184,25 @@ const STORAGE_KEYS = {
   LOGIN_ATTEMPTS: 'pizzaria_login_attempts_v1',
 };
 
+const ensureLojaTokens = (stores: Loja[]): Loja[] => {
+  return stores.map((l) => {
+    const initialMatch = INITIAL_LOJAS.find((il) => il.id === l.id || il.slug === l.slug);
+    const cleanSlug = (l.slug || 'loja').replace(/[^a-z0-9]/g, '').substring(0, 6);
+    return {
+      ...l,
+      token_admin: l.token_admin || initialMatch?.token_admin || `adm_${cleanSlug}_${Math.random().toString(36).substring(2, 6)}`,
+      token_garcom: l.token_garcom || initialMatch?.token_garcom || `gar_${cleanSlug}_${Math.random().toString(36).substring(2, 6)}`,
+      token_cozinha: l.token_cozinha || initialMatch?.token_cozinha || `coz_${cleanSlug}_${Math.random().toString(36).substring(2, 6)}`,
+      token_caixa: l.token_caixa || initialMatch?.token_caixa || `cax_${cleanSlug}_${Math.random().toString(36).substring(2, 6)}`,
+    };
+  });
+};
+
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [lojas, setLojas] = useState<Loja[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.LOJAS);
-      return saved ? JSON.parse(saved) : INITIAL_LOJAS;
+      return saved ? ensureLojaTokens(JSON.parse(saved)) : INITIAL_LOJAS;
     } catch {
       return INITIAL_LOJAS;
     }
@@ -519,7 +536,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       (snapshot) => {
         if (!snapshot.empty) {
           const remoteLojas = snapshot.docs.map((d) => d.data() as Loja);
-          setLojas(remoteLojas);
+          setLojas(ensureLojaTokens(remoteLojas));
         }
       },
       (err) => console.warn('[Firestore Lojas Error]:', err.message)
@@ -577,12 +594,41 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       (err) => console.warn('[Firestore LoginAttempts Error]:', err.message)
     );
 
+    // 6. Escuta Produtos da nuvem em tempo real
+    const unsubProducts = onSnapshot(
+      collection(db, FIRESTORE_COLLECTIONS.PRODUCTS),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const remoteProducts = snapshot.docs.map((d) => d.data() as Product);
+          setProducts(remoteProducts);
+        }
+      },
+      (err) => console.warn('[Firestore Products Error]:', err.message)
+    );
+
+    // 7. Escuta Customizações de Pizza da nuvem em tempo real
+    const unsubCustomizations = onSnapshot(
+      doc(db, 'configuracoes', 'customizacoes_pizza'),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          if (data?.sizes?.length) setPizzaSizes(data.sizes);
+          if (data?.crusts?.length) setPizzaCrusts(data.crusts);
+          if (data?.doughs?.length) setPizzaDoughs(data.doughs);
+          if (data?.addons?.length) setPizzaAddons(data.addons);
+        }
+      },
+      (err) => console.warn('[Firestore Customizations Error]:', err.message)
+    );
+
     return () => {
       unsubLojas();
       unsubTables();
       unsubComandas();
       unsubOrders();
       unsubLoginAttempts();
+      unsubProducts();
+      unsubCustomizations();
     };
   }, []);
 
@@ -1189,18 +1235,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     const updated = [newProduct, ...products];
     setProducts(updated);
+    saveProductToFirestore(newProduct);
     broadcastSync({ products: updated });
   };
 
   const updateProduct = (prod: Product) => {
     const updated = products.map((p) => (p.id === prod.id ? prod : p));
     setProducts(updated);
+    saveProductToFirestore(prod);
     broadcastSync({ products: updated });
   };
 
   const deleteProduct = (id: string) => {
     const updated = products.filter((p) => p.id !== id);
     setProducts(updated);
+    deleteProductFromFirestore(id);
     broadcastSync({ products: updated });
   };
 
@@ -1412,6 +1461,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     broadcastSync({ lojas: updated });
   };
 
+  const generateRandomToken = (prefix: string) => {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let rand = '';
+    for (let i = 0; i < 8; i++) {
+      rand += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `${prefix}_${rand}`;
+  };
+
   const createStoreWithAdmin = (
     lojaData: { nome: string; slug: string; marca?: string; cnpj?: string; endereco?: string; telefone?: string; taxa_entrega?: number; plano?: 'basico' | 'pro' | 'enterprise' },
     adminData: { nome: string; usuario: string; senha?: string; pin: string }
@@ -1419,12 +1477,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const lojaId = `loja_${Date.now()}`;
     const adminId = `user_admin_${Date.now()}`;
 
+    // Validação de senha: deve possuir pelo menos 6 caracteres
+    const safePassword = (adminData.senha && adminData.senha.trim().length >= 6)
+      ? adminData.senha.trim()
+      : 'Rs20061991@';
+
     const newAdmin: User = {
       id: adminId,
       loja_id: lojaId,
       nome: adminData.nome,
       usuario: adminData.usuario.trim().toLowerCase(),
-      senha: adminData.senha || '123',
+      senha: safePassword,
       pin: adminData.pin,
       perfil: 'admin',
       ativo: true,
@@ -1447,6 +1510,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       tempo_estimado_entrega: '30 - 45 min',
       horario_funcionamento: '18:00 às 23:30',
       admin_usuario_id: adminId,
+      // Tokens exclusivos para cada painel
+      token_admin: generateRandomToken('adm'),
+      token_garcom: generateRandomToken('gar'),
+      token_cozinha: generateRandomToken('coz'),
+      token_caixa: generateRandomToken('cax'),
     };
 
     const updatedLojas = [...lojas, newLoja];

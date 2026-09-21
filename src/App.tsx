@@ -12,6 +12,7 @@ import { AdminView } from './components/admin/AdminView';
 import { SuperAdminView } from './components/superadmin/SuperAdminView';
 import { CustomerDeliveryView } from './components/delivery/CustomerDeliveryView';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { MASTER_PORTAL_TOKEN } from './data/initialData';
 
 const MainApp: React.FC = () => {
   const { currentUser, lojas, logout } = useStore();
@@ -20,13 +21,10 @@ const MainApp: React.FC = () => {
   // Check URL params for direct actions
   const urlParams = new URLSearchParams(window.location.search);
   const publicLojaSlug = urlParams.get('loja') || urlParams.get('loja_id');
+  const painelParam = urlParams.get('painel'); // 'admin' | 'garcom' | 'cozinha' | 'caixa'
+  const tokenParam = urlParams.get('token');
   const portalParam = urlParams.get('portal');
   const isDonoPortal = portalParam === 'master' || portalParam === 'dono';
-  const isEquipeAcesso =
-    urlParams.get('acesso') === 'equipe' ||
-    urlParams.get('equipe') === 'true' ||
-    urlParams.get('login') === 'equipe' ||
-    urlParams.get('login') === 'true';
 
   // Verify active session in sessionStorage: NEVER auto-login without explicit authentication
   const [isLoggedOut, setIsLoggedOut] = useState<boolean>(() => {
@@ -38,61 +36,116 @@ const MainApp: React.FC = () => {
     }
   });
 
+  // Target store resolution
+  const targetLoja = publicLojaSlug
+    ? lojas.find(
+        (l) =>
+          l.slug.toLowerCase() === publicLojaSlug.toLowerCase() ||
+          l.id.toLowerCase() === publicLojaSlug.toLowerCase()
+      )
+    : undefined;
+
   // Enforce correct initial module based on user role permissions
   useEffect(() => {
     if (currentUser && !isLoggedOut) {
       if (currentUser.perfil === 'super_admin') {
         setCurrentModule('super_admin');
+      } else if (
+        currentUser.perfil === 'admin' &&
+        painelParam &&
+        ['garcom', 'cozinha', 'caixa', 'admin'].includes(painelParam)
+      ) {
+        setCurrentModule(painelParam as UserRole);
       } else {
         setCurrentModule(currentUser.perfil);
       }
     }
-  }, [currentUser, isLoggedOut]);
+  }, [currentUser, isLoggedOut, painelParam]);
 
-  // 1. IF ?loja= URL parameter is present, ALWAYS render ONLY the Customer Delivery View (Anota AI Style)
-  if (publicLojaSlug) {
+  // 1. IF ?loja= URL parameter is present WITHOUT ?painel=, ALWAYS render ONLY Customer Delivery View
+  if (publicLojaSlug && !painelParam) {
     return <CustomerDeliveryView lojaSlug={publicLojaSlug} />;
   }
 
   // 2. IF user is not logged in:
   if (isLoggedOut || !currentUser) {
-    // If user opened secret Master portal for Dono do App:
+    // 2.1. Secret Master portal for Dono da Plataforma: MUST have valid MASTER_PORTAL_TOKEN
     if (isDonoPortal) {
-      return (
-        <LoginScreen
-          mode="dono"
-          onLoginSuccess={() => {
-            setIsLoggedOut(false);
-            try {
-              sessionStorage.setItem('atendeja_session_active', 'true');
-            } catch {
-              // ignore
-            }
-          }}
-        />
-      );
+      if (tokenParam === MASTER_PORTAL_TOKEN) {
+        return (
+          <LoginScreen
+            mode="dono"
+            onLoginSuccess={() => {
+              setIsLoggedOut(false);
+              try {
+                sessionStorage.setItem('atendeja_session_active', 'true');
+              } catch {}
+            }}
+          />
+        );
+      }
+      // Token missing or incorrect -> Blind with UnrecognizedLinkView
+      return <UnrecognizedLinkView />;
     }
 
-    // If user opened restaurant staff PIN terminal:
-    if (isEquipeAcesso) {
-      return (
-        <LoginScreen
-          mode="equipe"
-          onLoginSuccess={() => {
-            setIsLoggedOut(false);
-            try {
-              sessionStorage.setItem('atendeja_session_active', 'true');
-            } catch {
-              // ignore
-            }
-          }}
-        />
-      );
+    // 2.2. Exclusive Store Panels (Admin, Garçom, Cozinha, Caixa): MUST have store + matching token
+    if (publicLojaSlug && painelParam) {
+      if (!targetLoja) {
+        return <UnrecognizedLinkView />;
+      }
+
+      if (painelParam === 'admin') {
+        if (!tokenParam || tokenParam !== targetLoja.token_admin) {
+          return <UnrecognizedLinkView />;
+        }
+        return (
+          <LoginScreen
+            mode="loja_admin"
+            loja={targetLoja}
+            painelAlvo="admin"
+            onLoginSuccess={() => {
+              setIsLoggedOut(false);
+              try {
+                sessionStorage.setItem('atendeja_session_active', 'true');
+              } catch {}
+            }}
+          />
+        );
+      }
+
+      if (['garcom', 'cozinha', 'caixa'].includes(painelParam)) {
+        const expectedToken =
+          painelParam === 'garcom'
+            ? targetLoja.token_garcom
+            : painelParam === 'cozinha'
+            ? targetLoja.token_cozinha
+            : targetLoja.token_caixa;
+
+        if (!tokenParam || tokenParam !== expectedToken) {
+          return <UnrecognizedLinkView />;
+        }
+
+        return (
+          <LoginScreen
+            mode="loja_equipe"
+            loja={targetLoja}
+            painelAlvo={painelParam as 'garcom' | 'cozinha' | 'caixa'}
+            onLoginSuccess={() => {
+              setIsLoggedOut(false);
+              try {
+                sessionStorage.setItem('atendeja_session_active', 'true');
+              } catch {}
+            }}
+          />
+        );
+      }
+
+      // Any other painel param is unrecognized
+      return <UnrecognizedLinkView />;
     }
 
-    // BARE URL / UNRECOGNIZED LINK:
-    // When someone enters the bare link (e.g. https://atendeja-seven.vercel.app/) without parameters,
-    // do NOT show any store list, do NOT show admin or staff login.
+    // 2.3. BARE ROOT URL / UNRECOGNIZED LINK:
+    // When someone enters https://atendeja-seven.vercel.app/ without parameters, show blind screen
     return <UnrecognizedLinkView />;
   }
 

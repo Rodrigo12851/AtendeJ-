@@ -33,28 +33,44 @@ export const PizzaCustomizerModal: React.FC<PizzaCustomizerModalProps> = ({
   }, [rawSizes, baseProduct.tamanhos_disponiveis]);
 
   const crusts = useMemo(() => {
+    let list = rawCrusts;
     if (baseProduct.bordas_disponiveis && baseProduct.bordas_disponiveis.length > 0) {
-      return rawCrusts.filter(
-        (c) => baseProduct.bordas_disponiveis?.includes(c.id) || baseProduct.bordas_disponiveis?.includes(c.nome)
+      list = rawCrusts.filter(
+        (c) =>
+          c.id === 'borda_sem' ||
+          c.nome.toLowerCase().includes('sem borda') ||
+          baseProduct.bordas_disponiveis?.includes(c.id) ||
+          baseProduct.bordas_disponiveis?.includes(c.nome)
       );
     }
-    return rawCrusts;
+    const hasSemBorda = list.some(
+      (c) => c.id === 'borda_sem' || c.nome.toLowerCase().includes('sem borda')
+    );
+    if (!hasSemBorda) {
+      const semBordaOpt = rawCrusts.find(
+        (c) => c.id === 'borda_sem' || c.nome.toLowerCase().includes('sem borda')
+      ) || { id: 'borda_sem', nome: 'Sem borda', preco: 0 };
+      list = [semBordaOpt, ...list];
+    }
+    return list;
   }, [rawCrusts, baseProduct.bordas_disponiveis]);
 
   const doughs = useMemo(() => {
     if (baseProduct.massas_disponiveis && baseProduct.massas_disponiveis.length > 0) {
-      return rawDoughs.filter(
+      const filtered = rawDoughs.filter(
         (d) => baseProduct.massas_disponiveis?.includes(d.id) || baseProduct.massas_disponiveis?.includes(d.nome)
       );
+      if (filtered.length > 0) return filtered;
     }
     return rawDoughs;
   }, [rawDoughs, baseProduct.massas_disponiveis]);
 
   const addons = useMemo(() => {
     if (baseProduct.adicionais_disponiveis && baseProduct.adicionais_disponiveis.length > 0) {
-      return rawAddons.filter(
+      const filtered = rawAddons.filter(
         (a) => baseProduct.adicionais_disponiveis?.includes(a.id) || baseProduct.adicionais_disponiveis?.includes(a.nome)
       );
+      if (filtered.length > 0) return filtered;
     }
     return rawAddons;
   }, [rawAddons, baseProduct.adicionais_disponiveis]);
@@ -64,11 +80,15 @@ export const PizzaCustomizerModal: React.FC<PizzaCustomizerModalProps> = ({
   const permitirMassas = baseProduct.permitirMassas !== false && doughs.length > 0;
   const permitirAdicionais = baseProduct.permitirAdicionais !== false && addons.length > 0;
 
+  const defaultCrust = crusts.find(
+    (c) => c.id === 'borda_sem' || c.nome.toLowerCase().includes('sem borda')
+  ) || crusts[0];
+
   const [selectedSize, setSelectedSize] = useState(sizes[2] || sizes[0]); // Default Grande or first
   const [isMeioAMeio, setIsMeioAMeio] = useState(false);
   const [flavor1, setFlavor1] = useState(baseProduct.nome.replace('Pizza ', ''));
   const [flavor2, setFlavor2] = useState(PIZZA_FLAVORS[1]?.nome || 'Frango com Catupiry');
-  const [selectedCrust, setSelectedCrust] = useState(crusts[0]);
+  const [selectedCrust, setSelectedCrust] = useState(defaultCrust);
   const [selectedDough, setSelectedDough] = useState(doughs[0]?.nome || 'Tradicional');
   const [selectedAddons, setSelectedAddons] = useState<PizzaExtraOption[]>([]);
   const [observation, setObservation] = useState('');

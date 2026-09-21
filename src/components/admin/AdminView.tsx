@@ -30,6 +30,9 @@ import {
   Copy,
   Cloud,
   Database,
+  KeyRound,
+  ChefHat,
+  CircleDollarSign,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, Table, User, Category } from '../../types';
@@ -122,6 +125,7 @@ export const AdminView: React.FC = () => {
   // New User Form State
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState<'garcom' | 'cozinha' | 'caixa' | 'admin'>('garcom');
+  const [userSenha, setUserSenha] = useState('Rs20061991@');
   const [userPin, setUserPin] = useState('');
 
   // Store Settings Form State
@@ -139,6 +143,7 @@ export const AdminView: React.FC = () => {
   const [newBairroNome, setNewBairroNome] = useState('');
   const [newBairroValor, setNewBairroValor] = useState('');
   const [adminLinkCopied, setAdminLinkCopied] = useState(false);
+  const [copiedStaffRole, setCopiedStaffRole] = useState<string | null>(null);
 
   const getDeliveryUrl = () => {
     const slug = currentLoja?.slug || 'loja-centro';
@@ -411,15 +416,21 @@ export const AdminView: React.FC = () => {
   const handleSaveUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!userName || !userPin) return;
+    if (userSenha.trim().length < 6) {
+      alert('A senha do colaborador deve conter no mínimo 6 caracteres.');
+      return;
+    }
     addUser({
       nome: userName,
       usuario: userName.toLowerCase().replace(/\s+/g, '.'),
-      senha: userPin,
+      senha: userSenha.trim(),
       pin: userPin,
       perfil: userRole,
       ativo: true,
+      loja_id: currentLoja?.id,
     });
     setUserName('');
+    setUserSenha('Rs20061991@');
     setUserPin('');
     setShowAddUserModal(false);
   };
@@ -1473,6 +1484,72 @@ export const AdminView: React.FC = () => {
               </div>
             </div>
 
+            {/* Links Exclusivos da Equipe */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-stone-900 dark:text-white flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-purple-600" />
+                  <span>Links Exclusivos de Acesso da Equipe (com Tokens de Proteção)</span>
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
+                  Repasse estes links restritos apenas aos seus funcionários autorizados. Sem o token exato na URL, o sistema bloqueia o acesso à tela de login.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  {
+                    role: 'Garçom',
+                    painel: 'garcom',
+                    token: currentLoja?.token_garcom,
+                    icon: <UtensilsCrossed className="w-4 h-4 text-red-600" />,
+                    desc: 'Abertura de comandas e salão',
+                  },
+                  {
+                    role: 'Cozinha (KDS)',
+                    painel: 'cozinha',
+                    token: currentLoja?.token_cozinha,
+                    icon: <ChefHat className="w-4 h-4 text-amber-600" />,
+                    desc: 'Preparo e despacho de pedidos',
+                  },
+                  {
+                    role: 'Caixa (PDV)',
+                    painel: 'caixa',
+                    token: currentLoja?.token_caixa,
+                    icon: <CircleDollarSign className="w-4 h-4 text-emerald-600" />,
+                    desc: 'Contas, comandas e pagamentos',
+                  },
+                ].map((item) => {
+                  const fullUrl = `${window.location.origin}/?loja=${currentLoja?.slug}&painel=${item.painel}&token=${item.token}`;
+                  return (
+                    <div key={item.painel} className="p-3.5 rounded-xl border border-stone-200 dark:border-slate-800 bg-stone-50 dark:bg-slate-800/50 space-y-2">
+                      <div className="flex items-center gap-2">
+                        {item.icon}
+                        <span className="text-xs font-bold text-stone-900 dark:text-white">{item.role}</span>
+                      </div>
+                      <p className="text-[11px] text-stone-500 dark:text-slate-400">{item.desc}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(fullUrl);
+                          setCopiedStaffRole(item.painel);
+                          setTimeout(() => setCopiedStaffRole(null), 2500);
+                        }}
+                        className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                          copiedStaffRole === item.painel
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-700'
+                        }`}
+                      >
+                        {copiedStaffRole === item.painel ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedStaffRole === item.painel ? 'Link Copiado!' : `Copiar Link ${item.role.split(' ')[0]}`}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <form onSubmit={handleSaveLoja} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs space-y-5">
               {lojaSaved && (
                 <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
@@ -2167,6 +2244,23 @@ export const AdminView: React.FC = () => {
                   <option value="caixa">Operador de Caixa</option>
                   <option value="admin">Administrador / Gerente</option>
                 </select>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300">
+                    Senha de Acesso:
+                  </label>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Mín. 6 chars</span>
+                </div>
+                <input
+                  type="text"
+                  minLength={6}
+                  required
+                  value={userSenha}
+                  onChange={(e) => setUserSenha(e.target.value)}
+                  placeholder="Ex: Rs20061991@"
+                  className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-mono text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-stone-400 focus:bg-white transition"
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">

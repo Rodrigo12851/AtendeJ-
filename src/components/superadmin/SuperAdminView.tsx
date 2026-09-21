@@ -24,8 +24,15 @@ import {
   Filter,
   RefreshCw,
   Sparkles,
+  KeyRound,
+  ChefHat,
+  UtensilsCrossed,
+  CircleDollarSign,
+  Pizza,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
+import { Loja } from '../../types';
+import { MASTER_PORTAL_TOKEN } from '../../data/initialData';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
 
 export const SuperAdminView: React.FC = () => {
@@ -42,6 +49,8 @@ export const SuperAdminView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'lojas' | 'seguranca' | 'lgpd'>('lojas');
   const [showAddForm, setShowAddForm] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [copiedTokenKey, setCopiedTokenKey] = useState<string | null>(null);
+  const [activeStoreLinksModal, setActiveStoreLinksModal] = useState<Loja | null>(null);
   const [searchLoja, setSearchLoja] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'ativas' | 'suspensas'>('todos');
 
@@ -58,7 +67,7 @@ export const SuperAdminView: React.FC = () => {
   // Form State do Usuário Administrador da Loja
   const [adminNome, setAdminNome] = useState('');
   const [adminUsuario, setAdminUsuario] = useState('');
-  const [adminSenha, setAdminSenha] = useState('123');
+  const [adminSenha, setAdminSenha] = useState('Rs20061991@');
   const [adminPin, setAdminPin] = useState('1234');
 
   // Métricas do SaaS
@@ -106,9 +115,20 @@ export const SuperAdminView: React.FC = () => {
     setTimeout(() => setCopiedSlug(null), 2500);
   };
 
+  const handleCopyTokenUrl = (url: string, key: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedTokenKey(key);
+    setTimeout(() => setCopiedTokenKey(null), 2500);
+  };
+
   const handleCreateStore = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomeLoja || !slugLoja || !adminNome || !adminUsuario || !adminPin) return;
+
+    if (adminSenha.trim().length < 6) {
+      alert('A senha do administrador deve conter no mínimo 6 caracteres.');
+      return;
+    }
 
     createStoreWithAdmin(
       {
@@ -124,7 +144,7 @@ export const SuperAdminView: React.FC = () => {
       {
         nome: adminNome,
         usuario: adminUsuario.trim().toLowerCase(),
-        senha: adminSenha,
+        senha: adminSenha.trim(),
         pin: adminPin,
       }
     );
@@ -138,6 +158,7 @@ export const SuperAdminView: React.FC = () => {
     setTelefoneLoja('');
     setAdminNome('');
     setAdminUsuario('');
+    setAdminSenha('Rs20061991@');
     setAdminPin('1234');
     setShowAddForm(false);
   };
@@ -216,6 +237,38 @@ export const SuperAdminView: React.FC = () => {
               </span>
               <span className="text-[10px] text-stone-400">força bruta</span>
             </div>
+          </div>
+        </div>
+
+        {/* Card do Link Secreto Master do Dono da Plataforma */}
+        <div className="mt-5 pt-4 border-t border-stone-800/80">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white">
+                    Link Exclusivo do Dono da Plataforma (Acesso Master)
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300">
+                    Token Secreto Ativo
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono text-amber-300/80 break-all block mt-0.5">
+                  {typeof window !== 'undefined' ? window.location.origin : ''}/?portal=master&token={MASTER_PORTAL_TOKEN}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleCopyTokenUrl(`${window.location.origin}/?portal=master&token=${MASTER_PORTAL_TOKEN}`, 'master_portal')}
+              className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-sm"
+            >
+              {copiedTokenKey === 'master_portal' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              <span>{copiedTokenKey === 'master_portal' ? 'Copiado!' : 'Copiar Link Master'}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -443,13 +496,19 @@ export const SuperAdminView: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                        Senha Inicial
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                          Senha Inicial *
+                        </label>
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-extrabold">
+                          Mín. 6 chars
+                        </span>
+                      </div>
                       <input
                         type="text"
                         required
-                        placeholder="123"
+                        minLength={6}
+                        placeholder="Ex: Rs20061991@"
                         value={adminSenha}
                         onChange={(e) => setAdminSenha(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -637,19 +696,30 @@ export const SuperAdminView: React.FC = () => {
                   </div>
 
                   {/* Ações do Dono do App */}
-                  <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyLink(loja)}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                        copiedSlug === loja.slug
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200'
-                      }`}
-                    >
-                      {copiedSlug === loja.slug ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedSlug === loja.slug ? 'Link Copiado!' : 'Link Cardápio WhatsApp'}</span>
-                    </button>
+                  <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveStoreLinksModal(loja)}
+                        className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        <span>Links de Acesso (Tokens)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(loja)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          copiedSlug === loja.slug
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200'
+                        }`}
+                      >
+                        {copiedSlug === loja.slug ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedSlug === loja.slug ? 'Link Copiado!' : 'Cardápio Delivery'}</span>
+                      </button>
+                    </div>
 
                     <button
                       type="button"
@@ -667,6 +737,147 @@ export const SuperAdminView: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL DE LINKS EXCLUSIVOS (TOKENS RANDÔMICOS POR PAINEL) */}
+      {/* ========================================================================= */}
+      {activeStoreLinksModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-2xl max-w-2xl w-full space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-stone-100 dark:border-stone-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 dark:text-white">
+                    Links de Acesso Exclusivos com Tokens
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    {activeStoreLinksModal.marca || activeStoreLinksModal.nome} ({activeStoreLinksModal.slug})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveStoreLinksModal(null)}
+                className="p-2 rounded-xl text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl text-xs text-amber-900 dark:text-amber-300 leading-relaxed">
+              <strong>Proteção Máxima:</strong> Cada link abaixo possui um token alfanumérico exclusivo. Sem o link com token exato, qualquer pessoa que tentar abrir a URL verá a tela <em>"Link de acesso não reconhecido"</em>.
+            </div>
+
+            <div className="space-y-3">
+              {[
+                {
+                  id: 'admin',
+                  label: '1. Painel do Administrador (Gerente)',
+                  icon: <Store className="w-4 h-4 text-purple-600" />,
+                  desc: 'Acesso total: configurações, relatórios, cardápio e faturamento.',
+                  url: `${window.location.origin}/?loja=${activeStoreLinksModal.slug}&painel=admin&token=${activeStoreLinksModal.token_admin}`,
+                  tokenKey: `adm_${activeStoreLinksModal.id}`,
+                  badge: 'Admin',
+                  badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300',
+                },
+                {
+                  id: 'garcom',
+                  label: '2. Painel do Garçom (Salão)',
+                  icon: <UtensilsCrossed className="w-4 h-4 text-red-600" />,
+                  desc: 'Abertura de comandas, pedidos nas mesas e salão.',
+                  url: `${window.location.origin}/?loja=${activeStoreLinksModal.slug}&painel=garcom&token=${activeStoreLinksModal.token_garcom}`,
+                  tokenKey: `gar_${activeStoreLinksModal.id}`,
+                  badge: 'Garçom',
+                  badgeColor: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300',
+                },
+                {
+                  id: 'cozinha',
+                  label: '3. Painel da Cozinha (KDS)',
+                  icon: <ChefHat className="w-4 h-4 text-amber-600" />,
+                  desc: 'Visualização de pedidos em preparo e despacho de pizzas.',
+                  url: `${window.location.origin}/?loja=${activeStoreLinksModal.slug}&painel=cozinha&token=${activeStoreLinksModal.token_cozinha}`,
+                  tokenKey: `coz_${activeStoreLinksModal.id}`,
+                  badge: 'Cozinha',
+                  badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+                },
+                {
+                  id: 'caixa',
+                  label: '4. Painel do Caixa (PDV)',
+                  icon: <CircleDollarSign className="w-4 h-4 text-emerald-600" />,
+                  desc: 'Fechamento de contas, fluxo financeiro e pagamentos.',
+                  url: `${window.location.origin}/?loja=${activeStoreLinksModal.slug}&painel=caixa&token=${activeStoreLinksModal.token_caixa}`,
+                  tokenKey: `cax_${activeStoreLinksModal.id}`,
+                  badge: 'Caixa',
+                  badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+                },
+                {
+                  id: 'delivery',
+                  label: '5. Cardápio Digital / Delivery WhatsApp',
+                  icon: <Pizza className="w-4 h-4 text-amber-500" />,
+                  desc: 'Link público para clientes visualizarem e enviarem pedidos.',
+                  url: `${window.location.origin}/?loja=${activeStoreLinksModal.slug}`,
+                  tokenKey: `del_${activeStoreLinksModal.id}`,
+                  badge: 'Público Clientes',
+                  badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
+                },
+              ].map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3.5 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/60 dark:bg-stone-800/40 space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {item.icon}
+                      <span className="text-xs font-bold text-stone-900 dark:text-white">
+                        {item.label}
+                      </span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${item.badgeColor}`}>
+                      {item.badge}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    {item.desc}
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      readOnly
+                      value={item.url}
+                      className="flex-1 px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-[11px] font-mono text-stone-700 dark:text-stone-300 select-all outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleCopyTokenUrl(item.url, item.tokenKey)}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                        copiedTokenKey === item.tokenKey
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-700 dark:hover:bg-stone-600'
+                      }`}
+                    >
+                      {copiedTokenKey === item.tokenKey ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedTokenKey === item.tokenKey ? 'Copiado!' : 'Copiar'}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setActiveStoreLinksModal(null)}
+                className="px-5 py-2.5 rounded-xl bg-stone-200 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold text-xs transition cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -112,6 +112,40 @@ export async function saveLoginAttemptToFirestore(attempt: LoginAttempt): Promis
   }
 }
 
+export async function saveProductToFirestore(product: Product): Promise<void> {
+  try {
+    const docRef = doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, product.id);
+    const cleanData = JSON.parse(JSON.stringify(product));
+    await setDoc(docRef, cleanData, { merge: true });
+  } catch (error) {
+    console.warn('[Firestore] Falha ao salvar produto na nuvem:', error);
+  }
+}
+
+export async function deleteProductFromFirestore(productId: string): Promise<void> {
+  try {
+    const docRef = doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, productId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.warn('[Firestore] Falha ao excluir produto da nuvem:', error);
+  }
+}
+
+export async function saveCustomizationsToFirestore(customizations: {
+  sizes?: any[];
+  crusts?: any[];
+  doughs?: any[];
+  addons?: any[];
+}): Promise<void> {
+  try {
+    const docRef = doc(db, 'configuracoes', 'customizacoes_pizza');
+    const cleanData = JSON.parse(JSON.stringify(customizations));
+    await setDoc(docRef, cleanData, { merge: true });
+  } catch (error) {
+    console.warn('[Firestore] Falha ao salvar customizações de pizza na nuvem:', error);
+  }
+}
+
 // ==========================================
 // SEED INICIAL (Sobe dados padrão se nuvem vazia)
 // ==========================================
@@ -142,6 +176,17 @@ export async function seedInitialFirestoreIfEmpty(
 
       await batch.commit();
       console.log('[Firestore] Dados iniciais enviados com sucesso para o atendeja-83ef5!');
+    } else {
+      // Se lojas já existem, verificar se produtos precisam ser sincronizados
+      const prodSnap = await getDocs(collection(db, FIRESTORE_COLLECTIONS.PRODUCTS));
+      if (prodSnap.empty) {
+        console.log('[Firestore] Sincronizando catálogo inicial de produtos na nuvem...');
+        const batch = writeBatch(db);
+        for (const prod of initialProducts) {
+          batch.set(doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, prod.id), JSON.parse(JSON.stringify(prod)));
+        }
+        await batch.commit();
+      }
     }
   } catch (error) {
     console.warn('[Firestore] Verificação/Seed inicial falhou (regras de segurança podem estar pendentes no console):', error);

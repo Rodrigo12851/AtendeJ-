@@ -22,6 +22,11 @@ export interface Loja {
   plano?: 'basico' | 'pro' | 'enterprise';
   status_assinatura?: 'ativo' | 'trial' | 'suspenso';
   data_cadastro?: string;
+  // Tokens exclusivos para acesso restrito
+  token_admin?: string;
+  token_garcom?: string;
+  token_cozinha?: string;
+  token_caixa?: string;
 }
 
 export interface LoginAttempt {
