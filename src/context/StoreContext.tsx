@@ -225,7 +225,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch {
       // fallback
     }
-    return INITIAL_USERS[0]; // João Silva (Garçom)
+    const defaultStaff = INITIAL_USERS.find((u) => u.perfil === 'garcom') || INITIAL_USERS[3];
+    return defaultStaff;
   });
 
   const [tables, setTables] = useState<Table[]>(() => {
@@ -623,21 +624,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Auth operations
   const login = (usuario: string, senha: string): boolean => {
-    const found = users.find((u) => u.usuario.toLowerCase() === usuario.trim().toLowerCase() && u.senha === senha && u.ativo);
+    const found = users.find(
+      (u) => u.usuario.toLowerCase() === usuario.trim().toLowerCase() && u.senha === senha && u.ativo
+    );
     if (found) {
-      setCurrentUser(found);
-      if (found.loja_id) {
-        setCurrentLojaId(found.loja_id);
-      }
-      return true;
-    }
-    return false;
-  };
-
-  const loginWithPin = (pin: string): boolean => {
-    const found = users.find((u) => u.pin === pin && u.ativo);
-    if (found) {
-      // Dono da plataforma (super_admin) nunca é bloqueado por suspensão de filial
       if (found.perfil !== 'super_admin' && found.loja_id) {
         const userLoja = lojas.find((l) => l.id === found.loja_id);
         if (userLoja && (!userLoja.ativa || userLoja.status_assinatura === 'suspenso')) {
@@ -648,14 +638,49 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (found.loja_id) {
         setCurrentLojaId(found.loja_id);
       }
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
+      try {
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
+        sessionStorage.setItem('atendeja_session_active', 'true');
+      } catch {
+        // ignore
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const loginWithPin = (pin: string): boolean => {
+    // Super admin NEVER logs in via staff PIN keypad! Super Admin requires Master username & password.
+    const found = users.find((u) => u.pin === pin && u.ativo && u.perfil !== 'super_admin');
+    if (found) {
+      if (found.loja_id) {
+        const userLoja = lojas.find((l) => l.id === found.loja_id);
+        if (userLoja && (!userLoja.ativa || userLoja.status_assinatura === 'suspenso')) {
+          return false;
+        }
+      }
+      setCurrentUser(found);
+      if (found.loja_id) {
+        setCurrentLojaId(found.loja_id);
+      }
+      try {
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
+        sessionStorage.setItem('atendeja_session_active', 'true');
+      } catch {
+        // ignore
+      }
       return true;
     }
     return false;
   };
 
   const logout = () => {
-    // defaults to first user or keep logged in for seamless demo
+    try {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      sessionStorage.removeItem('atendeja_session_active');
+    } catch {
+      // ignore
+    }
     const defaultUser = users.find((u) => u.perfil === 'garcom') || users[0];
     setCurrentUser(defaultUser);
   };

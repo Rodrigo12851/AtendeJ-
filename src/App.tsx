@@ -3,6 +3,7 @@ import { ShieldAlert } from 'lucide-react';
 import { StoreProvider, useStore } from './context/StoreContext';
 import { UserRole } from './types';
 import { LoginScreen } from './components/LoginScreen';
+import { PublicPortalView } from './components/portal/PublicPortalView';
 import { Navbar } from './components/Navbar';
 import { GarcomView } from './components/garcom/GarcomView';
 import { CozinhaView } from './components/cozinha/CozinhaView';
@@ -13,36 +14,88 @@ import { CustomerDeliveryView } from './components/delivery/CustomerDeliveryView
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MainApp: React.FC = () => {
-  const { currentUser, lojas } = useStore();
+  const { currentUser, lojas, logout } = useStore();
   const [currentModule, setCurrentModule] = useState<UserRole>('garcom');
-  const [isLoggedOut, setIsLoggedOut] = useState(false);
 
-  // Check URL params for public customer delivery menu (e.g., ?loja=loja-centro)
+  // Check URL params for direct actions
   const urlParams = new URLSearchParams(window.location.search);
   const publicLojaSlug = urlParams.get('loja') || urlParams.get('loja_id');
+  const portalParam = urlParams.get('portal'); // e.g. 'dono' or 'master'
+  const equipeParam = urlParams.get('equipe') || urlParams.get('login');
+
+  // Verify active session: NEVER auto-login unless explicitly authenticated in sessionStorage
+  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(() => {
+    try {
+      const sessionActive = sessionStorage.getItem('atendeja_session_active');
+      return !sessionActive;
+    } catch {
+      return true;
+    }
+  });
+
+  // Portal view mode for unauthenticated users: 'portal' | 'login'
+  const [authView, setAuthView] = useState<'portal' | 'login'>(() => {
+    if (portalParam === 'dono' || portalParam === 'master' || equipeParam) {
+      return 'login';
+    }
+    return 'portal';
+  });
+
+  const [initialLoginTab, setInitialLoginTab] = useState<'equipe' | 'dono'>(() => {
+    if (portalParam === 'dono' || portalParam === 'master') return 'dono';
+    return 'equipe';
+  });
 
   // Enforce correct initial module based on user role permissions
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && !isLoggedOut) {
       if (currentUser.perfil === 'super_admin') {
         setCurrentModule('super_admin');
       } else {
         setCurrentModule(currentUser.perfil);
       }
-      setIsLoggedOut(false);
     }
-  }, [currentUser]);
+  }, [currentUser, isLoggedOut]);
 
-  // IF ?loja= URL parameter is present, ALWAYS render ONLY the Customer Delivery View (Anota AI Style)
+  // 1. IF ?loja= URL parameter is present, ALWAYS render ONLY the Customer Delivery View (Anota AI Style)
   if (publicLojaSlug) {
     return <CustomerDeliveryView lojaSlug={publicLojaSlug} />;
   }
 
-  if (!currentUser || isLoggedOut) {
-    return <LoginScreen onLoginSuccess={() => setIsLoggedOut(false)} />;
+  // 2. IF not authenticated: show either the Public Portal or the Login Screen
+  if (isLoggedOut || !currentUser) {
+    if (authView === 'portal') {
+      return (
+        <PublicPortalView
+          lojas={lojas}
+          onSelectLoja={(slug) => {
+            window.location.search = `?loja=${slug}`;
+          }}
+          onOpenLogin={(tab) => {
+            setInitialLoginTab(tab);
+            setAuthView('login');
+          }}
+        />
+      );
+    }
+
+    return (
+      <LoginScreen
+        initialTab={initialLoginTab}
+        onLoginSuccess={() => {
+          setIsLoggedOut(false);
+          try {
+            sessionStorage.setItem('atendeja_session_active', 'true');
+          } catch {
+            // ignore
+          }
+        }}
+        onBackToPortal={() => setAuthView('portal')}
+      />
+    );
   }
 
-  // Intercept active session if the user's store is suspended (super_admin is exempt)
+  // 3. Intercept active session if the user's store is suspended (super_admin is exempt)
   const userLoja = currentUser.perfil !== 'super_admin' && currentUser.loja_id
     ? lojas.find((l) => l.id === currentUser.loja_id)
     : null;
@@ -71,17 +124,21 @@ const MainApp: React.FC = () => {
             </p>
           </div>
           <button
-            onClick={() => setIsLoggedOut(true)}
+            onClick={() => {
+              logout();
+              setIsLoggedOut(true);
+              setAuthView('portal');
+            }}
             className="w-full py-3 px-4 bg-stone-900 hover:bg-stone-800 text-white font-semibold rounded-xl text-sm transition-all shadow-md cursor-pointer"
           >
-            Sair e Voltar ao Login
+            Sair e Voltar ao Início
           </button>
         </div>
       </div>
     );
   }
 
-  // Determine allowed module to render based on user role (RBAC Security & LGPD Isolation)
+  // 4. Determine allowed module to render based on user role (RBAC Security & LGPD Isolation)
   const renderAllowedModule = () => {
     const role = currentUser.perfil;
 
@@ -112,7 +169,11 @@ const MainApp: React.FC = () => {
       <Navbar
         currentModule={currentModule}
         onChangeModule={(mod) => setCurrentModule(mod)}
-        onLogout={() => setIsLoggedOut(true)}
+        onLogout={() => {
+          logout();
+          setIsLoggedOut(true);
+          setAuthView('portal');
+        }}
       />
 
       <div className="flex-1 w-full">
