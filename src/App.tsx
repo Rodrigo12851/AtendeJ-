@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ShieldAlert } from 'lucide-react';
 import { StoreProvider, useStore } from './context/StoreContext';
 import { UserRole } from './types';
 import { LoginScreen } from './components/LoginScreen';
@@ -12,7 +13,7 @@ import { CustomerDeliveryView } from './components/delivery/CustomerDeliveryView
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MainApp: React.FC = () => {
-  const { currentUser } = useStore();
+  const { currentUser, lojas } = useStore();
   const [currentModule, setCurrentModule] = useState<UserRole>('garcom');
   const [isLoggedOut, setIsLoggedOut] = useState(false);
 
@@ -39,6 +40,45 @@ const MainApp: React.FC = () => {
 
   if (!currentUser || isLoggedOut) {
     return <LoginScreen onLoginSuccess={() => setIsLoggedOut(false)} />;
+  }
+
+  // Intercept active session if the user's store is suspended (super_admin is exempt)
+  const userLoja = currentUser.perfil !== 'super_admin' && currentUser.loja_id
+    ? lojas.find((l) => l.id === currentUser.loja_id)
+    : null;
+
+  const isStoreSuspended = !!(userLoja && (!userLoja.ativa || userLoja.status_assinatura === 'suspenso'));
+
+  if (isStoreSuspended) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F2] dark:bg-stone-950 flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="max-w-md w-full bg-white dark:bg-stone-900 border border-red-200 dark:border-red-900/50 rounded-3xl p-8 shadow-2xl shadow-red-950/10 space-y-5">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-950/50 text-red-600 rounded-2xl flex items-center justify-center mx-auto ring-8 ring-red-50 dark:ring-red-950/30">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="text-xs uppercase tracking-wider font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-3 py-1 rounded-full">
+              Operações Bloqueadas
+            </span>
+            <h2 className="text-2xl font-bold text-stone-900 dark:text-white mt-3">
+              Estabelecimento Suspenso
+            </h2>
+            <p className="text-stone-600 dark:text-stone-300 text-sm mt-2">
+              O acesso para a loja <strong>{userLoja.nome}</strong> foi temporariamente suspenso pelo administrador da plataforma.
+            </p>
+            <p className="text-stone-500 dark:text-stone-400 text-xs mt-3 bg-stone-50 dark:bg-stone-800/60 p-3 rounded-xl border border-stone-200 dark:border-stone-700">
+              As operações de garçom, cozinha, caixa e administração desta loja estão paralisadas até a regularização com o suporte.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsLoggedOut(true)}
+            className="w-full py-3 px-4 bg-stone-900 hover:bg-stone-800 text-white font-semibold rounded-xl text-sm transition-all shadow-md cursor-pointer"
+          >
+            Sair e Voltar ao Login
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // Determine allowed module to render based on user role (RBAC Security & LGPD Isolation)

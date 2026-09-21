@@ -8,7 +8,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
-  const { users, loginWithPin, setCurrentUser, recordLoginAttempt, isUserLockedOut } = useStore();
+  const { users, lojas, loginWithPin, setCurrentUser, recordLoginAttempt, isUserLockedOut } = useStore();
   const [enteredPin, setEnteredPin] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isLocked, setIsLocked] = useState(false);
@@ -33,6 +33,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     const matchedUser = users.find((u) => u.pin === pin);
 
     if (matchedUser) {
+      // 1. Verificação de suspensão do estabelecimento
+      if (matchedUser.perfil !== 'super_admin' && matchedUser.loja_id) {
+        const userLoja = lojas.find((l) => l.id === matchedUser.loja_id);
+        if (userLoja && (!userLoja.ativa || userLoja.status_assinatura === 'suspenso')) {
+          setErrorMsg(`🚫 Estabelecimento Suspenso: A loja "${userLoja.nome}" está temporariamente suspensa pelo administrador da plataforma.`);
+          recordLoginAttempt(matchedUser.usuario, false, 'Tentativa de login em loja suspensa', matchedUser.loja_id, userLoja.nome);
+          setEnteredPin('');
+          return;
+        }
+      }
+
+      // 2. Verificação de bloqueio por excesso de tentativas incorretas
       const lockout = isUserLockedOut(matchedUser.usuario);
       if (lockout.locked) {
         setIsLocked(true);
@@ -57,6 +69,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   const handleQuickLogin = (u: typeof users[0]) => {
+    // 1. Verificação de suspensão do estabelecimento
+    if (u.perfil !== 'super_admin' && u.loja_id) {
+      const userLoja = lojas.find((l) => l.id === u.loja_id);
+      if (userLoja && (!userLoja.ativa || userLoja.status_assinatura === 'suspenso')) {
+        setErrorMsg(`🚫 Estabelecimento Suspenso: A loja "${userLoja.nome}" está temporariamente suspensa pelo administrador da plataforma.`);
+        recordLoginAttempt(u.usuario, false, 'Tentativa de clique em conta de loja suspensa', u.loja_id, userLoja.nome);
+        return;
+      }
+    }
+
+    // 2. Verificação de bloqueio de tentativas
     const lockout = isUserLockedOut(u.usuario);
     if (lockout.locked) {
       setIsLocked(true);
@@ -179,12 +202,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 caixa: <Banknote className="w-3.5 h-3.5 text-emerald-600" />,
               };
 
+              const suspendedLoja = u.perfil !== 'super_admin' && u.loja_id
+                ? lojas.find((l) => l.id === u.loja_id && (!l.ativa || l.status_assinatura === 'suspenso'))
+                : null;
+
               return (
                 <button
                   key={u.id}
                   type="button"
                   onClick={() => handleQuickLogin(u)}
-                  className="p-2.5 rounded-2xl bg-stone-50 hover:bg-amber-50/60 border border-stone-200/90 hover:border-amber-300 text-left transition flex items-center justify-between group cursor-pointer"
+                  className={`p-2.5 rounded-2xl border text-left transition flex items-center justify-between group cursor-pointer ${
+                    suspendedLoja
+                      ? 'bg-red-50/50 border-red-200 hover:bg-red-100/50 opacity-80'
+                      : 'bg-stone-50 hover:bg-amber-50/60 border-stone-200/90 hover:border-amber-300'
+                  }`}
+                  title={suspendedLoja ? `Loja "${suspendedLoja.nome}" suspensa pelo administrador` : undefined}
                 >
                   <div className="overflow-hidden">
                     <div className="flex items-center gap-1.5">
@@ -193,11 +225,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                         {u.nome}
                       </span>
                     </div>
-                    <span className="text-[10px] text-stone-500 capitalize block font-medium">
-                      {u.perfil} • PIN {u.pin}
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-stone-500 capitalize block font-medium">
+                        {u.perfil} • PIN {u.pin}
+                      </span>
+                      {suspendedLoja && (
+                        <span className="text-[9px] font-bold text-red-700 bg-red-100 px-1 py-0.2 rounded">
+                          Suspensa
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <UserCheck className="w-4 h-4 text-stone-400 group-hover:text-red-600 shrink-0 ml-1 transition" />
+                  {suspendedLoja ? (
+                    <Lock className="w-3.5 h-3.5 text-red-500 shrink-0 ml-1" />
+                  ) : (
+                    <UserCheck className="w-4 h-4 text-stone-400 group-hover:text-red-600 shrink-0 ml-1 transition" />
+                  )}
                 </button>
               );
             })}

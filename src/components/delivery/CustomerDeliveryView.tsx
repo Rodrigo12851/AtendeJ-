@@ -21,6 +21,7 @@ import {
   History,
   RotateCcw,
   Sparkles,
+  Lock,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, OrderItem, Loja } from '../../types';
@@ -331,6 +332,89 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     ? 'bg-[#242430] border-2 border-stone-600 text-white placeholder-stone-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
     : 'bg-white border-2 border-stone-300 text-stone-900 dark:text-slate-100 placeholder-stone-400 focus:border-red-600 focus:ring-2 focus:ring-red-500/20 shadow-2xs';
   const headerBgClass = isDarkMode ? 'bg-[#181820] border-stone-800' : 'bg-stone-900 text-white border-stone-800';
+
+  // Check if store is suspended
+  const isSuspended = !targetLoja.ativa || targetLoja.status_assinatura === 'suspenso';
+
+  if (isSuspended) {
+    return (
+      <div className={`min-h-screen font-sans flex flex-col items-center justify-center p-4 transition-colors duration-200 ${bgClass}`}>
+        <div className={`max-w-md w-full p-6 sm:p-8 rounded-3xl border shadow-xl text-center space-y-6 ${cardBgClass} border-red-500/30`}>
+          <div className="w-20 h-20 rounded-3xl bg-red-500/10 text-red-500 flex items-center justify-center mx-auto border border-red-500/20">
+            <Lock className="w-10 h-10" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300">
+              Cardápio Indisponível
+            </span>
+            <h1 className="text-2xl font-black text-stone-900 dark:text-white">
+              {targetLoja.marca || targetLoja.nome}
+            </h1>
+            <p className="text-stone-600 dark:text-stone-300 text-sm leading-relaxed">
+              Este estabelecimento está <strong>temporariamente indisponível</strong> no momento. O atendimento online e a realização de novos pedidos estão suspensos pela administração.
+            </p>
+          </div>
+
+          {targetLoja.telefone && (
+            <div className="p-3.5 rounded-2xl bg-stone-100 dark:bg-stone-800/80 text-xs text-stone-600 dark:text-stone-300">
+              <span>Para mais informações, consulte o estabelecimento:</span>
+              <strong className="text-stone-900 dark:text-white block mt-1 font-mono text-sm">{targetLoja.telefone}</strong>
+            </div>
+          )}
+
+          {customerOrders.length > 0 && (
+            <button
+              onClick={() => setShowOrderHistoryModal(true)}
+              className="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
+            >
+              <History className="w-4 h-4 text-stone-950" />
+              <span>Consultar Meus Pedidos Anteriores ({customerOrders.length})</span>
+            </button>
+          )}
+        </div>
+
+        {/* Modal de Histórico de Pedidos caso o cliente queira consultar pedidos anteriores */}
+        {showOrderHistoryModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+            <div className={`w-full max-w-lg rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border ${cardBgClass} max-h-[90vh] flex flex-col`}>
+              <div className="flex items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800">
+                <div className="flex items-center gap-2">
+                  <History className="w-5 h-5 text-amber-500" />
+                  <h3 className="text-base font-bold text-stone-900 dark:text-white">Meus Pedidos Anteriores</h3>
+                </div>
+                <button
+                  onClick={() => setShowOrderHistoryModal(false)}
+                  className="p-1.5 rounded-xl hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-400 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto space-y-3 flex-1 pr-1">
+                {customerOrders.map((ord) => (
+                  <div key={ord.id} className="p-3.5 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/40 space-y-2 text-left">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-sm text-stone-900 dark:text-white">Pedido #{ord.id}</span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-md uppercase bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300">
+                        {ord.status}
+                      </span>
+                    </div>
+                    <div className="text-xs text-stone-500">
+                      {new Date(ord.criado_em).toLocaleString('pt-BR')}
+                    </div>
+                    <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                      Total: R$ {(ord.itens.reduce((acc, it) => acc + (it.preco_total || it.preco_unitario * it.quantidade), 0) + (ord.taxa_entrega || 0)).toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen font-sans pb-28 transition-colors duration-200 ${bgClass}`}>

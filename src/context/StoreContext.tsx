@@ -637,6 +637,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const loginWithPin = (pin: string): boolean => {
     const found = users.find((u) => u.pin === pin && u.ativo);
     if (found) {
+      // Dono da plataforma (super_admin) nunca é bloqueado por suspensão de filial
+      if (found.perfil !== 'super_admin' && found.loja_id) {
+        const userLoja = lojas.find((l) => l.id === found.loja_id);
+        if (userLoja && (!userLoja.ativa || userLoja.status_assinatura === 'suspenso')) {
+          return false;
+        }
+      }
       setCurrentUser(found);
       if (found.loja_id) {
         setCurrentLojaId(found.loja_id);
@@ -1358,8 +1365,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const toggleLojaAtiva = (lojaId: string) => {
-    const updated = lojas.map((l) => (l.id === lojaId ? { ...l, ativa: !l.ativa } : l));
+    const updated = lojas.map((l) => {
+      if (l.id === lojaId) {
+        const nextAtiva = !l.ativa;
+        return {
+          ...l,
+          ativa: nextAtiva,
+          status_assinatura: (nextAtiva ? 'ativo' : 'suspenso') as 'ativo' | 'suspenso' | 'trial',
+        };
+      }
+      return l;
+    });
     setLojas(updated);
+    try {
+      localStorage.setItem(STORAGE_KEYS.LOJAS, JSON.stringify(updated));
+    } catch (e) {
+      console.error('Error saving lojas to localStorage:', e);
+    }
     const target = updated.find((l) => l.id === lojaId);
     if (target) saveLojaToFirestore(target);
     broadcastSync({ lojas: updated });
@@ -1489,6 +1511,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const nextOrderId = orders.length > 0 ? Math.max(...orders.map((o) => o.id)) + 1 : 184;
     const nowIso = new Date().toISOString();
     const targetLoja = lojas.find((l) => l.id === lojaId) || lojas[0];
+    if (targetLoja && (!targetLoja.ativa || targetLoja.status_assinatura === 'suspenso')) {
+      throw new Error(`O estabelecimento "${targetLoja.nome}" está temporariamente suspenso e não aceita pedidos no momento.`);
+    }
     const isRetirada = clienteInfo.tipoPedido === 'retirada';
     const finalTaxaEntrega = isRetirada ? 0 : (targetLoja.taxa_entrega || 0);
 
