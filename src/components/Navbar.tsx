@@ -16,6 +16,7 @@ import {
   Moon,
   Cloud,
   ShieldCheck,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { UserRole } from '../types';
@@ -150,75 +151,99 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
               </div>
             )}
 
-            {/* Desktop Module Navigation Tabs */}
+            {/* Desktop Module Navigation Tabs - RBAC & Strict Role Isolation */}
             {currentUser?.perfil === 'super_admin' ? (
               <div className="hidden md:flex px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold items-center gap-1.5 shadow-xs">
                 <ShieldCheck className="w-4 h-4 text-amber-400" />
                 <span>PAINEL DO DONO DO APP</span>
               </div>
-            ) : (
+            ) : currentUser?.perfil === 'garcom' ? (
+              <div className="hidden md:flex px-3 py-1.5 rounded-xl bg-red-600/20 border border-red-500/40 text-red-300 text-xs font-bold items-center gap-1.5 shadow-xs">
+                <UtensilsCrossed className="w-4 h-4 text-red-400" />
+                <span>PAINEL DO GARÇOM • MESAS & SALÃO</span>
+              </div>
+            ) : currentUser?.perfil === 'cozinha' ? (
+              <div className="hidden md:flex px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold items-center gap-1.5 shadow-xs">
+                <ChefHat className="w-4 h-4 text-amber-400" />
+                <span>PAINEL DA COZINHA • MONITOR KDS {kitchenActiveCount > 0 && `(${kitchenActiveCount})`}</span>
+              </div>
+            ) : currentUser?.perfil === 'caixa' ? (
               <nav className="hidden md:flex items-center gap-1 sm:gap-1.5 shrink-0 py-1">
-                {(currentUser?.perfil === 'garcom' ||
-                  currentUser?.perfil === 'caixa' ||
-                  currentUser?.perfil === 'admin') && (
-                  <button
-                    onClick={() => onChangeModule('garcom')}
-                    className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                      currentModule === 'garcom'
-                        ? 'bg-red-600/25 border-red-500 text-white shadow-xs'
-                        : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                    }`}
-                  >
-                    <span className="text-[10px] font-mono text-red-400 font-bold">01</span>
-                    <span className="uppercase text-[11px] sm:text-xs">MESAS</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => onChangeModule('caixa')}
+                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                    currentModule === 'caixa'
+                      ? 'bg-emerald-600/25 border-emerald-500 text-white shadow-xs'
+                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">01</span>
+                  <span className="uppercase text-[11px] sm:text-xs">CAIXA / PDV</span>
+                </button>
+                <button
+                  onClick={() => onChangeModule('garcom')}
+                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                    currentModule === 'garcom'
+                      ? 'bg-red-600/25 border-red-500 text-white shadow-xs'
+                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-red-400 font-bold">02</span>
+                  <span className="uppercase text-[11px] sm:text-xs">CONSULTAR MESAS</span>
+                </button>
+              </nav>
+            ) : (
+              /* Admin Filial: Acesso a todos os 4 módulos operacionais */
+              <nav className="hidden md:flex items-center gap-1 sm:gap-1.5 shrink-0 py-1">
+                <button
+                  onClick={() => onChangeModule('garcom')}
+                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                    currentModule === 'garcom'
+                      ? 'bg-red-600/25 border-red-500 text-white shadow-xs'
+                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-red-400 font-bold">01</span>
+                  <span className="uppercase text-[11px] sm:text-xs">MESAS</span>
+                </button>
 
-                {(currentUser?.perfil === 'cozinha' ||
-                  currentUser?.perfil === 'admin') && (
-                  <button
-                    onClick={() => onChangeModule('cozinha')}
-                    className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                      currentModule === 'cozinha'
-                        ? 'bg-amber-500/25 border-amber-500 text-white shadow-xs'
-                        : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                    }`}
-                  >
-                    <span className="text-[10px] font-mono text-amber-400 font-bold">02</span>
-                    <span className="uppercase text-[11px] sm:text-xs">
-                      COZINHA {kitchenActiveCount > 0 && `(${kitchenActiveCount})`}
-                    </span>
-                  </button>
-                )}
+                <button
+                  onClick={() => onChangeModule('cozinha')}
+                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                    currentModule === 'cozinha'
+                      ? 'bg-amber-500/25 border-amber-500 text-white shadow-xs'
+                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-amber-400 font-bold">02</span>
+                  <span className="uppercase text-[11px] sm:text-xs">
+                    COZINHA {kitchenActiveCount > 0 && `(${kitchenActiveCount})`}
+                  </span>
+                </button>
 
-                {(currentUser?.perfil === 'caixa' ||
-                  currentUser?.perfil === 'admin') && (
-                  <button
-                    onClick={() => onChangeModule('caixa')}
-                    className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                      currentModule === 'caixa'
-                        ? 'bg-emerald-600/25 border-emerald-500 text-white shadow-xs'
-                        : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                    }`}
-                  >
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold">03</span>
-                    <span className="uppercase text-[11px] sm:text-xs">CAIXA</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => onChangeModule('caixa')}
+                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                    currentModule === 'caixa'
+                      ? 'bg-emerald-600/25 border-emerald-500 text-white shadow-xs'
+                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">03</span>
+                  <span className="uppercase text-[11px] sm:text-xs">CAIXA</span>
+                </button>
 
-                {currentUser?.perfil === 'admin' && (
-                  <button
-                    onClick={() => onChangeModule('admin')}
-                    className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                      currentModule === 'admin'
-                        ? 'bg-purple-600/25 border-purple-500 text-white shadow-xs'
-                        : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                    }`}
-                  >
-                    <span className="text-[10px] font-mono text-purple-400 font-bold">04</span>
-                    <span className="uppercase text-[11px] sm:text-xs">ADMIN</span>
-                  </button>
-                )}
+                <button
+                  onClick={() => onChangeModule('admin')}
+                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                    currentModule === 'admin'
+                      ? 'bg-purple-600/25 border-purple-500 text-white shadow-xs'
+                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-purple-400 font-bold">04</span>
+                  <span className="uppercase text-[11px] sm:text-xs">ADMIN</span>
+                </button>
               </nav>
             )}
 
@@ -309,14 +334,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
                 {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
               </button>
 
-              {/* Reset Demo Data Button */}
-              <button
-                onClick={handleReset}
-                className="p-2 rounded-lg border border-stone-800 bg-stone-800/50 text-stone-400 hover:text-white hover:bg-stone-800 transition"
-                title="Restaurar dados de teste"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
+              {/* Reset Demo Data Button (Apenas Admin e Super Admin) */}
+              {(currentUser?.perfil === 'admin' || currentUser?.perfil === 'super_admin') && (
+                <button
+                  onClick={handleReset}
+                  className="p-2 rounded-lg border border-stone-800 bg-stone-800/50 text-stone-400 hover:text-white hover:bg-stone-800 transition cursor-pointer"
+                  title="Restaurar dados de teste"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
 
               {/* Operator Badge */}
               <div className="flex items-center gap-2 pl-2 border-l border-stone-800">
@@ -364,70 +391,111 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
             </div>
           </div>
 
-          {/* Mobile Nav Tabs (Row 2 on mobile) */}
-          {currentUser?.perfil !== 'super_admin' && (
+          {/* Mobile Nav Tabs (Row 2 on mobile) - RBAC & Strict Role Isolation */}
+          {currentUser?.perfil === 'garcom' && (
+            <div className="flex md:hidden items-center justify-between pt-2 pb-0.5 border-t border-stone-800/80 mt-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-300">
+                <UtensilsCrossed className="w-3.5 h-3.5 text-red-400" />
+                <span>Painel do Garçom • Salão & Mesas</span>
+              </span>
+              <span className="text-[10px] font-mono text-stone-400 bg-stone-800 px-2 py-0.5 rounded-md border border-stone-700">
+                {tables.length} mesas
+              </span>
+            </div>
+          )}
+
+          {currentUser?.perfil === 'cozinha' && (
+            <div className="flex md:hidden items-center justify-between pt-2 pb-0.5 border-t border-stone-800/80 mt-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                <ChefHat className="w-3.5 h-3.5 text-amber-400" />
+                <span>Monitor da Cozinha (KDS)</span>
+              </span>
+              {kitchenActiveCount > 0 && (
+                <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-md border border-amber-500/40 animate-pulse">
+                  {kitchenActiveCount} preparando
+                </span>
+              )}
+            </div>
+          )}
+
+          {currentUser?.perfil === 'caixa' && (
             <nav className="flex md:hidden items-center gap-1 overflow-x-auto pt-2 pb-0.5 scrollbar-none border-t border-stone-800/80 mt-2">
-              {(currentUser?.perfil === 'garcom' ||
-                currentUser?.perfil === 'caixa' ||
-                currentUser?.perfil === 'admin') && (
-                <button
-                  onClick={() => onChangeModule('garcom')}
-                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                    currentModule === 'garcom'
-                      ? 'bg-red-600/25 border-red-500 text-white shadow-xs'
-                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                  }`}
-                >
-                  <span className="text-[10px] font-mono text-red-400 font-bold">01</span>
-                  <span className="uppercase text-[11px]">MESAS</span>
-                </button>
-              )}
+              <button
+                onClick={() => onChangeModule('caixa')}
+                className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                  currentModule === 'caixa'
+                    ? 'bg-emerald-600/25 border-emerald-500 text-white shadow-xs'
+                    : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-emerald-400 font-bold">01</span>
+                <span className="uppercase text-[11px]">CAIXA / PDV</span>
+              </button>
+              <button
+                onClick={() => onChangeModule('garcom')}
+                className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                  currentModule === 'garcom'
+                    ? 'bg-red-600/25 border-red-500 text-white shadow-xs'
+                    : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-red-400 font-bold">02</span>
+                <span className="uppercase text-[11px]">MESAS</span>
+              </button>
+            </nav>
+          )}
 
-              {(currentUser?.perfil === 'cozinha' ||
-                currentUser?.perfil === 'admin') && (
-                <button
-                  onClick={() => onChangeModule('cozinha')}
-                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                    currentModule === 'cozinha'
-                      ? 'bg-amber-500/25 border-amber-500 text-white shadow-xs'
-                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                  }`}
-                >
-                  <span className="text-[10px] font-mono text-amber-400 font-bold">02</span>
-                  <span className="uppercase text-[11px]">
-                    COZINHA {kitchenActiveCount > 0 && `(${kitchenActiveCount})`}
-                  </span>
-                </button>
-              )}
+          {currentUser?.perfil === 'admin' && (
+            <nav className="flex md:hidden items-center gap-1 overflow-x-auto pt-2 pb-0.5 scrollbar-none border-t border-stone-800/80 mt-2">
+              <button
+                onClick={() => onChangeModule('garcom')}
+                className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                  currentModule === 'garcom'
+                    ? 'bg-red-600/25 border-red-500 text-white shadow-xs'
+                    : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-red-400 font-bold">01</span>
+                <span className="uppercase text-[11px]">MESAS</span>
+              </button>
 
-              {(currentUser?.perfil === 'caixa' ||
-                currentUser?.perfil === 'admin') && (
-                <button
-                  onClick={() => onChangeModule('caixa')}
-                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                    currentModule === 'caixa'
-                      ? 'bg-emerald-600/25 border-emerald-500 text-white shadow-xs'
-                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                  }`}
-                >
-                  <span className="text-[10px] font-mono text-emerald-400 font-bold">03</span>
-                  <span className="uppercase text-[11px]">CAIXA</span>
-                </button>
-              )}
+              <button
+                onClick={() => onChangeModule('cozinha')}
+                className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                  currentModule === 'cozinha'
+                    ? 'bg-amber-500/25 border-amber-500 text-white shadow-xs'
+                    : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-amber-400 font-bold">02</span>
+                <span className="uppercase text-[11px]">
+                  COZINHA {kitchenActiveCount > 0 && `(${kitchenActiveCount})`}
+                </span>
+              </button>
 
-              {currentUser?.perfil === 'admin' && (
-                <button
-                  onClick={() => onChangeModule('admin')}
-                  className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
-                    currentModule === 'admin'
-                      ? 'bg-purple-600/25 border-purple-500 text-white shadow-xs'
-                      : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
-                  }`}
-                >
-                  <span className="text-[10px] font-mono text-purple-400 font-bold">04</span>
-                  <span className="uppercase text-[11px]">ADMIN</span>
-                </button>
-              )}
+              <button
+                onClick={() => onChangeModule('caixa')}
+                className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                  currentModule === 'caixa'
+                    ? 'bg-emerald-600/25 border-emerald-500 text-white shadow-xs'
+                    : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-emerald-400 font-bold">03</span>
+                <span className="uppercase text-[11px]">CAIXA</span>
+              </button>
+
+              <button
+                onClick={() => onChangeModule('admin')}
+                className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1 text-xs font-semibold tracking-tight transition-all border shrink-0 ${
+                  currentModule === 'admin'
+                    ? 'bg-purple-600/25 border-purple-500 text-white shadow-xs'
+                    : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-800/70'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-purple-400 font-bold">04</span>
+                <span className="uppercase text-[11px]">ADMIN</span>
+              </button>
             </nav>
           )}
         </div>
@@ -520,14 +588,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
             {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
           </button>
 
-          {/* Reset Demo Data */}
-          <button
-            onClick={handleReset}
-            className="p-1.5 rounded-lg border border-stone-800 bg-stone-800/50 text-stone-400 hover:text-white hover:bg-stone-800 transition shrink-0 cursor-pointer"
-            title="Restaurar dados de teste"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
+          {/* Reset Demo Data (Apenas Admin e Super Admin) */}
+          {(currentUser?.perfil === 'admin' || currentUser?.perfil === 'super_admin') && (
+            <button
+              onClick={handleReset}
+              className="p-1.5 rounded-lg border border-stone-800 bg-stone-800/50 text-stone-400 hover:text-white hover:bg-stone-800 transition shrink-0 cursor-pointer"
+              title="Restaurar dados de teste"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* Full Operator Badge */}
           <div className="flex items-center gap-1.5 pl-1.5 border-l border-stone-800 shrink-0">
@@ -545,8 +615,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
           </div>
         </div>
 
-        {/* Mobile Metrics (Vendas do dia, Mesas, Ticket Médio) - Rola junto com a tela! */}
-        {currentUser?.perfil !== 'super_admin' && (
+        {/* Mobile Metrics (Vendas do dia, Mesas, Ticket Médio) - Exclusivo para ADMIN da loja */}
+        {currentUser?.perfil === 'admin' && (
           <div className="grid grid-cols-3 gap-2 pt-1.5 border-t border-stone-800/80 text-center">
             <div className="bg-stone-950/60 p-1.5 rounded-xl border border-stone-800/80">
               <span className="text-[9px] uppercase font-bold text-stone-400 block tracking-tight">Vendas Hoje</span>
@@ -564,8 +634,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
         )}
       </div>
 
-      {/* Desktop Metric & Status Bar (Trattoria Style) */}
-      {currentUser?.perfil !== 'super_admin' && (
+      {/* Desktop Metric & Status Bar - Exclusivo para ADMIN da loja */}
+      {currentUser?.perfil === 'admin' && (
         <div className="hidden md:block bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm border-b border-stone-200/90 dark:border-stone-800 px-4 sm:px-6 py-2.5 shadow-xs">
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-6 sm:gap-10">

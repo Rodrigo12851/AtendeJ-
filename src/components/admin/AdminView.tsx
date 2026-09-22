@@ -54,6 +54,7 @@ export const AdminView: React.FC = () => {
     addTable,
     deleteTable,
     addUser,
+    updateUser,
     deleteUser,
     toggleUserStatus,
     currentLojaId,
@@ -1303,13 +1304,20 @@ export const AdminView: React.FC = () => {
                         {u.ativo ? 'Ativo' : 'Inativo'}
                       </button>
                     </div>
-                    <span className="text-xs text-stone-500 capitalize block">{u.perfil}</span>
-                    <span className="text-xs font-mono text-stone-400 block">
-                      PIN: {u.pin}
-                    </span>
+                    <div className="text-xs space-y-1 pt-1 font-mono">
+                      <div className="text-stone-600 dark:text-stone-300">
+                        Login: <strong className="text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded">{u.usuario}</strong>
+                      </div>
+                      <div className="text-stone-600 dark:text-stone-300">
+                        Senha: <strong className="text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded">{u.senha || 'Rs20061991@'}</strong>
+                      </div>
+                      <div className="text-stone-500">
+                        PIN: <span className="text-amber-700 dark:text-amber-400 font-bold">{u.pin}</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                         u.perfil === 'admin' || u.perfil === 'super_admin'
@@ -1324,18 +1332,39 @@ export const AdminView: React.FC = () => {
                       {u.perfil}
                     </span>
 
-                    {/* Excluir Colaborador */}
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Tem certeza que deseja excluir o colaborador "${u.nome}"? Ele perderá todo o acesso ao sistema.`)) {
-                          deleteUser(u.id);
-                        }
-                      }}
-                      title="Excluir Colaborador / Revogar Acesso"
-                      className="p-1.5 text-stone-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {/* Alterar Senha */}
+                      <button
+                        onClick={() => {
+                          const newPass = prompt(`Definir nova senha para "${u.nome}" (mínimo 6 caracteres):`, u.senha || 'Rs20061991@');
+                          if (newPass !== null) {
+                            if (newPass.trim().length < 6) {
+                              alert('A senha deve conter no mínimo 6 caracteres.');
+                              return;
+                            }
+                            updateUser({ ...u, senha: newPass.trim() });
+                            alert(`Senha de ${u.nome} atualizada com sucesso!`);
+                          }
+                        }}
+                        title="Alterar Senha do Colaborador"
+                        className="p-1.5 text-stone-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                      </button>
+
+                      {/* Excluir Colaborador */}
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Tem certeza que deseja excluir o colaborador "${u.nome}"? Ele perderá todo o acesso ao sistema.`)) {
+                            deleteUser(u.id);
+                          }
+                        }}
+                        title="Excluir Colaborador / Revogar Acesso"
+                        className="p-1.5 text-stone-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

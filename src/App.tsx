@@ -26,16 +26,6 @@ const MainApp: React.FC = () => {
   const portalParam = urlParams.get('portal');
   const isDonoPortal = portalParam === 'master' || portalParam === 'dono';
 
-  // Verify active session in sessionStorage: NEVER auto-login without explicit authentication
-  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(() => {
-    try {
-      const sessionActive = sessionStorage.getItem('atendeja_session_active');
-      return !sessionActive;
-    } catch {
-      return true;
-    }
-  });
-
   // Target store resolution
   const targetLoja = publicLojaSlug
     ? lojas.find(
@@ -45,22 +35,85 @@ const MainApp: React.FC = () => {
       )
     : undefined;
 
-  // Enforce correct initial module based on user role permissions
+  // Verify active session in sessionStorage: NEVER auto-login with wrong role or store
+  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(() => {
+    try {
+      const sessionActive = sessionStorage.getItem('atendeja_session_active');
+      if (!sessionActive) return true;
+
+      const rawUser = localStorage.getItem('pizzaria_curr_user_v1');
+      if (!rawUser) return true;
+      const parsedUser = JSON.parse(rawUser);
+
+      // 1. If URL targets Dono Master Portal: session must be super_admin
+      if (isDonoPortal && parsedUser.perfil !== 'super_admin') {
+        return true;
+      }
+
+      // 2. If URL targets an exclusive staff panel: session role must match panelParam exactly
+      if (publicLojaSlug && painelParam) {
+        if (targetLoja) {
+          const belongsToLoja =
+            parsedUser.loja_id === targetLoja.id || (!parsedUser.loja_id && targetLoja.id === 'loja_centro');
+          if (!belongsToLoja || parsedUser.perfil !== painelParam) {
+            return true;
+          }
+        } else if (parsedUser.perfil !== painelParam) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch {
+      return true;
+    }
+  });
+
+  // Enforce correct module based on user role permissions & session validation
   useEffect(() => {
     if (currentUser && !isLoggedOut) {
+      if (isDonoPortal && currentUser.perfil !== 'super_admin') {
+        setIsLoggedOut(true);
+        try {
+          sessionStorage.removeItem('atendeja_session_active');
+        } catch {}
+        return;
+      }
+
+      if (publicLojaSlug && painelParam) {
+        const belongsToLoja =
+          !targetLoja ||
+          currentUser.loja_id === targetLoja.id ||
+          (!currentUser.loja_id && targetLoja.id === 'loja_centro');
+        const matchesRole = currentUser.perfil === painelParam;
+
+        if (!belongsToLoja || !matchesRole) {
+          setIsLoggedOut(true);
+          try {
+            sessionStorage.removeItem('atendeja_session_active');
+          } catch {}
+          return;
+        }
+      }
+
+      // Lock current module strictly to role
       if (currentUser.perfil === 'super_admin') {
         setCurrentModule('super_admin');
-      } else if (
-        currentUser.perfil === 'admin' &&
-        painelParam &&
-        ['garcom', 'cozinha', 'caixa', 'admin'].includes(painelParam)
-      ) {
-        setCurrentModule(painelParam as UserRole);
-      } else {
-        setCurrentModule(currentUser.perfil);
+      } else if (currentUser.perfil === 'garcom') {
+        setCurrentModule('garcom');
+      } else if (currentUser.perfil === 'cozinha') {
+        setCurrentModule('cozinha');
+      } else if (currentUser.perfil === 'caixa') {
+        setCurrentModule((prev) => (prev === 'garcom' ? 'garcom' : 'caixa'));
+      } else if (currentUser.perfil === 'admin') {
+        if (painelParam && ['garcom', 'cozinha', 'caixa', 'admin'].includes(painelParam)) {
+          setCurrentModule(painelParam as UserRole);
+        } else {
+          setCurrentModule('admin');
+        }
       }
     }
-  }, [currentUser, isLoggedOut, painelParam]);
+  }, [currentUser, isLoggedOut, isDonoPortal, publicLojaSlug, painelParam, targetLoja]);
 
   // 1. IF ?loja= URL parameter is present WITHOUT ?painel=, ALWAYS render ONLY Customer Delivery View
   if (publicLojaSlug && !painelParam) {
