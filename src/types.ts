@@ -48,13 +48,17 @@ export interface User {
   loja_id?: string;
   nome: string;
   usuario: string;
-  senha: string;
+  senha?: string;
+  senhaHash?: string;
+  salt?: string;
   pin: string;
   perfil: UserRole;
   ativo: boolean;
   avatar?: string;
   telefone?: string;
 }
+
+export type SafeUser = Omit<User, 'senha' | 'senhaHash' | 'salt'>;
 
 export type TableStatus = 'livre' | 'ocupada' | 'aguardando_fechamento' | 'reservada';
 

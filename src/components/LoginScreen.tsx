@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pizza, Lock, Shield, KeyRound, User as UserIcon, Eye, EyeOff, Store, ChefHat, UtensilsCrossed, CircleDollarSign } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Loja } from '../types';
+import { verifyUserCredentials, hashPassword, sanitizeUserForSession } from '../utils/security';
 
 interface LoginScreenProps {
   mode: 'dono' | 'loja_admin' | 'loja_equipe';
@@ -16,7 +17,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   painelAlvo = 'admin',
   onLoginSuccess,
 }) => {
-  const { users, lojas, loginWithPin, login, recordLoginAttempt, isUserLockedOut, setCurrentUser } = useStore();
+  const { users, lojas, loginWithPin, recordLoginAttempt, isUserLockedOut, setCurrentUser, updateUser } = useStore();
 
   // Credenciais de Usuário e Senha
   const [usernameInput, setUsernameInput] = useState('');
@@ -63,31 +64,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
   })();
 
-  const suggestedCredentials = (() => {
-    if (mode === 'dono') {
-      return { user: 'dono', altUser: 'admin', pass: 'Rs20061991@' };
-    }
-    if (painelAlvo === 'garcom') {
-      const gUser = users.find((u) => u.perfil === 'garcom' && (u.loja_id === loja?.id || (!u.loja_id && loja?.id === 'loja_centro')));
-      return { user: gUser?.usuario || 'joao', altUser: 'garcom', pass: gUser?.senha || 'Rs20061991@' };
-    }
-    if (painelAlvo === 'cozinha') {
-      const cUser = users.find((u) => u.perfil === 'cozinha' && (u.loja_id === loja?.id || (!u.loja_id && loja?.id === 'loja_centro')));
-      return { user: cUser?.usuario || 'cozinha', altUser: undefined, pass: cUser?.senha || 'Rs20061991@' };
-    }
-    if (painelAlvo === 'caixa') {
-      const cxUser = users.find((u) => u.perfil === 'caixa' && (u.loja_id === loja?.id || (!u.loja_id && loja?.id === 'loja_centro')));
-      return { user: cxUser?.usuario || 'caixa', altUser: undefined, pass: cxUser?.senha || 'Rs20061991@' };
-    }
-    // admin
-    const aUser = users.find((u) => u.perfil === 'admin' && (u.loja_id === loja?.id || (!u.loja_id && loja?.id === 'loja_centro')));
-    return { user: aUser?.usuario || 'admin.centro', altUser: 'admin', pass: aUser?.senha || 'Rs20061991@' };
-  })();
-
   // -------------------------------------------------------------
   // LOGIN POR USUÁRIO E SENHA (COM REQUISITO MÍNIMO DE 6 DÍGITOS)
   // -------------------------------------------------------------
-  const handleUserPasswordLogin = (e: React.FormEvent) => {
+  const handleUserPasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -129,10 +109,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           return;
         }
 
-        const matchesPass =
-          targetUser.senha === cleanPass ||
-          ((targetUser.senha === '123' || targetUser.senha === 'admin') && (cleanPass === 'Rs20061991@' || cleanPass === '123456')) ||
-          (targetUser.senha === 'Rs20061991@' && (cleanPass === '123456' || cleanPass === '123'));
+        const matchesPass = await verifyUserCredentials(targetUser, cleanPass);
 
         if (!matchesPass) {
           setErrorMsg('Senha incorreta para o Acesso Master.');
@@ -141,13 +118,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         }
 
         let userToSave = targetUser;
-        if (targetUser.senha !== cleanPass && cleanPass.length >= 6) {
-          userToSave = { ...targetUser, senha: cleanPass };
+        // Migração automática de senha pura para hash SHA-256 + salt
+        if (!targetUser.senhaHash || targetUser.senha) {
+          const { hash, salt } = await hashPassword(cleanPass);
+          userToSave = { ...targetUser, senhaHash: hash, salt, senha: '' };
+          updateUser(userToSave);
         }
 
+        const safeSession = sanitizeUserForSession(userToSave);
         setCurrentUser(userToSave);
         try {
-          localStorage.setItem('pizzaria_curr_user_v1', JSON.stringify(userToSave));
+          localStorage.setItem('pizzaria_curr_user_v1', JSON.stringify(safeSession));
           sessionStorage.setItem('atendeja_session_active', 'true');
         } catch {}
         recordLoginAttempt(cleanUser, true);
@@ -208,11 +189,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         }
       }
 
-      // Validação da senha com retrocompatibilidade e tolerância
-      const matchesPass =
-        matchedUser.senha === cleanPass ||
-        ((matchedUser.senha === '123' || matchedUser.senha === 'admin') && (cleanPass === 'Rs20061991@' || cleanPass === '123456')) ||
-        (matchedUser.senha === 'Rs20061991@' && (cleanPass === '123456' || cleanPass === '123'));
+      // Validação estrita da senha (sem backdoors)
+      const matchesPass = await verifyUserCredentials(matchedUser, cleanPass);
 
       if (!matchesPass) {
         setErrorMsg('Senha incorreta.');
@@ -220,15 +198,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         return;
       }
 
-      // Sucesso! Atualiza senha se necessário
+      // Migração automática de senha pura para hash SHA-256 + salt
       let userToSet = matchedUser;
-      if (matchedUser.senha !== cleanPass && cleanPass.length >= 6) {
-        userToSet = { ...matchedUser, senha: cleanPass };
+      if (!matchedUser.senhaHash || matchedUser.senha) {
+        const { hash, salt } = await hashPassword(cleanPass);
+        userToSet = { ...matchedUser, senhaHash: hash, salt, senha: '' };
+        updateUser(userToSet);
       }
 
+      const safeSession = sanitizeUserForSession(userToSet);
       setCurrentUser(userToSet);
       try {
-        localStorage.setItem('pizzaria_curr_user_v1', JSON.stringify(userToSet));
+        localStorage.setItem('pizzaria_curr_user_v1', JSON.stringify(safeSession));
         sessionStorage.setItem('atendeja_session_active', 'true');
       } catch {}
       recordLoginAttempt(cleanUser, true, undefined, loja.id, loja.nome);
@@ -421,31 +402,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-              </div>
-            </div>
-
-            {/* Dica / Auxílio Visual de Credenciais Padrão */}
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 rounded-2xl space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1">
-                  <span>💡</span> Credenciais Autorizadas:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUsernameInput(suggestedCredentials.user);
-                    setPasswordInput(suggestedCredentials.pass);
-                    setErrorMsg('');
-                  }}
-                  className="text-[10px] font-bold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-200 underline cursor-pointer"
-                >
-                  Preencher dados
-                </button>
-              </div>
-              <div className="text-[11px] font-mono text-amber-800 dark:text-amber-300 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span>Usuário: <strong className="bg-amber-200/60 dark:bg-amber-900/80 px-1 py-0.5 rounded text-stone-900 dark:text-white">{suggestedCredentials.user}</strong> {suggestedCredentials.altUser && <span className="font-sans text-[10px] text-amber-700 dark:text-amber-400">(ou {suggestedCredentials.altUser})</span>}</span>
-                <span>•</span>
-                <span>Senha: <strong className="bg-amber-200/60 dark:bg-amber-900/80 px-1 py-0.5 rounded text-stone-900 dark:text-white">{suggestedCredentials.pass}</strong></span>
               </div>
             </div>
 

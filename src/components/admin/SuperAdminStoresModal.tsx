@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Building2, Plus, Copy, Check, ShieldCheck, MapPin, Phone, DollarSign, X, ExternalLink } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
+import { hashPassword } from '../../utils/security';
 
 interface SuperAdminStoresModalProps {
   onClose: () => void;
@@ -21,7 +22,7 @@ export const SuperAdminStoresModal: React.FC<SuperAdminStoresModalProps> = ({ on
   // Admin User Form State
   const [adminNome, setAdminNome] = useState('');
   const [adminUsuario, setAdminUsuario] = useState('');
-  const [adminSenha, setAdminSenha] = useState('123');
+  const [adminSenha, setAdminSenha] = useState('');
   const [adminPin, setAdminPin] = useState('1234');
 
   const handleCopyLink = (loja: { slug: string; marca?: string; nome?: string; logo_url?: string }) => {
@@ -37,9 +38,15 @@ export const SuperAdminStoresModal: React.FC<SuperAdminStoresModalProps> = ({ on
     setTimeout(() => setCopiedSlug(null), 2500);
   };
 
-  const handleCreateStore = (e: React.FormEvent) => {
+  const handleCreateStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomeLoja || !slugLoja || !adminNome || !adminUsuario || !adminPin) return;
+    if (adminSenha.trim().length < 6) {
+      alert('A senha do administrador deve conter no mínimo 6 caracteres.');
+      return;
+    }
+
+    const { hash, salt } = await hashPassword(adminSenha.trim());
 
     createStoreWithAdmin(
       {
@@ -52,7 +59,9 @@ export const SuperAdminStoresModal: React.FC<SuperAdminStoresModalProps> = ({ on
       {
         nome: adminNome,
         usuario: adminUsuario.trim().toLowerCase(),
-        senha: adminSenha,
+        senhaHash: hash,
+        salt,
+        senha: '',
         pin: adminPin,
       }
     );
@@ -64,6 +73,7 @@ export const SuperAdminStoresModal: React.FC<SuperAdminStoresModalProps> = ({ on
     setTelefoneLoja('');
     setAdminNome('');
     setAdminUsuario('');
+    setAdminSenha('');
     setAdminPin('1234');
     setShowAddForm(false);
   };

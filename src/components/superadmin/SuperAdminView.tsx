@@ -34,6 +34,7 @@ import { useStore } from '../../context/StoreContext';
 import { Loja } from '../../types';
 import { MASTER_PORTAL_TOKEN } from '../../data/initialData';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
+import { hashPassword } from '../../utils/security';
 
 export const SuperAdminView: React.FC = () => {
   const {
@@ -67,7 +68,7 @@ export const SuperAdminView: React.FC = () => {
   // Form State do Usuário Administrador da Loja
   const [adminNome, setAdminNome] = useState('');
   const [adminUsuario, setAdminUsuario] = useState('');
-  const [adminSenha, setAdminSenha] = useState('Rs20061991@');
+  const [adminSenha, setAdminSenha] = useState('');
   const [adminPin, setAdminPin] = useState('1234');
 
   // Métricas do SaaS
@@ -121,7 +122,7 @@ export const SuperAdminView: React.FC = () => {
     setTimeout(() => setCopiedTokenKey(null), 2500);
   };
 
-  const handleCreateStore = (e: React.FormEvent) => {
+  const handleCreateStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomeLoja || !slugLoja || !adminNome || !adminUsuario || !adminPin) return;
 
@@ -129,6 +130,8 @@ export const SuperAdminView: React.FC = () => {
       alert('A senha do administrador deve conter no mínimo 6 caracteres.');
       return;
     }
+
+    const { hash, salt } = await hashPassword(adminSenha.trim());
 
     createStoreWithAdmin(
       {
@@ -144,7 +147,9 @@ export const SuperAdminView: React.FC = () => {
       {
         nome: adminNome,
         usuario: adminUsuario.trim().toLowerCase(),
-        senha: adminSenha.trim(),
+        senhaHash: hash,
+        salt,
+        senha: '',
         pin: adminPin,
       }
     );
@@ -158,7 +163,7 @@ export const SuperAdminView: React.FC = () => {
     setTelefoneLoja('');
     setAdminNome('');
     setAdminUsuario('');
-    setAdminSenha('Rs20061991@');
+    setAdminSenha('');
     setAdminPin('1234');
     setShowAddForm(false);
   };
@@ -508,7 +513,7 @@ export const SuperAdminView: React.FC = () => {
                         type="text"
                         required
                         minLength={6}
-                        placeholder="Ex: Rs20061991@"
+                        placeholder="Senha forte (mínimo 6 caracteres)"
                         value={adminSenha}
                         onChange={(e) => setAdminSenha(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"

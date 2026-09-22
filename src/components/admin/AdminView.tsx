@@ -38,6 +38,7 @@ import { useStore } from '../../context/StoreContext';
 import { Product, Table, User, Category } from '../../types';
 import { formatCurrency, formatDateTime, formatTime } from '../../utils/formatters';
 import { compressImageFile } from '../../utils/imageCompressor';
+import { hashPassword } from '../../utils/security';
 import { GraficosVendasPanel } from './GraficosVendasPanel';
 
 export const AdminView: React.FC = () => {
@@ -126,7 +127,7 @@ export const AdminView: React.FC = () => {
   // New User Form State
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState<'garcom' | 'cozinha' | 'caixa' | 'admin'>('garcom');
-  const [userSenha, setUserSenha] = useState('Rs20061991@');
+  const [userSenha, setUserSenha] = useState('');
   const [userPin, setUserPin] = useState('');
 
   // Store Settings Form State
@@ -414,24 +415,27 @@ export const AdminView: React.FC = () => {
   };
 
   // Handle Save User
-  const handleSaveUser = (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userName || !userPin) return;
     if (userSenha.trim().length < 6) {
       alert('A senha do colaborador deve conter no mínimo 6 caracteres.');
       return;
     }
+    const { hash, salt } = await hashPassword(userSenha.trim());
     addUser({
       nome: userName,
       usuario: userName.toLowerCase().replace(/\s+/g, '.'),
-      senha: userSenha.trim(),
+      senhaHash: hash,
+      salt,
+      senha: '',
       pin: userPin,
       perfil: userRole,
       ativo: true,
       loja_id: currentLoja?.id,
     });
     setUserName('');
-    setUserSenha('Rs20061991@');
+    setUserSenha('');
     setUserPin('');
     setShowAddUserModal(false);
   };
@@ -1309,7 +1313,7 @@ export const AdminView: React.FC = () => {
                         Login: <strong className="text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded">{u.usuario}</strong>
                       </div>
                       <div className="text-stone-600 dark:text-stone-300">
-                        Senha: <strong className="text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded">{u.senha || 'Rs20061991@'}</strong>
+                        Senha: <span className="text-stone-400 font-sans tracking-widest">••••••••</span>
                       </div>
                       <div className="text-stone-500">
                         PIN: <span className="text-amber-700 dark:text-amber-400 font-bold">{u.pin}</span>
@@ -1335,14 +1339,15 @@ export const AdminView: React.FC = () => {
                     <div className="flex items-center gap-1">
                       {/* Alterar Senha */}
                       <button
-                        onClick={() => {
-                          const newPass = prompt(`Definir nova senha para "${u.nome}" (mínimo 6 caracteres):`, u.senha || 'Rs20061991@');
+                        onClick={async () => {
+                          const newPass = prompt(`Definir nova senha para "${u.nome}" (mínimo 6 caracteres):`);
                           if (newPass !== null) {
                             if (newPass.trim().length < 6) {
                               alert('A senha deve conter no mínimo 6 caracteres.');
                               return;
                             }
-                            updateUser({ ...u, senha: newPass.trim() });
+                            const { hash, salt } = await hashPassword(newPass.trim());
+                            updateUser({ ...u, senhaHash: hash, salt, senha: '' });
                             alert(`Senha de ${u.nome} atualizada com sucesso!`);
                           }
                         }}
@@ -2287,7 +2292,7 @@ export const AdminView: React.FC = () => {
                   required
                   value={userSenha}
                   onChange={(e) => setUserSenha(e.target.value)}
-                  placeholder="Ex: Rs20061991@"
+                  placeholder="Senha do colaborador (mín. 6 caracteres)"
                   className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-mono text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-stone-400 focus:bg-white transition"
                 />
               </div>

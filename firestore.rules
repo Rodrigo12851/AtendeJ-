@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Bloqueio total por padrão (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper de autenticação
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 2. Lojas: leitura de lojas ativas permitida para clientes; escrita restrita
+    match /lojas/{lojaId} {
+      allow read: if resource.data.ativa == true || isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    // 3. Catálogo de Produtos e Categorias (Leitura pública para o Cardápio Digital)
+    match /produtos/{produtoId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /categorias/{categoriaId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // 4. Mesas do Restaurante
+    match /mesas/{mesaId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // 5. Pedidos e Comandas
+    match /pedidos/{pedidoId} {
+      allow read, create: if true;
+      allow update, delete: if isAuthenticated();
+    }
+
+    match /comandas/{comandaId} {
+      allow read, create, update: if true;
+      allow delete: if isAuthenticated();
+    }
+
+    // 6. Tentativas de Login (Write-only para clientes; Leitura pública estritamente bloqueada)
+    match /tentativas_login/{attemptId} {
+      allow create: if true;
+      allow read, update, delete: if isAuthenticated();
+    }
+
+    // 7. Configurações Gerais da Pizzaria
+    match /configuracoes/{configId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+  }
+}

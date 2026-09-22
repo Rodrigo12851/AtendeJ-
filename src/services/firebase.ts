@@ -13,25 +13,52 @@ import {
   writeBatch,
   Unsubscribe,
 } from 'firebase/firestore';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  User as FirebaseUser,
+} from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import { Loja, Table, Comanda, Order, Product, Category, LoginAttempt } from '../types';
 
-// Web app's Firebase configuration (Projeto: atendeja-83ef5)
+// Web app's Firebase configuration obtido de variáveis de ambiente (.env)
 export const firebaseConfig = {
-  apiKey: "AIzaSyCS5G9FMPwQtUVl1y02G2UH6jDpFAFHtSw",
-  authDomain: "atendeja-83ef5.firebaseapp.com",
-  projectId: "atendeja-83ef5",
-  storageBucket: "atendeja-83ef5.firebasestorage.app",
-  messagingSenderId: "797431584380",
-  appId: "1:797431584380:web:795a72daf94b7731075bf9",
-  measurementId: "G-G201CD6495"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '',
 };
+
+if (!firebaseConfig.apiKey) {
+  console.error('[Firebase] VITE_FIREBASE_API_KEY não definida. Copie .env.example para .env e preencha as variáveis.');
+}
 
 // Initialize Firebase App (evita duplicar instância em HMR/reloads)
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 // Initialize Cloud Firestore
 export const db = getFirestore(app);
+
+// Initialize Firebase Auth
+export const auth = getAuth(app);
+
+// Helpers para Firebase Auth (preparação para transição segura)
+export const loginWithFirebaseAuth = (email: string, pass: string) => {
+  return signInWithEmailAndPassword(auth, email, pass);
+};
+
+export const logoutWithFirebaseAuth = () => {
+  return signOut(auth);
+};
+
+export const subscribeToAuthChanges = (callback: (user: FirebaseUser | null) => void) => {
+  return onAuthStateChanged(auth, callback);
+};
 
 // Analytics inicializado com verificação de suporte no ambiente
 if (typeof window !== 'undefined') {

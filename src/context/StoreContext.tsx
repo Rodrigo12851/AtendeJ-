@@ -37,6 +37,7 @@ import {
 } from '../data/initialData';
 import { playKitchenBell, playReadyDing, playCashChime } from '../utils/audio';
 import { generateComandaNumber } from '../utils/formatters';
+import { sanitizeUserForSession } from '../utils/security';
 import {
   db,
   FIRESTORE_COLLECTIONS,
@@ -142,7 +143,7 @@ interface StoreContextType {
   toggleLojaAtiva: (lojaId: string) => void;
   createStoreWithAdmin: (
     lojaData: { nome: string; slug: string; marca?: string; cnpj?: string; endereco?: string; telefone?: string; taxa_entrega?: number; plano?: 'basico' | 'pro' | 'enterprise' },
-    adminData: { nome: string; usuario: string; senha?: string; pin: string }
+    adminData: { nome: string; usuario: string; senha?: string; senhaHash?: string; salt?: string; pin: string }
   ) => void;
   loginAttempts: LoginAttempt[];
   recordLoginAttempt: (usuario: string, sucesso: boolean, motivo?: string, lojaId?: string, lojaNome?: string) => void;
@@ -199,12 +200,7 @@ const ensureLojaTokens = (stores: Loja[]): Loja[] => {
 };
 
 const ensureUsersWithSecurePasswords = (userList: User[]): User[] => {
-  const updated = userList.map((u) => {
-    if (!u.senha || u.senha === '123' || u.senha === 'admin' || u.senha.length < 6) {
-      return { ...u, senha: 'Rs20061991@' };
-    }
-    return u;
-  });
+  const updated = [...userList];
   for (const initUser of INITIAL_USERS) {
     if (!updated.some((u) => u.usuario.toLowerCase() === initUser.usuario.toLowerCase())) {
       updated.push(initUser);
@@ -254,11 +250,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        if (!parsed.senha || parsed.senha.length < 6) {
-          parsed.senha = 'Rs20061991@';
-        }
-        return parsed;
+        return JSON.parse(saved);
       }
     } catch {
       // fallback
@@ -705,12 +697,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       if (!matchesUser || !u.ativo) return false;
 
-      const matchesPass =
-        u.senha === cleanPass ||
-        ((u.senha === '123' || u.senha === 'admin') && (cleanPass === 'Rs20061991@' || cleanPass === '123456')) ||
-        (u.senha === 'Rs20061991@' && (cleanPass === '123456' || cleanPass === '123'));
-
-      return matchesPass;
+      // Validação estrita: apenas a senha real do usuário (sem backdoors)
+      return u.senha === cleanPass;
     });
 
     if (found) {
@@ -721,18 +709,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       }
 
-      let userToSave = found;
-      if (found.senha !== cleanPass && cleanPass.length >= 6) {
-        userToSave = { ...found, senha: cleanPass };
-        setUsers((prev) => prev.map((u) => (u.id === found.id ? userToSave : u)));
-      }
-
-      setCurrentUser(userToSave);
-      if (userToSave.loja_id) {
-        setCurrentLojaId(userToSave.loja_id);
+      setCurrentUser(found);
+      if (found.loja_id) {
+        setCurrentLojaId(found.loja_id);
       }
       try {
-        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(userToSave));
+        const safeSession = sanitizeUserForSession(found);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(safeSession));
         sessionStorage.setItem('atendeja_session_active', 'true');
       } catch {
         // ignore
@@ -757,7 +740,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setCurrentLojaId(found.loja_id);
       }
       try {
-        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
+        const safeSession = sanitizeUserForSession(found);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(safeSession));
         sessionStorage.setItem('atendeja_session_active', 'true');
       } catch {
         // ignore
@@ -783,7 +767,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: `quick_${role}`,
       nome: `Operador ${role.toUpperCase()}`,
       usuario: role,
-      senha: '123',
+      pin: '',
       perfil: role,
       ativo: true,
       avatar: role === 'garcom' ? '👨‍🍳' : role === 'cozinha' ? '🍳' : role === 'caixa' ? '💰' : '👨‍💼',
@@ -1519,7 +1503,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const createStoreWithAdmin = (
     lojaData: { nome: string; slug: string; marca?: string; cnpj?: string; endereco?: string; telefone?: string; taxa_entrega?: number; plano?: 'basico' | 'pro' | 'enterprise' },
-    adminData: { nome: string; usuario: string; senha?: string; pin: string }
+    adminData: { nome: string; usuario: string; senha?: string; senhaHash?: string; salt?: string; pin: string }
   ) => {
     const lojaId = `loja_${Date.now()}`;
     const adminId = `user_admin_${Date.now()}`;
@@ -1527,14 +1511,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Validação de senha: deve possuir pelo menos 6 caracteres
     const safePassword = (adminData.senha && adminData.senha.trim().length >= 6)
       ? adminData.senha.trim()
-      : 'Rs20061991@';
+      : '';
 
     const newAdmin: User = {
       id: adminId,
       loja_id: lojaId,
       nome: adminData.nome,
       usuario: adminData.usuario.trim().toLowerCase(),
-      senha: safePassword,
+      senha: adminData.senhaHash ? '' : safePassword,
+      senhaHash: adminData.senhaHash,
+      salt: adminData.salt,
       pin: adminData.pin,
       perfil: 'admin',
       ativo: true,
