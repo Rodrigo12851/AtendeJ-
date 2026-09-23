@@ -23,20 +23,27 @@ import {
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import { Loja, Table, Comanda, Order, Product, Category, LoginAttempt } from '../types';
 
-// Web app's Firebase configuration obtido de variáveis de ambiente (.env)
-export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '',
+// Configuração padrão de fallback para garantir funcionamento em ambientes sem .env (ex: deploy inicial na Vercel)
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCS5G9FMPwQtUVl1y02G2UH6jDpFAFHtSw",
+  authDomain: "atendeja-83ef5.firebaseapp.com",
+  projectId: "atendeja-83ef5",
+  storageBucket: "atendeja-83ef5.firebasestorage.app",
+  messagingSenderId: "797431584380",
+  appId: "1:797431584380:web:795a72daf94b7731075bf9",
+  measurementId: "G-G201CD6495",
 };
 
-if (!firebaseConfig.apiKey) {
-  console.error('[Firebase] VITE_FIREBASE_API_KEY não definida. Copie .env.example para .env e preencha as variáveis.');
-}
+// Web app's Firebase configuration obtido de variáveis de ambiente (.env) com fallback seguro
+export const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || DEFAULT_FIREBASE_CONFIG.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || DEFAULT_FIREBASE_CONFIG.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || DEFAULT_FIREBASE_CONFIG.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || DEFAULT_FIREBASE_CONFIG.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || DEFAULT_FIREBASE_CONFIG.appId,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || DEFAULT_FIREBASE_CONFIG.measurementId,
+};
 
 // Initialize Firebase App (evita duplicar instância em HMR/reloads)
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -44,19 +51,30 @@ export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getA
 // Initialize Cloud Firestore
 export const db = getFirestore(app);
 
-// Initialize Firebase Auth
-export const auth = getAuth(app);
+// Initialize Firebase Auth com tratamento defensivo contra crashes em build sem chave
+let authInstance: any = null;
+try {
+  if (firebaseConfig.apiKey) {
+    authInstance = getAuth(app);
+  }
+} catch (e) {
+  console.warn('[Firebase Auth] Alerta ao inicializar auth:', e);
+}
+export const auth = authInstance;
 
 // Helpers para Firebase Auth (preparação para transição segura)
 export const loginWithFirebaseAuth = (email: string, pass: string) => {
+  if (!auth) return Promise.reject(new Error('Firebase Auth não inicializado'));
   return signInWithEmailAndPassword(auth, email, pass);
 };
 
 export const logoutWithFirebaseAuth = () => {
+  if (!auth) return Promise.resolve();
   return signOut(auth);
 };
 
 export const subscribeToAuthChanges = (callback: (user: FirebaseUser | null) => void) => {
+  if (!auth) return () => {};
   return onAuthStateChanged(auth, callback);
 };
 
