@@ -190,7 +190,11 @@ export const CozinhaView: React.FC = () => {
                         <span className="font-bold text-sm tracking-tight text-stone-900 dark:text-white">
                           Pedido #{order.id}
                         </span>
-                        {order.tipo_pedido === 'delivery' ? (
+                        {order.tipo_pedido === 'retirada' ? (
+                          <span className="bg-amber-600 text-white font-mono font-bold text-xs px-2 py-0.5 rounded-md uppercase flex items-center gap-1">
+                            🛍️ RETIRADA (BUSCAR)
+                          </span>
+                        ) : order.tipo_pedido === 'delivery' ? (
                           <span className="bg-red-600 text-white font-mono font-bold text-xs px-2 py-0.5 rounded-md uppercase flex items-center gap-1">
                             🛵 DELIVERY
                           </span>
@@ -201,7 +205,9 @@ export const CozinhaView: React.FC = () => {
                         )}
                       </div>
                       <span className="text-xs text-stone-600 dark:text-slate-400 block mt-0.5">
-                        {order.tipo_pedido === 'delivery' ? (
+                        {order.tipo_pedido === 'retirada' ? (
+                          <>Cliente: <strong className="text-stone-900 dark:text-white">{order.cliente_nome}</strong> <span className="text-amber-600 font-semibold">(Busca no Balcão)</span></>
+                        ) : order.tipo_pedido === 'delivery' ? (
                           <>Cliente: <strong className="text-stone-900 dark:text-white">{order.cliente_nome}</strong> ({order.cliente_telefone})</>
                         ) : (
                           <>Garçom: <strong className="text-stone-900 dark:text-white">{order.garcom_nome}</strong></>

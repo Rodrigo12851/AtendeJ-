@@ -25,6 +25,8 @@ import {
   Phone,
   MapPin,
   Share2,
+  ShoppingBag,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Comanda, Order, Table, PaymentMethod, CashEntry, OrderStatus } from '../../types';
@@ -69,9 +71,11 @@ export const CaixaView: React.FC = () => {
   };
 
   // Pedidos & Delivery tracking state
+  const [caixaChannelFilter, setCaixaChannelFilter] = useState<'delivery' | 'retirada' | 'mesa' | 'todos'>('delivery');
+  const [pedidosCanalFilter, setPedidosCanalFilter] = useState<'todos' | 'delivery' | 'retirada' | 'mesa'>('todos');
   const [pedidosFilterStatus, setPedidosFilterStatus] = useState<string>('todos');
   const [pedidosSearch, setPedidosSearch] = useState<string>('');
-  const [deliveryFilter, setDeliveryFilter] = useState<'todos' | 'novo' | 'em_preparo' | 'a_caminho' | 'entregue'>('todos');
+  const [deliveryFilter, setDeliveryFilter] = useState<'todos' | 'novo' | 'em_preparo' | 'pronto' | 'a_caminho' | 'entregue'>('todos');
   const [deliverySearch, setDeliverySearch] = useState<string>('');
   const [printingOrder, setPrintingOrder] = useState<{ order: Order; autoPrint: boolean } | null>(null);
 
@@ -224,9 +228,84 @@ export const CaixaView: React.FC = () => {
     return breakdown;
   }, [comandas]);
 
-  // Orders filtering and status counts for Caixa Pedidos tab
+  // Channel identification helpers
+  const isDeliveryOrder = (o: Order) => {
+    if (o.tipo_pedido === 'retirada') return false;
+    if (o.mesa_numero) return false;
+    return o.tipo_pedido === 'delivery' || o.origem === 'delivery';
+  };
+
+  const isRetiradaOrder = (o: Order) => {
+    return o.tipo_pedido === 'retirada' || (!o.mesa_numero && !!o.cliente_endereco?.toLowerCase().includes('retirada'));
+  };
+
+  const isMesaOrder = (o: Order) => {
+    return o.tipo_pedido === 'mesa' || !!o.mesa_numero;
+  };
+
+  // Channel Lists
+  const allDeliveryOrders = useMemo(() => orders.filter(isDeliveryOrder), [orders]);
+  const allRetiradaOrders = useMemo(() => orders.filter(isRetiradaOrder), [orders]);
+  const allMesaOrders = useMemo(() => orders.filter(isMesaOrder), [orders]);
+
+  // Status counts per channel
+  const countNovosDelivery = useMemo(() => allDeliveryOrders.filter((o) => o.status === 'novo').length, [allDeliveryOrders]);
+  const countNovosRetirada = useMemo(() => allRetiradaOrders.filter((o) => o.status === 'novo').length, [allRetiradaOrders]);
+  const countNovosMesa = useMemo(() => allMesaOrders.filter((o) => o.status === 'novo').length, [allMesaOrders]);
+  const countNovosTotal = countNovosDelivery + countNovosRetirada + countNovosMesa;
+
+  const countNovosCurrent = useMemo(() => {
+    if (caixaChannelFilter === 'delivery') return countNovosDelivery;
+    if (caixaChannelFilter === 'retirada') return countNovosRetirada;
+    if (caixaChannelFilter === 'mesa') return countNovosMesa;
+    return countNovosTotal;
+  }, [caixaChannelFilter, countNovosDelivery, countNovosRetirada, countNovosMesa, countNovosTotal]);
+
+  // Current channel orders for Tab 1
+  const currentChannelOrders = useMemo(() => {
+    if (caixaChannelFilter === 'delivery') return allDeliveryOrders;
+    if (caixaChannelFilter === 'retirada') return allRetiradaOrders;
+    if (caixaChannelFilter === 'mesa') return allMesaOrders;
+    return orders;
+  }, [caixaChannelFilter, allDeliveryOrders, allRetiradaOrders, allMesaOrders, orders]);
+
+  // Filtered orders list for Tab 1
+  const deliveryOrders = useMemo(() => {
+    return currentChannelOrders.filter((o) => {
+      if (deliveryFilter === 'novo' && o.status !== 'novo') return false;
+      if (deliveryFilter === 'em_preparo' && o.status !== 'em_preparo') return false;
+      if (deliveryFilter === 'pronto' && o.status !== 'pronto') return false;
+      if (deliveryFilter === 'a_caminho' && o.status !== 'a_caminho') return false;
+      if (deliveryFilter === 'entregue' && o.status !== 'entregue') return false;
+
+      if (deliverySearch) {
+        const q = deliverySearch.toLowerCase();
+        const nome = (o.cliente_nome || '').toLowerCase();
+        const fone = (o.cliente_telefone || o.delivery_info?.telefone || '').toLowerCase();
+        const end = (o.cliente_endereco || o.delivery_info?.endereco || '').toLowerCase();
+        const id = o.id.toString();
+        const mesa = o.mesa_numero ? o.mesa_numero.toString() : '';
+        const garcom = (o.garcom_nome || '').toLowerCase();
+        return (
+          nome.includes(q) ||
+          fone.includes(q) ||
+          end.includes(q) ||
+          id.includes(q) ||
+          mesa.includes(q) ||
+          garcom.includes(q)
+        );
+      }
+      return true;
+    });
+  }, [currentChannelOrders, deliveryFilter, deliverySearch]);
+
+  // Orders filtering and status counts for Caixa Pedidos tab (Tab 2)
   const filteredCaixaOrders = useMemo(() => {
     return orders.filter((order) => {
+      if (pedidosCanalFilter === 'delivery' && !isDeliveryOrder(order)) return false;
+      if (pedidosCanalFilter === 'retirada' && !isRetiradaOrder(order)) return false;
+      if (pedidosCanalFilter === 'mesa' && !isMesaOrder(order)) return false;
+
       if (pedidosFilterStatus !== 'todos' && order.status !== pedidosFilterStatus) {
         return false;
       }
@@ -244,41 +323,13 @@ export const CaixaView: React.FC = () => {
       }
       return true;
     });
-  }, [orders, pedidosFilterStatus, pedidosSearch]);
+  }, [orders, pedidosCanalFilter, pedidosFilterStatus, pedidosSearch]);
 
   const countNovos = useMemo(() => orders.filter((o) => o.status === 'novo').length, [orders]);
   const countPreparo = useMemo(() => orders.filter((o) => o.status === 'em_preparo').length, [orders]);
   const countProntos = useMemo(() => orders.filter((o) => o.status === 'pronto').length, [orders]);
   const countACaminho = useMemo(() => orders.filter((o) => o.status === 'a_caminho').length, [orders]);
   const countEntregues = useMemo(() => orders.filter((o) => o.status === 'entregue').length, [orders]);
-
-  const countNovosDelivery = useMemo(() => {
-    return orders.filter((o) => {
-      const isDeliv = o.tipo_pedido === 'delivery' || o.tipo_pedido === 'retirada' || !o.mesa_numero || o.origem === 'delivery';
-      return (isDeliv || o.status === 'novo') && o.status === 'novo';
-    }).length;
-  }, [orders]);
-
-  const deliveryOrders = useMemo(() => {
-    return orders.filter((o) => {
-      const isDeliv = o.tipo_pedido === 'delivery' || o.tipo_pedido === 'retirada' || !o.mesa_numero || o.origem === 'delivery';
-      if (deliveryFilter === 'todos') {
-        return isDeliv || o.status === 'novo';
-      }
-      if (deliveryFilter === 'novo') {
-        return o.status === 'novo';
-      }
-      return isDeliv && o.status === deliveryFilter;
-    }).filter((o) => {
-      if (!deliverySearch) return true;
-      const q = deliverySearch.toLowerCase();
-      const nome = (o.cliente_nome || '').toLowerCase();
-      const fone = (o.cliente_telefone || o.delivery_info?.telefone || '').toLowerCase();
-      const end = (o.cliente_endereco || o.delivery_info?.endereco || '').toLowerCase();
-      const id = o.id.toString();
-      return nome.includes(q) || fone.includes(q) || end.includes(q) || id.includes(q);
-    });
-  }, [orders, deliveryFilter, deliverySearch]);
 
   const handleConfirmOrder = (order: Order) => {
     updateOrderStatus(order.id, 'em_preparo');
@@ -391,38 +442,166 @@ export const CaixaView: React.FC = () => {
           {/* Coluna 1: Delivery & Pedidos de Casa (Vermelho no diagrama) */}
           <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-3 space-y-3 flex flex-col">
             <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-3.5 space-y-3 flex-1 flex flex-col">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 rounded-lg">
-                    <Bike className="w-4 h-4" />
+              {/* Channel Selector: Delivery | Retirada (Buscar) | Mesas | Todos */}
+              <div className="grid grid-cols-4 gap-1 p-1 bg-stone-100 dark:bg-slate-950 rounded-xl border border-stone-200 dark:border-slate-800 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCaixaChannelFilter('delivery');
+                    setDeliveryFilter('todos');
+                  }}
+                  className={`py-2 px-1 rounded-lg transition flex flex-col items-center justify-center gap-0.5 cursor-pointer relative ${
+                    caixaChannelFilter === 'delivery'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
+                  }`}
+                  title="Apenas pedidos com entrega motoboy"
+                >
+                  <div className="flex items-center gap-1">
+                    <Bike className="w-3.5 h-3.5" />
+                    <span>Delivery</span>
+                    {countNovosDelivery > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-mono ${caixaChannelFilter === 'delivery' ? 'text-purple-200' : 'text-stone-400 dark:text-slate-500'}`}>
+                    ({allDeliveryOrders.length})
                   </span>
-                  <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-                    Delivery / Pedidos de Casa
-                  </h2>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCaixaChannelFilter('retirada');
+                    setDeliveryFilter('todos');
+                  }}
+                  className={`py-2 px-1 rounded-lg transition flex flex-col items-center justify-center gap-0.5 cursor-pointer relative ${
+                    caixaChannelFilter === 'retirada'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
+                  }`}
+                  title="Pedidos feitos no site onde o cliente busca na loja"
+                >
+                  <div className="flex items-center gap-1">
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    <span>Retirada</span>
+                    {countNovosRetirada > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-mono ${caixaChannelFilter === 'retirada' ? 'text-amber-200' : 'text-stone-400 dark:text-slate-500'}`}>
+                    ({allRetiradaOrders.length})
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCaixaChannelFilter('mesa');
+                    setDeliveryFilter('todos');
+                  }}
+                  className={`py-2 px-1 rounded-lg transition flex flex-col items-center justify-center gap-0.5 cursor-pointer relative ${
+                    caixaChannelFilter === 'mesa'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
+                  }`}
+                  title="Pedidos de clientes no salão / mesas"
+                >
+                  <div className="flex items-center gap-1">
+                    <UtensilsCrossed className="w-3.5 h-3.5" />
+                    <span>Mesas</span>
+                    {countNovosMesa > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-mono ${caixaChannelFilter === 'mesa' ? 'text-emerald-200' : 'text-stone-400 dark:text-slate-500'}`}>
+                    ({allMesaOrders.length})
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCaixaChannelFilter('todos');
+                    setDeliveryFilter('todos');
+                  }}
+                  className={`py-2 px-1 rounded-lg transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                    caixaChannelFilter === 'todos'
+                      ? 'bg-stone-900 dark:bg-slate-800 text-white shadow-xs'
+                      : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
+                  }`}
+                  title="Ver todos os pedidos de todos os canais"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Todos</span>
+                    {countNovosTotal > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-mono ${caixaChannelFilter === 'todos' ? 'text-stone-300' : 'text-stone-400 dark:text-slate-500'}`}>
+                    ({orders.length})
+                  </span>
+                </button>
+              </div>
+
+              {/* Dynamic Header */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className={`p-1.5 rounded-lg ${
+                    caixaChannelFilter === 'delivery'
+                      ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300'
+                      : caixaChannelFilter === 'retirada'
+                      ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                      : caixaChannelFilter === 'mesa'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-stone-100 dark:bg-slate-800 text-stone-700 dark:text-slate-300'
+                  }`}>
+                    {caixaChannelFilter === 'delivery' && <Bike className="w-4 h-4" />}
+                    {caixaChannelFilter === 'retirada' && <ShoppingBag className="w-4 h-4" />}
+                    {caixaChannelFilter === 'mesa' && <UtensilsCrossed className="w-4 h-4" />}
+                    {caixaChannelFilter === 'todos' && <Receipt className="w-4 h-4" />}
+                  </span>
+                  <div>
+                    <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider">
+                      {caixaChannelFilter === 'delivery' && '🛵 Pedidos Delivery (Entrega)'}
+                      {caixaChannelFilter === 'retirada' && '🛍️ Pedidos Retirada (Buscar)'}
+                      {caixaChannelFilter === 'mesa' && '🍽️ Pedidos das Mesas (Salão)'}
+                      {caixaChannelFilter === 'todos' && '📋 Todos os Pedidos'}
+                    </h2>
+                    <p className="text-[10px] text-stone-500 dark:text-slate-400">
+                      {caixaChannelFilter === 'delivery' && 'Entrega via motoboy no endereço'}
+                      {caixaChannelFilter === 'retirada' && 'Cliente pediu no site e busca no balcão'}
+                      {caixaChannelFilter === 'mesa' && 'Consumo no local atendido por garçom'}
+                      {caixaChannelFilter === 'todos' && 'Visualização integrada de todos os canais'}
+                    </p>
+                  </div>
                 </div>
+
                 <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={handleCopyDeliveryLink}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition flex items-center gap-1 cursor-pointer shadow-xs ${
-                      copiedDeliveryLink
-                        ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-700'
-                    }`}
-                    title="Copiar link do cardápio online com marca e logo da loja para enviar no WhatsApp"
-                  >
-                    <Share2 className="w-3 h-3 text-amber-500" />
-                    <span>{copiedDeliveryLink ? 'Copiado!' : 'Link Cardápio'}</span>
-                  </button>
-                  {countNovosDelivery > 0 && (
+                  {(caixaChannelFilter === 'delivery' || caixaChannelFilter === 'retirada' || caixaChannelFilter === 'todos') && (
+                    <button
+                      type="button"
+                      onClick={handleCopyDeliveryLink}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition flex items-center gap-1 cursor-pointer shadow-xs ${
+                        copiedDeliveryLink
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-700'
+                      }`}
+                      title="Copiar link do cardápio online com marca e logo da loja para enviar no WhatsApp"
+                    >
+                      <Share2 className="w-3 h-3 text-amber-500" />
+                      <span>{copiedDeliveryLink ? 'Copiado!' : 'Link Cardápio'}</span>
+                    </button>
+                  )}
+                  {countNovosCurrent > 0 && (
                     <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-red-600 text-white rounded-full animate-pulse shadow-xs">
-                      {countNovosDelivery} {countNovosDelivery === 1 ? 'novo' : 'novos'}
+                      {countNovosCurrent} {countNovosCurrent === 1 ? 'novo' : 'novos'}
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Status Chips */}
+              {/* Status Chips adapted per channel */}
               <div className="flex flex-wrap items-center gap-1 text-[11px] font-bold">
                 <button
                   type="button"
@@ -445,7 +624,7 @@ export const CaixaView: React.FC = () => {
                   }`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                  Novos ({countNovosDelivery})
+                  Novos ({countNovosCurrent})
                 </button>
                 <button
                   type="button"
@@ -458,17 +637,45 @@ export const CaixaView: React.FC = () => {
                 >
                   Preparo
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setDeliveryFilter('a_caminho')}
-                  className={`px-2.5 py-1 rounded-lg border transition cursor-pointer ${
-                    deliveryFilter === 'a_caminho'
-                      ? 'bg-purple-600 text-white border-purple-700 shadow-2xs'
-                      : 'bg-purple-50 dark:bg-slate-950 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900/50 hover:bg-purple-100/70'
-                  }`}
-                >
-                  A Caminho
-                </button>
+                {caixaChannelFilter === 'delivery' && (
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryFilter('a_caminho')}
+                    className={`px-2.5 py-1 rounded-lg border transition cursor-pointer ${
+                      deliveryFilter === 'a_caminho'
+                        ? 'bg-purple-600 text-white border-purple-700 shadow-2xs'
+                        : 'bg-purple-50 dark:bg-slate-950 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900/50 hover:bg-purple-100/70'
+                    }`}
+                  >
+                    A Caminho 🛵
+                  </button>
+                )}
+                {caixaChannelFilter === 'retirada' && (
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryFilter('pronto')}
+                    className={`px-2.5 py-1 rounded-lg border transition cursor-pointer ${
+                      deliveryFilter === 'pronto'
+                        ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
+                        : 'bg-amber-50 dark:bg-slate-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100/70'
+                    }`}
+                  >
+                    Prontos p/ Retirar 🛍️
+                  </button>
+                )}
+                {(caixaChannelFilter === 'mesa' || caixaChannelFilter === 'todos') && (
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryFilter('pronto')}
+                    className={`px-2.5 py-1 rounded-lg border transition cursor-pointer ${
+                      deliveryFilter === 'pronto'
+                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                        : 'bg-emerald-50 dark:bg-slate-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100/70'
+                    }`}
+                  >
+                    Prontos
+                  </button>
+                )}
               </div>
 
               {/* Quick Search */}
@@ -478,18 +685,51 @@ export const CaixaView: React.FC = () => {
                   type="text"
                   value={deliverySearch}
                   onChange={(e) => setDeliverySearch(e.target.value)}
-                  placeholder="Buscar cliente, rua, fone..."
+                  placeholder={
+                    caixaChannelFilter === 'delivery'
+                      ? 'Buscar cliente, endereço, fone...'
+                      : caixaChannelFilter === 'retirada'
+                      ? 'Buscar cliente que vai buscar, fone...'
+                      : caixaChannelFilter === 'mesa'
+                      ? 'Buscar mesa, garçom, comanda...'
+                      : 'Buscar cliente, mesa, fone, endereço...'
+                  }
                   className="w-full pl-8 pr-3 py-2 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-stone-400 dark:focus:border-slate-700 transition"
                 />
               </div>
 
-              {/* Delivery Orders List */}
+              {/* Orders List */}
               <div className="space-y-2.5 max-h-[62vh] overflow-y-auto pr-1 flex-1">
                 {deliveryOrders.length === 0 ? (
                   <div className="py-10 text-center text-stone-400 dark:text-slate-500 text-xs space-y-1.5">
-                    <Bike className="w-8 h-8 mx-auto opacity-40 text-purple-400" />
-                    <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de delivery encontrado.</p>
-                    <p className="text-[11px]">Novos pedidos de clientes em casa aparecerão aqui automaticamente.</p>
+                    {caixaChannelFilter === 'delivery' && (
+                      <>
+                        <Bike className="w-8 h-8 mx-auto opacity-40 text-purple-400" />
+                        <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de delivery encontrado.</p>
+                        <p className="text-[11px]">Novos pedidos para entrega via motoboy aparecerão aqui automaticamente.</p>
+                      </>
+                    )}
+                    {caixaChannelFilter === 'retirada' && (
+                      <>
+                        <ShoppingBag className="w-8 h-8 mx-auto opacity-40 text-amber-500" />
+                        <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de retirada encontrado.</p>
+                        <p className="text-[11px]">Pedidos do site onde o cliente prefere buscar na loja aparecerão aqui.</p>
+                      </>
+                    )}
+                    {caixaChannelFilter === 'mesa' && (
+                      <>
+                        <UtensilsCrossed className="w-8 h-8 mx-auto opacity-40 text-emerald-500" />
+                        <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de mesa encontrado.</p>
+                        <p className="text-[11px]">Pedidos lançados nas mesas pelos garçons aparecerão aqui.</p>
+                      </>
+                    )}
+                    {caixaChannelFilter === 'todos' && (
+                      <>
+                        <Receipt className="w-8 h-8 mx-auto opacity-40 text-stone-400" />
+                        <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido encontrado neste filtro.</p>
+                        <p className="text-[11px]">Pedidos de todos os canais aparecerão aqui.</p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   deliveryOrders.map((order) => {
@@ -498,15 +738,22 @@ export const CaixaView: React.FC = () => {
                     const isPronto = order.status === 'pronto';
                     const isACaminho = order.status === 'a_caminho';
                     const isEntregue = order.status === 'entregue';
-                    const isDelivery = order.tipo_pedido === 'delivery' || !order.mesa_numero;
+
+                    const isRetirada = isRetiradaOrder(order);
+                    const isDelivery = isDeliveryOrder(order);
+                    const isMesa = isMesaOrder(order);
 
                     const orderTotal =
                       order.itens
                         .filter((it) => it.status === 'ativo')
-                        .reduce((acc, it) => acc + it.preco_total, 0) + (order.taxa_entrega || 0);
+                        .reduce((acc, it) => acc + it.preco_total, 0) + (isDelivery ? (order.taxa_entrega || 0) : 0);
 
                     const endereco = order.cliente_endereco || order.delivery_info?.endereco;
                     const telefone = order.cliente_telefone || order.delivery_info?.telefone;
+
+                    const matchingComanda = isMesa
+                      ? comandas.find((c) => c.mesa_id === order.mesa_id || c.mesa_numero === order.mesa_numero)
+                      : null;
 
                     return (
                       <div
@@ -525,17 +772,21 @@ export const CaixaView: React.FC = () => {
                       >
                         {/* Card Header */}
                         <div className="flex items-center justify-between gap-1">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-mono font-bold text-stone-900 dark:text-white">
                               #{order.id}
                             </span>
-                            {isDelivery ? (
-                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-purple-600 text-white rounded">
-                                DELIVERY 🛵
+                            {isRetirada ? (
+                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-amber-500 dark:bg-amber-600 text-white rounded flex items-center gap-1 shadow-2xs">
+                                <ShoppingBag className="w-2.5 h-2.5" /> RETIRADA (BUSCAR)
+                              </span>
+                            ) : isDelivery ? (
+                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-purple-600 text-white rounded flex items-center gap-1 shadow-2xs">
+                                <Bike className="w-2.5 h-2.5" /> DELIVERY
                               </span>
                             ) : (
-                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-stone-900 dark:bg-slate-800 text-white rounded">
-                                MESA {order.mesa_numero?.toString().padStart(2, '0')}
+                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-stone-900 dark:bg-slate-800 text-white rounded flex items-center gap-1 shadow-2xs">
+                                <UtensilsCrossed className="w-2.5 h-2.5" /> MESA {order.mesa_numero?.toString().padStart(2, '0')}
                               </span>
                             )}
                           </div>
@@ -563,32 +814,62 @@ export const CaixaView: React.FC = () => {
                           )}
                           {isEntregue && (
                             <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-stone-700 text-stone-300 rounded-md">
-                              ENTREGUE
+                              {isRetirada ? 'RETIRADO' : 'ENTREGUE'}
                             </span>
                           )}
                         </div>
 
-                        {/* Customer Info */}
+                        {/* Customer / Order Info */}
                         <div className="space-y-0.5 text-[11px] leading-tight">
-                          <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1">
-                            <span className="text-emerald-500">👤</span>
-                            <span className="truncate">{order.cliente_nome || 'Cliente'}</span>
-                          </div>
-                          {telefone && (
-                            <div className="text-stone-500 dark:text-slate-400 flex items-center gap-1">
-                              <Phone className="w-2.5 h-2.5" />
-                              <span>{telefone}</span>
+                          {isMesa ? (
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-stone-900 dark:text-white">
+                                Garçom: {order.garcom_nome || 'Atendente'}
+                              </span>
+                              <span className="text-[10px] text-stone-400 font-mono">
+                                Mesa {order.mesa_numero?.toString().padStart(2, '0')}
+                              </span>
                             </div>
-                          )}
-                          {endereco && (
-                            <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1">
-                              <MapPin className="w-2.5 h-2.5 text-red-500 shrink-0 mt-0.5" />
-                              <span className="text-[10px] leading-tight font-medium truncate">{endereco}</span>
-                            </div>
+                          ) : (
+                            <>
+                              <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1">
+                                <span className="text-emerald-500">👤</span>
+                                <span className="truncate">{order.cliente_nome || 'Cliente'}</span>
+                              </div>
+                              {telefone && (
+                                <div className="text-stone-500 dark:text-slate-400 flex items-center gap-1">
+                                  <Phone className="w-2.5 h-2.5" />
+                                  <span>{telefone}</span>
+                                </div>
+                              )}
+                              {isDelivery && endereco && (
+                                <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1">
+                                  <MapPin className="w-2.5 h-2.5 text-red-500 shrink-0 mt-0.5" />
+                                  <span className="text-[10px] leading-tight font-medium truncate" title={endereco}>{endereco}</span>
+                                </div>
+                              )}
+                              {isRetirada && (
+                                <div className="text-amber-800 dark:text-amber-300 flex items-center gap-1 font-semibold text-[10px] bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
+                                  <ShoppingBag className="w-2.5 h-2.5 text-amber-600" />
+                                  <span>Cliente busca no balcão da loja</span>
+                                </div>
+                              )}
+                              {order.forma_pagamento && (
+                                <div className="text-[10px] text-stone-500 dark:text-slate-400 pt-0.5">
+                                  💰 Pgto: <strong className="uppercase">{order.forma_pagamento}</strong>
+                                  {order.troco_para ? ` (Troco p/ R$ ${order.troco_para.toFixed(2)})` : ''}
+                                </div>
+                              )}
+                            </>
                           )}
                           <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1">
                             <Clock className="w-2.5 h-2.5" />
                             <span>{formatTime(order.criado_em)}</span>
+                            {order.observacao && (
+                              <span className="text-amber-600 truncate ml-1 font-sans">
+                                • Obs: {order.observacao}
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -609,9 +890,14 @@ export const CaixaView: React.FC = () => {
                         </div>
 
                         {/* Total & Action Buttons */}
-                        <div className="pt-1.5 border-t border-stone-200/70 dark:border-slate-800/80 flex items-center justify-between gap-1">
+                        <div className="pt-1.5 border-t border-stone-200/70 dark:border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
                           <span className="font-mono font-bold text-xs text-amber-600 dark:text-amber-400">
                             {formatCurrency(orderTotal)}
+                            {isDelivery && order.taxa_entrega ? (
+                              <span className="text-[9px] text-stone-400 block font-normal font-sans">
+                                (+ {formatCurrency(order.taxa_entrega)} entrega)
+                              </span>
+                            ) : null}
                           </span>
 
                           <div className="flex items-center gap-1">
@@ -643,7 +929,7 @@ export const CaixaView: React.FC = () => {
                                 className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
                               >
                                 <Check className="w-3 h-3" />
-                                <span>Pronto</span>
+                                <span>{isRetirada ? 'Pronto p/ Retirar' : isDelivery ? 'Pronto p/ Entrega' : 'Pronto'}</span>
                               </button>
                             )}
 
@@ -658,14 +944,25 @@ export const CaixaView: React.FC = () => {
                               </button>
                             )}
 
-                            {isPronto && !isDelivery && (
+                            {isPronto && isRetirada && (
+                              <button
+                                type="button"
+                                onClick={() => updateOrderStatus(order.id, 'entregue')}
+                                className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                              >
+                                <ShoppingBag className="w-3 h-3" />
+                                <span>Entregar no Balcão</span>
+                              </button>
+                            )}
+
+                            {isPronto && isMesa && (
                               <button
                                 type="button"
                                 onClick={() => updateOrderStatus(order.id, 'entregue')}
                                 className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
                               >
                                 <Check className="w-3 h-3" />
-                                <span>Entregar</span>
+                                <span>Servido na Mesa</span>
                               </button>
                             )}
 
@@ -677,6 +974,22 @@ export const CaixaView: React.FC = () => {
                               >
                                 <Check className="w-3 h-3" />
                                 <span>Concluir</span>
+                              </button>
+                            )}
+
+                            {isMesa && matchingComanda && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedComandaId(matchingComanda.id);
+                                  setSplitMode('nenhum');
+                                  setPaymentAmountInput(matchingComanda.total.toFixed(2));
+                                }}
+                                className="px-2.5 py-1.5 bg-stone-900 hover:bg-stone-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                                title="Abrir comanda no fechamento do caixa"
+                              >
+                                <Receipt className="w-3 h-3 text-emerald-400" />
+                                <span>Ver Comanda</span>
                               </button>
                             )}
                           </div>
@@ -693,9 +1006,19 @@ export const CaixaView: React.FC = () => {
           <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-4 space-y-4">
           <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold text-stone-700 dark:text-slate-300 uppercase tracking-wider">
-                Comandas Abertas ({openComandas.length})
-              </h2>
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-lg">
+                  <UtensilsCrossed className="w-4 h-4" />
+                </span>
+                <div>
+                  <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider">
+                    Comandas das Mesas ({openComandas.length})
+                  </h2>
+                  <p className="text-[10px] text-stone-500 dark:text-slate-400">
+                    Consumo no salão para fechamento e pagamento
+                  </p>
+                </div>
+              </div>
 
               <div className="flex bg-stone-100 dark:bg-slate-950 p-1 rounded-xl border border-stone-200 dark:border-slate-800 text-xs font-semibold">
                 <button
@@ -1313,20 +1636,73 @@ export const CaixaView: React.FC = () => {
       {caixaActiveTab === 'pedidos' && (
         <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 space-y-4 flex-1">
           {/* Top Bar for Pedidos: Status Filter Chips & Search */}
-          <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            {/* Filter Pills */}
-            <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+          <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-4 space-y-3">
+            {/* Canal Filters */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold pb-2.5 border-b border-stone-100 dark:border-slate-800">
+              <span className="text-[11px] uppercase tracking-wider text-stone-500 dark:text-slate-400 mr-1">Canal:</span>
               <button
                 type="button"
-                onClick={() => setPedidosFilterStatus('todos')}
+                onClick={() => setPedidosCanalFilter('todos')}
                 className={`px-3 py-1.5 rounded-lg border transition cursor-pointer ${
-                  pedidosFilterStatus === 'todos'
-                    ? 'bg-stone-900 dark:bg-slate-800 text-white border-stone-900 dark:border-slate-700 shadow-xs'
-                    : 'bg-stone-100 dark:bg-slate-950 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-800 hover:bg-stone-200/70'
+                  pedidosCanalFilter === 'todos'
+                    ? 'bg-stone-900 dark:bg-slate-800 text-white border-stone-900 shadow-2xs'
+                    : 'bg-stone-50 dark:bg-slate-950 text-stone-600 dark:text-slate-400 border-stone-200 dark:border-slate-800 hover:bg-stone-100 dark:hover:bg-slate-900'
                 }`}
               >
-                TODOS ({orders.length})
+                Todos ({orders.length})
               </button>
+              <button
+                type="button"
+                onClick={() => setPedidosCanalFilter('delivery')}
+                className={`px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+                  pedidosCanalFilter === 'delivery'
+                    ? 'bg-purple-600 text-white border-purple-700 shadow-2xs'
+                    : 'bg-purple-50 dark:bg-slate-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900/50 hover:bg-purple-100/70'
+                }`}
+              >
+                <Bike className="w-3.5 h-3.5" />
+                <span>Delivery ({allDeliveryOrders.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPedidosCanalFilter('retirada')}
+                className={`px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+                  pedidosCanalFilter === 'retirada'
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
+                    : 'bg-amber-50 dark:bg-slate-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100/70'
+                }`}
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Retirada / Buscar ({allRetiradaOrders.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPedidosCanalFilter('mesa')}
+                className={`px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+                  pedidosCanalFilter === 'mesa'
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                    : 'bg-emerald-50 dark:bg-slate-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100/70'
+                }`}
+              >
+                <UtensilsCrossed className="w-3.5 h-3.5" />
+                <span>Mesas ({allMesaOrders.length})</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              {/* Filter Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setPedidosFilterStatus('todos')}
+                  className={`px-3 py-1.5 rounded-lg border transition cursor-pointer ${
+                    pedidosFilterStatus === 'todos'
+                      ? 'bg-stone-900 dark:bg-slate-800 text-white border-stone-900 dark:border-slate-700 shadow-xs'
+                      : 'bg-stone-100 dark:bg-slate-950 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-800 hover:bg-stone-200/70'
+                  }`}
+                >
+                  TODOS ({orders.length})
+                </button>
 
               <button
                 type="button"
@@ -1405,6 +1781,7 @@ export const CaixaView: React.FC = () => {
               />
             </div>
           </div>
+        </div>
 
           {/* Pedidos Grid Cards */}
           {filteredCaixaOrders.length === 0 ? (
@@ -1449,13 +1826,17 @@ export const CaixaView: React.FC = () => {
                     {/* Header */}
                     <div className="p-3.5 bg-stone-50 dark:bg-slate-950 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        {isDelivery ? (
+                        {order.tipo_pedido === 'retirada' ? (
+                          <span className="px-2.5 py-1 text-xs font-black uppercase bg-amber-600 text-white rounded-lg flex items-center gap-1 shadow-xs">
+                            <ShoppingBag className="w-3.5 h-3.5" /> RETIRADA
+                          </span>
+                        ) : isDelivery ? (
                           <span className="px-2.5 py-1 text-xs font-black uppercase bg-purple-600 text-white rounded-lg flex items-center gap-1 shadow-xs">
                             <Bike className="w-3.5 h-3.5" /> DELIVERY
                           </span>
                         ) : (
-                          <span className="px-2.5 py-1 text-xs font-black uppercase bg-stone-900 dark:bg-slate-800 text-white rounded-lg shadow-xs">
-                            MESA {order.mesa_numero?.toString().padStart(2, '0') || '00'}
+                          <span className="px-2.5 py-1 text-xs font-black uppercase bg-stone-900 dark:bg-slate-800 text-white rounded-lg shadow-xs flex items-center gap-1">
+                            <UtensilsCrossed className="w-3.5 h-3.5" /> MESA {order.mesa_numero?.toString().padStart(2, '0') || '00'}
                           </span>
                         )}
                         <span className="text-xs font-mono font-bold text-stone-500 dark:text-slate-400">
@@ -1506,20 +1887,25 @@ export const CaixaView: React.FC = () => {
                             Atendente: {order.garcom_nome}
                           </div>
                         )}
-                        {order.delivery_info?.telefone && (
+                        {(order.delivery_info?.telefone || order.cliente_telefone) && (
                           <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1">
                             <Phone className="w-3 h-3 text-stone-400" />
-                            <span>{order.delivery_info.telefone}</span>
+                            <span>{order.delivery_info?.telefone || order.cliente_telefone}</span>
                           </div>
                         )}
-                        {order.delivery_info?.endereco && (
+                        {order.tipo_pedido === 'retirada' ? (
+                          <div className="text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1 text-[11px]">
+                            <ShoppingBag className="w-3 h-3 text-amber-500" />
+                            <span>Retirada no Balcão — Cliente busca na loja</span>
+                          </div>
+                        ) : (order.delivery_info?.endereco || order.cliente_endereco) ? (
                           <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1">
                             <MapPin className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
                             <span className="text-[11px] leading-tight font-medium">
-                              {order.delivery_info.endereco}
+                              {order.delivery_info?.endereco || order.cliente_endereco}
                             </span>
                           </div>
-                        )}
+                        ) : null}
                         <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           <span>Recebido às {formatTime(order.criado_em)}</span>
@@ -1617,7 +2003,18 @@ export const CaixaView: React.FC = () => {
                           </button>
                         )}
 
-                        {isPronto && !isDelivery && (
+                        {isPronto && order.tipo_pedido === 'retirada' && (
+                          <button
+                            type="button"
+                            onClick={() => updateOrderStatus(order.id, 'entregue')}
+                            className="flex-1 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
+                          >
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <span>Entregar no Balcão 🛍️</span>
+                          </button>
+                        )}
+
+                        {isPronto && !isDelivery && order.tipo_pedido !== 'retirada' && (
                           <button
                             type="button"
                             onClick={() => updateOrderStatus(order.id, 'entregue')}

@@ -54,7 +54,8 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
   }, [autoPrint, printRoot]);
 
   const activeItens = order.itens.filter((it) => it.status === 'ativo');
-  const isDelivery = order.origem === 'delivery' || order.tipo_pedido === 'delivery' || !order.mesa_numero;
+  const isRetirada = order.tipo_pedido === 'retirada';
+  const isDelivery = (order.origem === 'delivery' || order.tipo_pedido === 'delivery' || !order.mesa_numero) && !isRetirada;
   const endereco = order.delivery_info?.endereco || order.cliente_endereco;
   const telefone = order.delivery_info?.telefone || order.cliente_telefone;
 
@@ -91,7 +92,11 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
           PEDIDO #{order.id}
         </div>
 
-        {isDelivery ? (
+        {isRetirada ? (
+          <div className="text-xs font-black border-2 border-black py-0.5 px-2 inline-block my-1 rounded-sm uppercase">
+            🛍️ RETIRADA NO BALCÃO - BUSCAR NA LOJA
+          </div>
+        ) : isDelivery ? (
           <div className="text-xs font-black border-2 border-black py-0.5 px-2 inline-block my-1 rounded-sm uppercase">
             🛵 DELIVERY - ENTREGA EM CASA
           </div>
@@ -124,6 +129,18 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
             {telefone && (
               <p className="font-bold">
                 📞 {telefone}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Retirada Details */}
+        {isRetirada && (
+          <div className="mt-1.5 p-1.5 border border-black text-left rounded-sm space-y-0.5 text-[11px]">
+            <p className="font-bold">🛍️ RETIRADA NO BALCÃO (CLIENTE VAI BUSCAR NA LOJA)</p>
+            {telefone && (
+              <p className="font-bold">
+                📞 Contato: {telefone}
               </p>
             )}
           </div>
