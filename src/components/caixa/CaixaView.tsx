@@ -70,13 +70,16 @@ export const CaixaView: React.FC = () => {
     setTimeout(() => setCopiedDeliveryLink(false), 2500);
   };
 
-  // Pedidos & Delivery tracking state
-  const [caixaChannelFilter, setCaixaChannelFilter] = useState<'delivery' | 'retirada' | 'mesa' | 'todos'>('delivery');
+  // Pedidos & Delivery / Retirada tracking state
+  const [deliveryFilter, setDeliveryFilter] = useState<'todos' | 'novo' | 'em_preparo' | 'a_caminho' | 'entregue'>('todos');
+  const [deliverySearch, setDeliverySearch] = useState<string>('');
+
+  const [retiradaFilter, setRetiradaFilter] = useState<'todos' | 'novo' | 'em_preparo' | 'pronto' | 'entregue'>('todos');
+  const [retiradaSearch, setRetiradaSearch] = useState<string>('');
+
   const [pedidosCanalFilter, setPedidosCanalFilter] = useState<'todos' | 'delivery' | 'retirada' | 'mesa'>('todos');
   const [pedidosFilterStatus, setPedidosFilterStatus] = useState<string>('todos');
   const [pedidosSearch, setPedidosSearch] = useState<string>('');
-  const [deliveryFilter, setDeliveryFilter] = useState<'todos' | 'novo' | 'em_preparo' | 'pronto' | 'a_caminho' | 'entregue'>('todos');
-  const [deliverySearch, setDeliverySearch] = useState<string>('');
   const [printingOrder, setPrintingOrder] = useState<{ order: Order; autoPrint: boolean } | null>(null);
 
   // Modals inside Caixa
@@ -254,27 +257,11 @@ export const CaixaView: React.FC = () => {
   const countNovosMesa = useMemo(() => allMesaOrders.filter((o) => o.status === 'novo').length, [allMesaOrders]);
   const countNovosTotal = countNovosDelivery + countNovosRetirada + countNovosMesa;
 
-  const countNovosCurrent = useMemo(() => {
-    if (caixaChannelFilter === 'delivery') return countNovosDelivery;
-    if (caixaChannelFilter === 'retirada') return countNovosRetirada;
-    if (caixaChannelFilter === 'mesa') return countNovosMesa;
-    return countNovosTotal;
-  }, [caixaChannelFilter, countNovosDelivery, countNovosRetirada, countNovosMesa, countNovosTotal]);
-
-  // Current channel orders for Tab 1
-  const currentChannelOrders = useMemo(() => {
-    if (caixaChannelFilter === 'delivery') return allDeliveryOrders;
-    if (caixaChannelFilter === 'retirada') return allRetiradaOrders;
-    if (caixaChannelFilter === 'mesa') return allMesaOrders;
-    return orders;
-  }, [caixaChannelFilter, allDeliveryOrders, allRetiradaOrders, allMesaOrders, orders]);
-
-  // Filtered orders list for Tab 1
+  // Filtered Delivery orders (Coluna 1)
   const deliveryOrders = useMemo(() => {
-    return currentChannelOrders.filter((o) => {
+    return allDeliveryOrders.filter((o) => {
       if (deliveryFilter === 'novo' && o.status !== 'novo') return false;
       if (deliveryFilter === 'em_preparo' && o.status !== 'em_preparo') return false;
-      if (deliveryFilter === 'pronto' && o.status !== 'pronto') return false;
       if (deliveryFilter === 'a_caminho' && o.status !== 'a_caminho') return false;
       if (deliveryFilter === 'entregue' && o.status !== 'entregue') return false;
 
@@ -284,20 +271,30 @@ export const CaixaView: React.FC = () => {
         const fone = (o.cliente_telefone || o.delivery_info?.telefone || '').toLowerCase();
         const end = (o.cliente_endereco || o.delivery_info?.endereco || '').toLowerCase();
         const id = o.id.toString();
-        const mesa = o.mesa_numero ? o.mesa_numero.toString() : '';
-        const garcom = (o.garcom_nome || '').toLowerCase();
-        return (
-          nome.includes(q) ||
-          fone.includes(q) ||
-          end.includes(q) ||
-          id.includes(q) ||
-          mesa.includes(q) ||
-          garcom.includes(q)
-        );
+        return nome.includes(q) || fone.includes(q) || end.includes(q) || id.includes(q);
       }
       return true;
     });
-  }, [currentChannelOrders, deliveryFilter, deliverySearch]);
+  }, [allDeliveryOrders, deliveryFilter, deliverySearch]);
+
+  // Filtered Retirada orders (Coluna 2)
+  const retiradaOrders = useMemo(() => {
+    return allRetiradaOrders.filter((o) => {
+      if (retiradaFilter === 'novo' && o.status !== 'novo') return false;
+      if (retiradaFilter === 'em_preparo' && o.status !== 'em_preparo') return false;
+      if (retiradaFilter === 'pronto' && o.status !== 'pronto') return false;
+      if (retiradaFilter === 'entregue' && o.status !== 'entregue') return false;
+
+      if (retiradaSearch) {
+        const q = retiradaSearch.toLowerCase();
+        const nome = (o.cliente_nome || '').toLowerCase();
+        const fone = (o.cliente_telefone || o.delivery_info?.telefone || '').toLowerCase();
+        const id = o.id.toString();
+        return nome.includes(q) || fone.includes(q) || id.includes(q);
+      }
+      return true;
+    });
+  }, [allRetiradaOrders, retiradaFilter, retiradaSearch]);
 
   // Orders filtering and status counts for Caixa Pedidos tab (Tab 2)
   const filteredCaixaOrders = useMemo(() => {
@@ -438,198 +435,78 @@ export const CaixaView: React.FC = () => {
       </div>
 
       {caixaActiveTab === 'comandas' && (
-        <main className="max-w-[1920px] mx-auto w-full p-3 sm:p-4 lg:p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
-          {/* Coluna 1: Delivery & Pedidos de Casa (Vermelho no diagrama) */}
-          <div className="lg:col-span-4 xl:col-span-3 2xl:col-span-3 space-y-3 flex flex-col">
+        <main className="max-w-[1920px] mx-auto w-full p-2.5 sm:p-3.5 lg:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3.5 flex-1">
+          {/* Coluna 1: Delivery (Entrega motoboy no endereço) */}
+          <div className="col-span-12 md:col-span-1 xl:col-span-3 space-y-3 flex flex-col">
             <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-3.5 space-y-3 flex-1 flex flex-col">
-              {/* Channel Selector: Delivery | Retirada (Buscar) | Mesas | Todos */}
-              <div className="grid grid-cols-4 gap-1 p-1 bg-stone-100 dark:bg-slate-950 rounded-xl border border-stone-200 dark:border-slate-800 text-[11px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCaixaChannelFilter('delivery');
-                    setDeliveryFilter('todos');
-                  }}
-                  className={`py-2 px-1 rounded-lg transition flex flex-col items-center justify-center gap-0.5 cursor-pointer relative ${
-                    caixaChannelFilter === 'delivery'
-                      ? 'bg-purple-600 text-white shadow-xs'
-                      : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
-                  }`}
-                  title="Apenas pedidos com entrega motoboy"
-                >
-                  <div className="flex items-center gap-1">
-                    <Bike className="w-3.5 h-3.5" />
-                    <span>Delivery</span>
-                    {countNovosDelivery > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                    )}
-                  </div>
-                  <span className={`text-[10px] font-mono ${caixaChannelFilter === 'delivery' ? 'text-purple-200' : 'text-stone-400 dark:text-slate-500'}`}>
-                    ({allDeliveryOrders.length})
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCaixaChannelFilter('retirada');
-                    setDeliveryFilter('todos');
-                  }}
-                  className={`py-2 px-1 rounded-lg transition flex flex-col items-center justify-center gap-0.5 cursor-pointer relative ${
-                    caixaChannelFilter === 'retirada'
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
-                  }`}
-                  title="Pedidos feitos no site onde o cliente busca na loja"
-                >
-                  <div className="flex items-center gap-1">
-                    <ShoppingBag className="w-3.5 h-3.5" />
-                    <span>Retirada</span>
-                    {countNovosRetirada > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                    )}
-                  </div>
-                  <span className={`text-[10px] font-mono ${caixaChannelFilter === 'retirada' ? 'text-amber-200' : 'text-stone-400 dark:text-slate-500'}`}>
-                    ({allRetiradaOrders.length})
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCaixaChannelFilter('mesa');
-                    setDeliveryFilter('todos');
-                  }}
-                  className={`py-2 px-1 rounded-lg transition flex flex-col items-center justify-center gap-0.5 cursor-pointer relative ${
-                    caixaChannelFilter === 'mesa'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
-                  }`}
-                  title="Pedidos de clientes no salão / mesas"
-                >
-                  <div className="flex items-center gap-1">
-                    <UtensilsCrossed className="w-3.5 h-3.5" />
-                    <span>Mesas</span>
-                    {countNovosMesa > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                    )}
-                  </div>
-                  <span className={`text-[10px] font-mono ${caixaChannelFilter === 'mesa' ? 'text-emerald-200' : 'text-stone-400 dark:text-slate-500'}`}>
-                    ({allMesaOrders.length})
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCaixaChannelFilter('todos');
-                    setDeliveryFilter('todos');
-                  }}
-                  className={`py-2 px-1 rounded-lg transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
-                    caixaChannelFilter === 'todos'
-                      ? 'bg-stone-900 dark:bg-slate-800 text-white shadow-xs'
-                      : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
-                  }`}
-                  title="Ver todos os pedidos de todos os canais"
-                >
-                  <div className="flex items-center gap-1">
-                    <span>Todos</span>
-                    {countNovosTotal > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                    )}
-                  </div>
-                  <span className={`text-[10px] font-mono ${caixaChannelFilter === 'todos' ? 'text-stone-300' : 'text-stone-400 dark:text-slate-500'}`}>
-                    ({orders.length})
-                  </span>
-                </button>
-              </div>
-
-              {/* Dynamic Header */}
-              <div className="flex items-center justify-between gap-2">
+              {/* Header */}
+              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-stone-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                  <span className={`p-1.5 rounded-lg ${
-                    caixaChannelFilter === 'delivery'
-                      ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300'
-                      : caixaChannelFilter === 'retirada'
-                      ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
-                      : caixaChannelFilter === 'mesa'
-                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
-                      : 'bg-stone-100 dark:bg-slate-800 text-stone-700 dark:text-slate-300'
-                  }`}>
-                    {caixaChannelFilter === 'delivery' && <Bike className="w-4 h-4" />}
-                    {caixaChannelFilter === 'retirada' && <ShoppingBag className="w-4 h-4" />}
-                    {caixaChannelFilter === 'mesa' && <UtensilsCrossed className="w-4 h-4" />}
-                    {caixaChannelFilter === 'todos' && <Receipt className="w-4 h-4" />}
+                  <span className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                    <Bike className="w-4 h-4" />
                   </span>
                   <div>
-                    <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-                      {caixaChannelFilter === 'delivery' && '🛵 Pedidos Delivery (Entrega)'}
-                      {caixaChannelFilter === 'retirada' && '🛍️ Pedidos Retirada (Buscar)'}
-                      {caixaChannelFilter === 'mesa' && '🍽️ Pedidos das Mesas (Salão)'}
-                      {caixaChannelFilter === 'todos' && '📋 Todos os Pedidos'}
+                    <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                      🛵 Delivery
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold">
+                        {allDeliveryOrders.length}
+                      </span>
                     </h2>
-                    <p className="text-[10px] text-stone-500 dark:text-slate-400">
-                      {caixaChannelFilter === 'delivery' && 'Entrega via motoboy no endereço'}
-                      {caixaChannelFilter === 'retirada' && 'Cliente pediu no site e busca no balcão'}
-                      {caixaChannelFilter === 'mesa' && 'Consumo no local atendido por garçom'}
-                      {caixaChannelFilter === 'todos' && 'Visualização integrada de todos os canais'}
-                    </p>
+                    <p className="text-[10px] text-stone-500 dark:text-slate-400">Entrega motoboy no endereço</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  {(caixaChannelFilter === 'delivery' || caixaChannelFilter === 'retirada' || caixaChannelFilter === 'todos') && (
-                    <button
-                      type="button"
-                      onClick={handleCopyDeliveryLink}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition flex items-center gap-1 cursor-pointer shadow-xs ${
-                        copiedDeliveryLink
-                          ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-700'
-                      }`}
-                      title="Copiar link do cardápio online com marca e logo da loja para enviar no WhatsApp"
-                    >
-                      <Share2 className="w-3 h-3 text-amber-500" />
-                      <span>{copiedDeliveryLink ? 'Copiado!' : 'Link Cardápio'}</span>
-                    </button>
-                  )}
-                  {countNovosCurrent > 0 && (
-                    <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-red-600 text-white rounded-full animate-pulse shadow-xs">
-                      {countNovosCurrent} {countNovosCurrent === 1 ? 'novo' : 'novos'}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleCopyDeliveryLink}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition flex items-center gap-1 cursor-pointer shadow-xs ${
+                      copiedDeliveryLink
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-700'
+                    }`}
+                    title="Copiar link do cardápio online com marca e logo da loja para o WhatsApp"
+                  >
+                    <Share2 className="w-3 h-3 text-purple-500" />
+                    <span>{copiedDeliveryLink ? 'Copiado!' : 'Cardápio'}</span>
+                  </button>
+                  {countNovosDelivery > 0 && (
+                    <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-full animate-pulse shadow-xs">
+                      {countNovosDelivery} novo{countNovosDelivery > 1 ? 's' : ''}
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Status Chips adapted per channel */}
-              <div className="flex flex-wrap items-center gap-1 text-[11px] font-bold">
+              {/* Status Chips */}
+              <div className="flex flex-wrap items-center gap-1 text-[10px] font-bold">
                 <button
                   type="button"
                   onClick={() => setDeliveryFilter('todos')}
-                  className={`px-2.5 py-1 rounded-lg border transition cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
                     deliveryFilter === 'todos'
-                      ? 'bg-stone-900 dark:bg-slate-800 text-white border-stone-900 dark:border-slate-700 shadow-2xs'
+                      ? 'bg-purple-700 text-white border-purple-700 shadow-2xs'
                       : 'bg-stone-50 dark:bg-slate-950 text-stone-600 dark:text-slate-400 border-stone-200 dark:border-slate-800 hover:bg-stone-100 dark:hover:bg-slate-900'
                   }`}
                 >
-                  Todos ({deliveryOrders.length})
+                  Todos ({allDeliveryOrders.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeliveryFilter('novo')}
-                  className={`px-2.5 py-1 rounded-lg border transition flex items-center gap-1 cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md border transition flex items-center gap-1 cursor-pointer ${
                     deliveryFilter === 'novo'
                       ? 'bg-red-600 text-white border-red-700 shadow-2xs'
                       : 'bg-red-50 dark:bg-slate-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50 hover:bg-red-100/70'
                   }`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                  Novos ({countNovosCurrent})
+                  Novos ({countNovosDelivery})
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeliveryFilter('em_preparo')}
-                  className={`px-2.5 py-1 rounded-lg border transition cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
                     deliveryFilter === 'em_preparo'
                       ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
                       : 'bg-amber-50 dark:bg-slate-950 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100/70'
@@ -637,99 +514,38 @@ export const CaixaView: React.FC = () => {
                 >
                   Preparo
                 </button>
-                {caixaChannelFilter === 'delivery' && (
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryFilter('a_caminho')}
-                    className={`px-2.5 py-1 rounded-lg border transition cursor-pointer ${
-                      deliveryFilter === 'a_caminho'
-                        ? 'bg-purple-600 text-white border-purple-700 shadow-2xs'
-                        : 'bg-purple-50 dark:bg-slate-950 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900/50 hover:bg-purple-100/70'
-                    }`}
-                  >
-                    A Caminho 🛵
-                  </button>
-                )}
-                {caixaChannelFilter === 'retirada' && (
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryFilter('pronto')}
-                    className={`px-2.5 py-1 rounded-lg border transition cursor-pointer ${
-                      deliveryFilter === 'pronto'
-                        ? 'bg-amber-600 text-white border-amber-700 shadow-2xs'
-                        : 'bg-amber-50 dark:bg-slate-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100/70'
-                    }`}
-                  >
-                    Prontos p/ Retirar 🛍️
-                  </button>
-                )}
-                {(caixaChannelFilter === 'mesa' || caixaChannelFilter === 'todos') && (
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryFilter('pronto')}
-                    className={`px-2.5 py-1 rounded-lg border transition cursor-pointer ${
-                      deliveryFilter === 'pronto'
-                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
-                        : 'bg-emerald-50 dark:bg-slate-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100/70'
-                    }`}
-                  >
-                    Prontos
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setDeliveryFilter('a_caminho')}
+                  className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
+                    deliveryFilter === 'a_caminho'
+                      ? 'bg-purple-600 text-white border-purple-700 shadow-2xs'
+                      : 'bg-purple-50 dark:bg-slate-950 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900/50 hover:bg-purple-100/70'
+                  }`}
+                >
+                  A Caminho 🛵
+                </button>
               </div>
 
               {/* Quick Search */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 dark:text-slate-500" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 dark:text-slate-500" />
                 <input
                   type="text"
                   value={deliverySearch}
                   onChange={(e) => setDeliverySearch(e.target.value)}
-                  placeholder={
-                    caixaChannelFilter === 'delivery'
-                      ? 'Buscar cliente, endereço, fone...'
-                      : caixaChannelFilter === 'retirada'
-                      ? 'Buscar cliente que vai buscar, fone...'
-                      : caixaChannelFilter === 'mesa'
-                      ? 'Buscar mesa, garçom, comanda...'
-                      : 'Buscar cliente, mesa, fone, endereço...'
-                  }
-                  className="w-full pl-8 pr-3 py-2 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-stone-400 dark:focus:border-slate-700 transition"
+                  placeholder="Buscar cliente, rua, fone..."
+                  className="w-full pl-7.5 pr-2.5 py-1.5 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-purple-400 dark:focus:border-purple-600 transition"
                 />
               </div>
 
               {/* Orders List */}
-              <div className="space-y-2.5 max-h-[62vh] overflow-y-auto pr-1 flex-1">
+              <div className="space-y-2.5 max-h-[64vh] overflow-y-auto pr-1 flex-1">
                 {deliveryOrders.length === 0 ? (
-                  <div className="py-10 text-center text-stone-400 dark:text-slate-500 text-xs space-y-1.5">
-                    {caixaChannelFilter === 'delivery' && (
-                      <>
-                        <Bike className="w-8 h-8 mx-auto opacity-40 text-purple-400" />
-                        <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de delivery encontrado.</p>
-                        <p className="text-[11px]">Novos pedidos para entrega via motoboy aparecerão aqui automaticamente.</p>
-                      </>
-                    )}
-                    {caixaChannelFilter === 'retirada' && (
-                      <>
-                        <ShoppingBag className="w-8 h-8 mx-auto opacity-40 text-amber-500" />
-                        <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de retirada encontrado.</p>
-                        <p className="text-[11px]">Pedidos do site onde o cliente prefere buscar na loja aparecerão aqui.</p>
-                      </>
-                    )}
-                    {caixaChannelFilter === 'mesa' && (
-                      <>
-                        <UtensilsCrossed className="w-8 h-8 mx-auto opacity-40 text-emerald-500" />
-                        <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de mesa encontrado.</p>
-                        <p className="text-[11px]">Pedidos lançados nas mesas pelos garçons aparecerão aqui.</p>
-                      </>
-                    )}
-                    {caixaChannelFilter === 'todos' && (
-                      <>
-                        <Receipt className="w-8 h-8 mx-auto opacity-40 text-stone-400" />
-                        <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido encontrado neste filtro.</p>
-                        <p className="text-[11px]">Pedidos de todos os canais aparecerão aqui.</p>
-                      </>
-                    )}
+                  <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs space-y-1.5">
+                    <Bike className="w-8 h-8 mx-auto opacity-40 text-purple-400" />
+                    <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de delivery.</p>
+                    <p className="text-[11px]">Novos pedidos para entrega via motoboy aparecerão aqui automaticamente.</p>
                   </div>
                 ) : (
                   deliveryOrders.map((order) => {
@@ -739,21 +555,13 @@ export const CaixaView: React.FC = () => {
                     const isACaminho = order.status === 'a_caminho';
                     const isEntregue = order.status === 'entregue';
 
-                    const isRetirada = isRetiradaOrder(order);
-                    const isDelivery = isDeliveryOrder(order);
-                    const isMesa = isMesaOrder(order);
-
                     const orderTotal =
                       order.itens
                         .filter((it) => it.status === 'ativo')
-                        .reduce((acc, it) => acc + it.preco_total, 0) + (isDelivery ? (order.taxa_entrega || 0) : 0);
+                        .reduce((acc, it) => acc + it.preco_total, 0) + (order.taxa_entrega || 0);
 
                     const endereco = order.cliente_endereco || order.delivery_info?.endereco;
                     const telefone = order.cliente_telefone || order.delivery_info?.telefone;
-
-                    const matchingComanda = isMesa
-                      ? comandas.find((c) => c.mesa_id === order.mesa_id || c.mesa_numero === order.mesa_numero)
-                      : null;
 
                     return (
                       <div
@@ -772,23 +580,13 @@ export const CaixaView: React.FC = () => {
                       >
                         {/* Card Header */}
                         <div className="flex items-center justify-between gap-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className="flex items-center gap-1.5">
                             <span className="font-mono font-bold text-stone-900 dark:text-white">
                               #{order.id}
                             </span>
-                            {isRetirada ? (
-                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-amber-500 dark:bg-amber-600 text-white rounded flex items-center gap-1 shadow-2xs">
-                                <ShoppingBag className="w-2.5 h-2.5" /> RETIRADA (BUSCAR)
-                              </span>
-                            ) : isDelivery ? (
-                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-purple-600 text-white rounded flex items-center gap-1 shadow-2xs">
-                                <Bike className="w-2.5 h-2.5" /> DELIVERY
-                              </span>
-                            ) : (
-                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-stone-900 dark:bg-slate-800 text-white rounded flex items-center gap-1 shadow-2xs">
-                                <UtensilsCrossed className="w-2.5 h-2.5" /> MESA {order.mesa_numero?.toString().padStart(2, '0')}
-                              </span>
-                            )}
+                            <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-purple-600 text-white rounded flex items-center gap-1 shadow-2xs">
+                              <Bike className="w-2.5 h-2.5" /> DELIVERY
+                            </span>
                           </div>
 
                           {/* Status Badge */}
@@ -814,53 +612,303 @@ export const CaixaView: React.FC = () => {
                           )}
                           {isEntregue && (
                             <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-stone-700 text-stone-300 rounded-md">
-                              {isRetirada ? 'RETIRADO' : 'ENTREGUE'}
+                              ENTREGUE
                             </span>
                           )}
                         </div>
 
                         {/* Customer / Order Info */}
                         <div className="space-y-0.5 text-[11px] leading-tight">
-                          {isMesa ? (
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-stone-900 dark:text-white">
-                                Garçom: {order.garcom_nome || 'Atendente'}
-                              </span>
-                              <span className="text-[10px] text-stone-400 font-mono">
-                                Mesa {order.mesa_numero?.toString().padStart(2, '0')}
-                              </span>
+                          <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1">
+                            <span className="text-emerald-500">👤</span>
+                            <span className="truncate">{order.cliente_nome || 'Cliente'}</span>
+                          </div>
+                          {telefone && (
+                            <div className="text-stone-500 dark:text-slate-400 flex items-center gap-1">
+                              <Phone className="w-2.5 h-2.5" />
+                              <span>{telefone}</span>
                             </div>
-                          ) : (
-                            <>
-                              <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1">
-                                <span className="text-emerald-500">👤</span>
-                                <span className="truncate">{order.cliente_nome || 'Cliente'}</span>
+                          )}
+                          {endereco && (
+                            <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1">
+                              <MapPin className="w-2.5 h-2.5 text-red-500 shrink-0 mt-0.5" />
+                              <span className="text-[10px] leading-tight font-medium" title={endereco}>{endereco}</span>
+                            </div>
+                          )}
+                          {order.forma_pagamento && (
+                            <div className="text-[10px] text-stone-500 dark:text-slate-400 pt-0.5">
+                              💰 Pgto: <strong className="uppercase">{order.forma_pagamento}</strong>
+                              {order.troco_para ? ` (Troco p/ R$ ${order.troco_para.toFixed(2)})` : ''}
+                            </div>
+                          )}
+                          <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5" />
+                            <span>{formatTime(order.criado_em)}</span>
+                            {order.observacao && (
+                              <span className="text-amber-600 truncate ml-1 font-sans">
+                                • Obs: {order.observacao}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Items mini list */}
+                        <div className="pt-1.5 border-t border-stone-200/70 dark:border-slate-800/80 space-y-1">
+                          {order.itens
+                            .filter((it) => it.status === 'ativo')
+                            .map((it, idx) => (
+                              <div key={idx} className="flex justify-between items-baseline text-[11px]">
+                                <span className="truncate text-stone-800 dark:text-slate-200">
+                                  {it.quantidade}x {it.nome}
+                                </span>
+                                <span className="font-mono text-stone-600 dark:text-slate-400 text-[10px] ml-1">
+                                  {formatCurrency(it.preco_total)}
+                                </span>
                               </div>
-                              {telefone && (
-                                <div className="text-stone-500 dark:text-slate-400 flex items-center gap-1">
-                                  <Phone className="w-2.5 h-2.5" />
-                                  <span>{telefone}</span>
-                                </div>
-                              )}
-                              {isDelivery && endereco && (
-                                <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1">
-                                  <MapPin className="w-2.5 h-2.5 text-red-500 shrink-0 mt-0.5" />
-                                  <span className="text-[10px] leading-tight font-medium truncate" title={endereco}>{endereco}</span>
-                                </div>
-                              )}
-                              {isRetirada && (
-                                <div className="text-amber-800 dark:text-amber-300 flex items-center gap-1 font-semibold text-[10px] bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
-                                  <ShoppingBag className="w-2.5 h-2.5 text-amber-600" />
-                                  <span>Cliente busca no balcão da loja</span>
-                                </div>
-                              )}
-                              {order.forma_pagamento && (
-                                <div className="text-[10px] text-stone-500 dark:text-slate-400 pt-0.5">
-                                  💰 Pgto: <strong className="uppercase">{order.forma_pagamento}</strong>
-                                  {order.troco_para ? ` (Troco p/ R$ ${order.troco_para.toFixed(2)})` : ''}
-                                </div>
-                              )}
-                            </>
+                            ))}
+                        </div>
+
+                        {/* Total & Action Buttons */}
+                        <div className="pt-1.5 border-t border-stone-200/70 dark:border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
+                          <span className="font-mono font-bold text-xs text-purple-600 dark:text-purple-400">
+                            {formatCurrency(orderTotal)}
+                            {order.taxa_entrega ? (
+                              <span className="text-[9px] text-stone-400 block font-normal font-sans">
+                                (+ {formatCurrency(order.taxa_entrega)} taxa)
+                              </span>
+                            ) : null}
+                          </span>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setPrintingOrder({ order, autoPrint: false })}
+                              className="p-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-200 rounded-lg text-xs transition cursor-pointer"
+                              title="Reimprimir comanda de produção"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-purple-500" />
+                            </button>
+
+                            {isNovo && (
+                              <button
+                                type="button"
+                                onClick={() => handleConfirmOrder(order)}
+                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                                title="Confirmar pedido e imprimir comanda"
+                              >
+                                <Printer className="w-3 h-3 text-amber-300" />
+                                <span>Confirmar</span>
+                              </button>
+                            )}
+
+                            {isPreparo && (
+                              <button
+                                type="button"
+                                onClick={() => updateOrderStatus(order.id, 'a_caminho')}
+                                className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                              >
+                                <Bike className="w-3 h-3" />
+                                <span>Despachar</span>
+                              </button>
+                            )}
+
+                            {isACaminho && (
+                              <button
+                                type="button"
+                                onClick={() => updateOrderStatus(order.id, 'entregue')}
+                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span>Entregue</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Coluna 2: Retirada no Balcão (Buscar na Loja) */}
+          <div className="col-span-12 md:col-span-1 xl:col-span-3 space-y-3 flex flex-col">
+            <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-3.5 space-y-3 flex-1 flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-stone-100 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                    <ShoppingBag className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                      🛍️ Retirada (Buscar)
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-bold">
+                        {allRetiradaOrders.length}
+                      </span>
+                    </h2>
+                    <p className="text-[10px] text-stone-500 dark:text-slate-400">Pede no site e retira na loja</p>
+                  </div>
+                </div>
+
+                {countNovosRetirada > 0 && (
+                  <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-full animate-pulse shadow-xs">
+                    {countNovosRetirada} novo{countNovosRetirada > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+
+              {/* Status Chips */}
+              <div className="flex flex-wrap items-center gap-1 text-[10px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setRetiradaFilter('todos')}
+                  className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
+                    retiradaFilter === 'todos'
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                      : 'bg-stone-50 dark:bg-slate-950 text-stone-600 dark:text-slate-400 border-stone-200 dark:border-slate-800 hover:bg-stone-100 dark:hover:bg-slate-900'
+                  }`}
+                >
+                  Todos ({allRetiradaOrders.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRetiradaFilter('novo')}
+                  className={`px-2 py-0.5 rounded-md border transition flex items-center gap-1 cursor-pointer ${
+                    retiradaFilter === 'novo'
+                      ? 'bg-red-600 text-white border-red-700 shadow-2xs'
+                      : 'bg-red-50 dark:bg-slate-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900/50 hover:bg-red-100/70'
+                  }`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  Novos ({countNovosRetirada})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRetiradaFilter('em_preparo')}
+                  className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
+                    retiradaFilter === 'em_preparo'
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                      : 'bg-amber-50 dark:bg-slate-950 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100/70'
+                  }`}
+                >
+                  Preparo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRetiradaFilter('pronto')}
+                  className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
+                    retiradaFilter === 'pronto'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                      : 'bg-emerald-50 dark:bg-slate-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100/70'
+                  }`}
+                >
+                  Pronto p/ Retirar 🛍️
+                </button>
+              </div>
+
+              {/* Quick Search */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 dark:text-slate-500" />
+                <input
+                  type="text"
+                  value={retiradaSearch}
+                  onChange={(e) => setRetiradaSearch(e.target.value)}
+                  placeholder="Buscar cliente, fone, #..."
+                  className="w-full pl-7.5 pr-2.5 py-1.5 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-amber-400 dark:focus:border-amber-600 transition"
+                />
+              </div>
+
+              {/* Orders List */}
+              <div className="space-y-2.5 max-h-[64vh] overflow-y-auto pr-1 flex-1">
+                {retiradaOrders.length === 0 ? (
+                  <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs space-y-1.5">
+                    <ShoppingBag className="w-8 h-8 mx-auto opacity-40 text-amber-500" />
+                    <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de retirada.</p>
+                    <p className="text-[11px]">Pedidos onde o cliente busca no balcão aparecerão aqui.</p>
+                  </div>
+                ) : (
+                  retiradaOrders.map((order) => {
+                    const isNovo = order.status === 'novo';
+                    const isPreparo = order.status === 'em_preparo';
+                    const isPronto = order.status === 'pronto';
+                    const isEntregue = order.status === 'entregue';
+
+                    const orderTotal = order.itens
+                      .filter((it) => it.status === 'ativo')
+                      .reduce((acc, it) => acc + it.preco_total, 0);
+
+                    const telefone = order.cliente_telefone || order.delivery_info?.telefone;
+
+                    return (
+                      <div
+                        key={order.id}
+                        className={`p-3 rounded-xl border text-xs transition shadow-2xs space-y-2 relative ${
+                          isNovo
+                            ? 'bg-red-50/50 dark:bg-slate-950 border-2 border-red-500 ring-2 ring-red-500/20'
+                            : isPreparo
+                            ? 'bg-amber-50/40 dark:bg-slate-950 border-2 border-amber-400/90 dark:border-amber-500'
+                            : isPronto
+                            ? 'bg-emerald-50/30 dark:bg-slate-950 border-2 border-emerald-500'
+                            : 'bg-stone-50/70 dark:bg-slate-950 border border-stone-200 dark:border-slate-800'
+                        }`}
+                      >
+                        {/* Card Header */}
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-stone-900 dark:text-white">
+                              #{order.id}
+                            </span>
+                            <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-amber-500 text-white rounded flex items-center gap-1 shadow-2xs">
+                              <ShoppingBag className="w-2.5 h-2.5" /> RETIRADA
+                            </span>
+                          </div>
+
+                          {/* Status Badge */}
+                          {isNovo && (
+                            <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">
+                              ● NOVO
+                            </span>
+                          )}
+                          {isPreparo && (
+                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1">
+                              <Flame className="w-2.5 h-2.5" /> PREPARO
+                            </span>
+                          )}
+                          {isPronto && (
+                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1">
+                              <Check className="w-2.5 h-2.5" /> PRONTO
+                            </span>
+                          )}
+                          {isEntregue && (
+                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-stone-700 text-stone-300 rounded-md">
+                              RETIRADO
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Customer / Order Info */}
+                        <div className="space-y-0.5 text-[11px] leading-tight">
+                          <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1">
+                            <span className="text-amber-500">👤</span>
+                            <span className="truncate">{order.cliente_nome || 'Cliente'}</span>
+                          </div>
+                          {telefone && (
+                            <div className="text-stone-500 dark:text-slate-400 flex items-center gap-1">
+                              <Phone className="w-2.5 h-2.5" />
+                              <span>{telefone}</span>
+                            </div>
+                          )}
+                          <div className="text-amber-800 dark:text-amber-300 flex items-center gap-1 font-semibold text-[10px] bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
+                            <ShoppingBag className="w-2.5 h-2.5 text-amber-600" />
+                            <span>Retirada no balcão da pizzaria</span>
+                          </div>
+                          {order.forma_pagamento && (
+                            <div className="text-[10px] text-stone-500 dark:text-slate-400 pt-0.5">
+                              💰 Pgto: <strong className="uppercase">{order.forma_pagamento}</strong>
+                              {order.troco_para ? ` (Troco p/ R$ ${order.troco_para.toFixed(2)})` : ''}
+                            </div>
                           )}
                           <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1">
                             <Clock className="w-2.5 h-2.5" />
@@ -893,11 +941,9 @@ export const CaixaView: React.FC = () => {
                         <div className="pt-1.5 border-t border-stone-200/70 dark:border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
                           <span className="font-mono font-bold text-xs text-amber-600 dark:text-amber-400">
                             {formatCurrency(orderTotal)}
-                            {isDelivery && order.taxa_entrega ? (
-                              <span className="text-[9px] text-stone-400 block font-normal font-sans">
-                                (+ {formatCurrency(order.taxa_entrega)} entrega)
-                              </span>
-                            ) : null}
+                            <span className="text-[9px] text-stone-400 block font-normal font-sans">
+                              (Sem taxa de entrega)
+                            </span>
                           </span>
 
                           <div className="flex items-center gap-1">
@@ -929,22 +975,11 @@ export const CaixaView: React.FC = () => {
                                 className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
                               >
                                 <Check className="w-3 h-3" />
-                                <span>{isRetirada ? 'Pronto p/ Retirar' : isDelivery ? 'Pronto p/ Entrega' : 'Pronto'}</span>
+                                <span>Pronto p/ Retirar</span>
                               </button>
                             )}
 
-                            {isPronto && isDelivery && (
-                              <button
-                                type="button"
-                                onClick={() => updateOrderStatus(order.id, 'a_caminho')}
-                                className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
-                              >
-                                <Bike className="w-3 h-3" />
-                                <span>Despachar</span>
-                              </button>
-                            )}
-
-                            {isPronto && isRetirada && (
+                            {isPronto && (
                               <button
                                 type="button"
                                 onClick={() => updateOrderStatus(order.id, 'entregue')}
@@ -952,44 +987,6 @@ export const CaixaView: React.FC = () => {
                               >
                                 <ShoppingBag className="w-3 h-3" />
                                 <span>Entregar no Balcão</span>
-                              </button>
-                            )}
-
-                            {isPronto && isMesa && (
-                              <button
-                                type="button"
-                                onClick={() => updateOrderStatus(order.id, 'entregue')}
-                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
-                              >
-                                <Check className="w-3 h-3" />
-                                <span>Servido na Mesa</span>
-                              </button>
-                            )}
-
-                            {isACaminho && (
-                              <button
-                                type="button"
-                                onClick={() => updateOrderStatus(order.id, 'entregue')}
-                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
-                              >
-                                <Check className="w-3 h-3" />
-                                <span>Concluir</span>
-                              </button>
-                            )}
-
-                            {isMesa && matchingComanda && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedComandaId(matchingComanda.id);
-                                  setSplitMode('nenhum');
-                                  setPaymentAmountInput(matchingComanda.total.toFixed(2));
-                                }}
-                                className="px-2.5 py-1.5 bg-stone-900 hover:bg-stone-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
-                                title="Abrir comanda no fechamento do caixa"
-                              >
-                                <Receipt className="w-3 h-3 text-emerald-400" />
-                                <span>Ver Comanda</span>
                               </button>
                             )}
                           </div>
@@ -1002,189 +999,192 @@ export const CaixaView: React.FC = () => {
             </div>
           </div>
 
-          {/* Coluna 2: Comandas Abertas (Mesas) & Resumo do Caixa (Centro) */}
-          <div className="lg:col-span-4 xl:col-span-4 2xl:col-span-4 space-y-4">
-          <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-lg">
-                  <UtensilsCrossed className="w-4 h-4" />
-                </span>
-                <div>
-                  <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-                    Comandas das Mesas ({openComandas.length})
-                  </h2>
-                  <p className="text-[10px] text-stone-500 dark:text-slate-400">
-                    Consumo no salão para fechamento e pagamento
-                  </p>
+          {/* Coluna 3: Mesas & Comandas (Salão) + Resumo do Caixa */}
+          <div className="col-span-12 md:col-span-1 xl:col-span-3 space-y-3 flex flex-col">
+            <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-3.5 space-y-3 flex-1 flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-2.5 border-b border-stone-100 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-lg">
+                    <UtensilsCrossed className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                      🍽️ Mesas & Comandas
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold">
+                        {openComandas.length}
+                      </span>
+                    </h2>
+                    <p className="text-[10px] text-stone-500 dark:text-slate-400">Consumo presencial no salão</p>
+                  </div>
+                </div>
+
+                <div className="flex bg-stone-100 dark:bg-slate-950 p-0.5 rounded-lg border border-stone-200 dark:border-slate-800 text-[10px] font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setFilterMode('todas')}
+                    className={`px-2 py-0.5 rounded transition cursor-pointer ${
+                      filterMode === 'todas'
+                        ? 'bg-stone-900 dark:bg-slate-800 text-white shadow-2xs font-bold'
+                        : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Todas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterMode('fechar')}
+                    className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
+                      filterMode === 'fechar'
+                        ? 'bg-amber-400 dark:bg-amber-500 text-stone-950 font-bold shadow-2xs'
+                        : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>Pedindo Conta</span>
+                  </button>
                 </div>
               </div>
 
-              <div className="flex bg-stone-100 dark:bg-slate-950 p-1 rounded-xl border border-stone-200 dark:border-slate-800 text-xs font-semibold">
-                <button
-                  onClick={() => setFilterMode('todas')}
-                  className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-                    filterMode === 'todas'
-                      ? 'bg-stone-900 dark:bg-slate-800 text-white shadow-2xs'
-                      : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
-                  }`}
-                >
-                  Todas
-                </button>
-                <button
-                  onClick={() => setFilterMode('fechar')}
-                  className={`px-3 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
-                    filterMode === 'fechar'
-                      ? 'bg-amber-400 dark:bg-amber-500 text-stone-950 font-bold shadow-2xs'
-                      : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
-                  }`}
-                >
-                  <span>Pedindo Conta</span>
-                </button>
+              {/* Quick Search */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 dark:text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar comanda # ou mesa..."
+                  className="w-full pl-7.5 pr-2.5 py-1.5 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-emerald-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-900 transition"
+                />
               </div>
-            </div>
 
-            {/* Quick Search */}
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 dark:text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar comanda # ou mesa..."
-                className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-stone-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-900 transition"
-              />
-            </div>
+              {/* Comandas List */}
+              <div className="space-y-2 max-h-[44vh] overflow-y-auto pr-1 flex-1">
+                {openComandas.length === 0 ? (
+                  <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs">
+                    Nenhuma comanda aberta no salão.
+                  </div>
+                ) : (
+                  openComandas
+                    .filter((cmd) => {
+                      const table = tables.find((t) => t.id === cmd.mesa_id);
+                      if (filterMode === 'fechar' && table?.status !== 'aguardando_fechamento') {
+                        return false;
+                      }
+                      if (searchQuery) {
+                        return (
+                          cmd.numero.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          cmd.mesa_numero.toString().includes(searchQuery) ||
+                          (cmd.cliente_nome && cmd.cliente_nome.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                          cmd.garcom_nome.toLowerCase().includes(searchQuery.toLowerCase())
+                        );
+                      }
+                      return true;
+                    })
+                    .map((cmd) => {
+                      const table = tables.find((t) => t.id === cmd.mesa_id);
+                      const isSelected = cmd.id === selectedComandaId;
+                      const isWaitingClose = table?.status === 'aguardando_fechamento';
 
-            {/* Comandas List */}
-            <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
-              {openComandas.length === 0 ? (
-                <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs">
-                  Nenhuma comanda aberta no momento.
-                </div>
-              ) : (
-                openComandas
-                  .filter((cmd) => {
-                    const table = tables.find((t) => t.id === cmd.mesa_id);
-                    if (filterMode === 'fechar' && table?.status !== 'aguardando_fechamento') {
-                      return false;
-                    }
-                    if (searchQuery) {
                       return (
-                        cmd.numero.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        cmd.mesa_numero.toString().includes(searchQuery) ||
-                        (cmd.cliente_nome && cmd.cliente_nome.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                        cmd.garcom_nome.toLowerCase().includes(searchQuery.toLowerCase())
-                      );
-                    }
-                    return true;
-                  })
-                  .map((cmd) => {
-                    const table = tables.find((t) => t.id === cmd.mesa_id);
-                    const isSelected = cmd.id === selectedComandaId;
-                    const isWaitingClose = table?.status === 'aguardando_fechamento';
-
-                    return (
-                      <button
-                        key={cmd.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedComandaId(cmd.id);
-                          setSplitMode('nenhum');
-                          setPaymentAmountInput(cmd.total.toFixed(2));
-                        }}
-                        className={`w-full text-left p-3.5 rounded-xl border transition flex items-center justify-between cursor-pointer relative ${
-                          isSelected
-                            ? 'bg-stone-900 dark:bg-slate-800 text-white border-2 border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg'
-                            : isWaitingClose
-                            ? 'bg-amber-50/90 dark:bg-slate-950 text-stone-900 dark:text-white border-2 border-amber-400/80 dark:border-amber-500 hover:bg-amber-100/80 dark:hover:bg-slate-900'
-                            : 'bg-stone-50/80 dark:bg-slate-950 hover:bg-stone-100/80 dark:hover:bg-slate-900 text-stone-900 dark:text-white border border-stone-200 dark:border-slate-800'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-xs font-mono font-bold ${isSelected ? 'text-emerald-400' : 'text-stone-500 dark:text-slate-400'}`}>
-                              {cmd.numero}
-                            </span>
-                            <span className="font-bold text-sm text-stone-900 dark:text-white">
-                              Mesa {cmd.mesa_numero.toString().padStart(2, '0')}
-                            </span>
-                            {isSelected && (
-                              <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-emerald-500 text-slate-950 rounded-md shadow-xs">
-                                ✓ SELECIONADA
+                        <button
+                          key={cmd.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedComandaId(cmd.id);
+                            setSplitMode('nenhum');
+                            setPaymentAmountInput(cmd.total.toFixed(2));
+                          }}
+                          className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between cursor-pointer relative ${
+                            isSelected
+                              ? 'bg-stone-900 dark:bg-slate-800 text-white border-2 border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg'
+                              : isWaitingClose
+                              ? 'bg-amber-50/90 dark:bg-slate-950 text-stone-900 dark:text-white border-2 border-amber-400/80 dark:border-amber-500 hover:bg-amber-100/80 dark:hover:bg-slate-900'
+                              : 'bg-stone-50/80 dark:bg-slate-950 hover:bg-stone-100/80 dark:hover:bg-slate-900 text-stone-900 dark:text-white border border-stone-200 dark:border-slate-800'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`text-xs font-mono font-bold ${isSelected ? 'text-emerald-400' : 'text-stone-500 dark:text-slate-400'}`}>
+                                {cmd.numero}
+                              </span>
+                              <span className="font-bold text-xs text-stone-900 dark:text-white">
+                                Mesa {cmd.mesa_numero.toString().padStart(2, '0')}
+                              </span>
+                              {isSelected && (
+                                <span className="px-1.5 py-0.2 text-[9px] font-black uppercase bg-emerald-500 text-slate-950 rounded-md shadow-xs">
+                                  ✓ ATIVA
+                                </span>
+                              )}
+                              {isWaitingClose && (
+                                <span className="px-1.5 py-0.2 text-[9px] font-bold uppercase bg-red-600 text-white rounded-full animate-pulse">
+                                  Conta
+                                </span>
+                              )}
+                            </div>
+                            {cmd.cliente_nome && (
+                              <span className="text-[11px] font-semibold text-emerald-500 dark:text-emerald-400 block mt-0.5">
+                                👤 Cliente: {cmd.cliente_nome}
                               </span>
                             )}
-                            {isWaitingClose && (
-                              <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-red-600 text-white rounded-full animate-pulse">
-                                Conta Solicitada
-                              </span>
-                            )}
+                            <span className={`text-[11px] block mt-0.5 ${isSelected ? 'text-stone-300 dark:text-slate-300' : 'text-stone-500 dark:text-slate-400'}`}>
+                              Garçom: {cmd.garcom_nome} • {formatTime(cmd.abertura)}
+                            </span>
                           </div>
-                          {cmd.cliente_nome && (
-                            <span className="text-xs font-semibold text-emerald-500 dark:text-emerald-400 block mt-0.5">
-                              👤 Cliente: {cmd.cliente_nome}
+
+                          <div className="text-right">
+                            <span className={`text-xs font-mono font-bold block ${isWaitingClose && !isSelected ? 'text-amber-600 dark:text-amber-400' : 'text-stone-900 dark:text-white'}`}>
+                              {formatCurrency(cmd.total)}
                             </span>
-                          )}
-                          <span className={`text-xs block mt-1 ${isSelected ? 'text-stone-300 dark:text-slate-300' : 'text-stone-500 dark:text-slate-400'}`}>
-                            Garçom: {cmd.garcom_nome} • {formatTime(cmd.abertura)}
-                          </span>
-                        </div>
-
-                        <div className="text-right">
-                          <span className={`text-sm font-mono font-bold block ${isWaitingClose && !isSelected ? 'text-amber-600 dark:text-amber-400' : 'text-stone-900 dark:text-white'}`}>
-                            {formatCurrency(cmd.total)}
-                          </span>
-                          <span className="text-[10px] font-mono opacity-60 text-stone-500 dark:text-slate-400">
-                            {cmd.pedidos_ids.length} pedidos
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })
-              )}
-            </div>
-          </div>
-
-          {/* Quick Cash Summary Widget */}
-          <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-slate-300">Resumo do Caixa</span>
-              <span className="text-xs text-stone-500 dark:text-slate-400 font-mono">
-                Abertura: <strong className="text-stone-800 dark:text-slate-200">{formatCurrency(cashRegister.valor_inicial)}</strong>
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-              <div className="p-2.5 bg-stone-50 dark:bg-slate-950 rounded-xl border border-stone-200 dark:border-slate-800">
-                <span className="text-[10px] text-stone-500 dark:text-slate-400 block uppercase font-medium">Dinheiro</span>
-                <span className="font-bold text-stone-900 dark:text-white font-mono">
-                  {formatCurrency(paymentBreakdown.dinheiro)}
-                </span>
+                            <span className="text-[10px] font-mono opacity-60 text-stone-500 dark:text-slate-400">
+                              {cmd.pedidos_ids.length} pedidos
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })
+                )}
               </div>
-              <div className="p-2.5 bg-emerald-50/70 dark:bg-slate-950 rounded-xl border border-emerald-200/70 dark:border-emerald-800/60">
-                <span className="text-[10px] text-emerald-700 dark:text-emerald-400 block uppercase font-medium">PIX</span>
-                <span className="font-bold text-emerald-950 dark:text-emerald-300 font-mono">
-                  {formatCurrency(paymentBreakdown.pix)}
-                </span>
-              </div>
-              <div className="p-2.5 bg-sky-50/70 dark:bg-slate-950 rounded-xl border border-sky-200/70 dark:border-sky-800/60">
-                <span className="text-[10px] text-sky-700 dark:text-sky-400 block uppercase font-medium">Débito</span>
-                <span className="font-bold text-sky-950 dark:text-sky-300 font-mono">
-                  {formatCurrency(paymentBreakdown.debito)}
-                </span>
-              </div>
-              <div className="p-2.5 bg-purple-50/70 dark:bg-slate-950 rounded-xl border border-purple-200/70 dark:border-purple-800/60">
-                <span className="text-[10px] text-purple-700 dark:text-purple-400 block uppercase font-medium">Crédito</span>
-                <span className="font-bold text-purple-950 dark:text-purple-300 font-mono">
-                  {formatCurrency(paymentBreakdown.credito)}
-                </span>
+
+              {/* Resumo do Caixa Widget */}
+              <div className="pt-2 border-t border-stone-200 dark:border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold uppercase tracking-wider text-stone-700 dark:text-slate-300 text-[10px]">Resumo do Caixa</span>
+                  <span className="text-[10px] text-stone-500 dark:text-slate-400 font-mono">
+                    Abertura: <strong>{formatCurrency(cashRegister.valor_inicial)}</strong>
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-center text-[11px]">
+                  <div className="p-1.5 bg-stone-50 dark:bg-slate-950 rounded-lg border border-stone-200 dark:border-slate-800">
+                    <span className="text-[9px] text-stone-500 block uppercase font-medium">Dinheiro</span>
+                    <span className="font-bold text-stone-900 dark:text-white font-mono text-[11px] block">
+                      {formatCurrency(paymentBreakdown.dinheiro)}
+                    </span>
+                  </div>
+                  <div className="p-1.5 bg-emerald-50/70 dark:bg-slate-950 rounded-lg border border-emerald-200/70 dark:border-emerald-800/60">
+                    <span className="text-[9px] text-emerald-700 dark:text-emerald-400 block uppercase font-medium">PIX</span>
+                    <span className="font-bold text-emerald-950 dark:text-emerald-300 font-mono text-[11px] block">
+                      {formatCurrency(paymentBreakdown.pix)}
+                    </span>
+                  </div>
+                  <div className="p-1.5 bg-sky-50/70 dark:bg-slate-950 rounded-lg border border-sky-200/70 dark:border-sky-800/60">
+                    <span className="text-[9px] text-sky-700 dark:text-sky-400 block uppercase font-medium">Débito</span>
+                    <span className="font-bold text-sky-950 dark:text-sky-300 font-mono text-[11px] block">
+                      {formatCurrency(paymentBreakdown.debito)}
+                    </span>
+                  </div>
+                  <div className="p-1.5 bg-purple-50/70 dark:bg-slate-950 rounded-lg border border-purple-200/70 dark:border-purple-800/60">
+                    <span className="text-[9px] text-purple-700 dark:text-purple-400 block uppercase font-medium">Crédito</span>
+                    <span className="font-bold text-purple-950 dark:text-purple-300 font-mono text-[11px] block">
+                      {formatCurrency(paymentBreakdown.credito)}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Column: Checkout & Payment Workspace (Shifted right, 5 cols on xl/2xl) */}
-        <div className="lg:col-span-4 xl:col-span-5 2xl:col-span-5">
+          {/* Coluna 4: Conferência & Pagamento (Workspace) */}
+          <div className="col-span-12 md:col-span-1 xl:col-span-3 space-y-3 flex flex-col">
           {!activeComanda ? (
             <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-12 text-center text-stone-400 dark:text-slate-400 h-full flex flex-col items-center justify-center space-y-3 min-h-[400px]">
               <Receipt className="w-12 h-12 text-stone-300 dark:text-slate-600" />
