@@ -38,6 +38,7 @@ import {
 import { playKitchenBell, playReadyDing, playCashChime } from '../utils/audio';
 import { generateComandaNumber } from '../utils/formatters';
 import { sanitizeUserForSession } from '../utils/security';
+import { getClientDeviceInfo, evaluateLoginRisk } from '../utils/deviceDetection';
 import {
   db,
   FIRESTORE_COLLECTIONS,
@@ -46,6 +47,7 @@ import {
   saveComandaToFirestore,
   saveOrderToFirestore,
   saveLoginAttemptToFirestore,
+  clearAllLoginAttemptsFromFirestore,
   saveProductToFirestore,
   deleteProductFromFirestore,
   saveCustomizationsToFirestore,
@@ -147,6 +149,7 @@ interface StoreContextType {
   ) => void;
   loginAttempts: LoginAttempt[];
   recordLoginAttempt: (usuario: string, sucesso: boolean, motivo?: string, lojaId?: string, lojaNome?: string) => void;
+  clearLoginAttempts: (filter?: 'todas' | 'antigas_7dias') => Promise<void>;
   isUserLockedOut: (usuario: string) => { locked: boolean; remainingMinutes?: number };
   resetLoginLockout: (usuario: string) => void;
   createDeliveryOrder: (
@@ -1578,19 +1581,83 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const willBeBlocked = !sucesso && recentFailures >= 4;
 
-    const attempt: LoginAttempt = {
-      id: `attempt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      usuario: cleanUser,
-      loja_id: lojaId,
-      loja_nome: lojaNome,
-      data_hora: new Date().toISOString(),
-      sucesso,
-      motivo_falha: motivo,
-      bloqueado: willBeBlocked,
-    };
+    // Resolve IP, dispositivo e nível de risco forense
+    getClientDeviceInfo().then((deviceInfo) => {
+      const matchedUser = users.find((u) => u.usuario.toLowerCase() === cleanUser);
+      const isAdminUser =
+        matchedUser?.perfil === 'super_admin' ||
+        matchedUser?.perfil === 'admin' ||
+        cleanUser === 'dono' ||
+        cleanUser === 'admin' ||
+        cleanUser === 'carlos';
 
-    setLoginAttempts((prev) => [attempt, ...prev].slice(0, 100));
-    saveLoginAttemptToFirestore(attempt);
+      const risk = evaluateLoginRisk(
+        cleanUser,
+        deviceInfo.dispositivo,
+        deviceInfo.ip,
+        loginAttempts,
+        isAdminUser
+      );
+
+      const attempt: LoginAttempt = {
+        id: `attempt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        usuario: cleanUser,
+        loja_id: lojaId,
+        loja_nome: lojaNome,
+        data_hora: new Date().toISOString(),
+        sucesso,
+        ip_origem: deviceInfo.ip,
+        cidade_regiao: deviceInfo.cidade
+          ? `${deviceInfo.cidade} - ${deviceInfo.regiao || deviceInfo.pais || ''}`
+          : deviceInfo.pais || undefined,
+        dispositivo: deviceInfo.dispositivo,
+        navegador: deviceInfo.navegador,
+        user_agent: deviceInfo.userAgent,
+        is_novo_ip: risk.is_novo_ip,
+        is_novo_dispositivo: risk.is_novo_dispositivo,
+        alerta_risco: risk.alerta_risco,
+        detalhe_seguranca: risk.detalhe_seguranca,
+        motivo_falha: motivo,
+        bloqueado: willBeBlocked,
+      };
+
+      setLoginAttempts((prev) => [attempt, ...prev].slice(0, 100));
+      saveLoginAttemptToFirestore(attempt);
+    }).catch(() => {
+      const fallbackAttempt: LoginAttempt = {
+        id: `attempt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        usuario: cleanUser,
+        loja_id: lojaId,
+        loja_nome: lojaNome,
+        data_hora: new Date().toISOString(),
+        sucesso,
+        ip_origem: 'IP Protegido',
+        dispositivo: 'Dispositivo Web',
+        motivo_falha: motivo,
+        bloqueado: willBeBlocked,
+      };
+      setLoginAttempts((prev) => [fallbackAttempt, ...prev].slice(0, 100));
+      saveLoginAttemptToFirestore(fallbackAttempt);
+    });
+  };
+
+  const clearLoginAttempts = async (filter: 'todas' | 'antigas_7dias' = 'todas') => {
+    try {
+      if (filter === 'antigas_7dias') {
+        const cutoffTime = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const toDelete = loginAttempts.filter((a) => new Date(a.data_hora).getTime() < cutoffTime);
+        const remaining = loginAttempts.filter((a) => new Date(a.data_hora).getTime() >= cutoffTime);
+        setLoginAttempts(remaining);
+        try { localStorage.setItem(STORAGE_KEYS.LOGIN_ATTEMPTS, JSON.stringify(remaining)); } catch {}
+        await clearAllLoginAttemptsFromFirestore(toDelete.map((a) => a.id));
+      } else {
+        setLoginAttempts([]);
+        try { localStorage.removeItem(STORAGE_KEYS.LOGIN_ATTEMPTS); } catch {}
+        await clearAllLoginAttemptsFromFirestore();
+      }
+    } catch (err) {
+      console.warn('Erro ao limpar tentativas de login:', err);
+    }
   };
 
   const isUserLockedOut = (usuario: string): { locked: boolean; remainingMinutes?: number } => {
@@ -1932,6 +1999,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         createStoreWithAdmin,
         loginAttempts,
         recordLoginAttempt,
+        clearLoginAttempts,
         isUserLockedOut,
         resetLoginLockout,
         createDeliveryOrder,

@@ -37,7 +37,15 @@ export interface LoginAttempt {
   data_hora: string;
   sucesso: boolean;
   ip_origem?: string;
+  cidade_regiao?: string;
+  dispositivo?: string;
+  navegador?: string;
+  user_agent?: string;
+  is_novo_ip?: boolean;
+  is_novo_dispositivo?: boolean;
+  alerta_risco?: 'normal' | 'suspeito' | 'alto_risco';
   motivo_falha?: string;
+  detalhe_seguranca?: string;
   bloqueado?: boolean;
 }
 

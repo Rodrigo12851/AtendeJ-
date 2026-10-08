@@ -157,6 +157,28 @@ export async function saveLoginAttemptToFirestore(attempt: LoginAttempt): Promis
   }
 }
 
+export async function clearAllLoginAttemptsFromFirestore(attemptIds?: string[]): Promise<void> {
+  try {
+    if (attemptIds && attemptIds.length > 0) {
+      const batch = writeBatch(db);
+      for (const id of attemptIds) {
+        batch.delete(doc(db, FIRESTORE_COLLECTIONS.LOGIN_ATTEMPTS, id));
+      }
+      await batch.commit();
+    } else {
+      const colRef = collection(db, FIRESTORE_COLLECTIONS.LOGIN_ATTEMPTS);
+      const snap = await getDocs(colRef);
+      if (!snap.empty) {
+        const batch = writeBatch(db);
+        snap.docs.forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+  } catch (error) {
+    console.warn('[Firestore] Falha ao limpar tentativas de login na nuvem:', error);
+  }
+}
+
 export async function saveProductToFirestore(product: Product): Promise<void> {
   try {
     const docRef = doc(db, FIRESTORE_COLLECTIONS.PRODUCTS, product.id);

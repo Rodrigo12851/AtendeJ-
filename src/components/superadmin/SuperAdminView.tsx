@@ -29,6 +29,10 @@ import {
   UtensilsCrossed,
   CircleDollarSign,
   Pizza,
+  Trash2,
+  Globe,
+  Laptop,
+  Smartphone,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Loja } from '../../types';
@@ -45,6 +49,7 @@ export const SuperAdminView: React.FC = () => {
     createStoreWithAdmin,
     resetLoginLockout,
     isUserLockedOut,
+    clearLoginAttempts,
   } = useStore();
 
   const [activeTab, setActiveTab] = useState<'lojas' | 'seguranca' | 'lgpd'>('lojas');
@@ -54,6 +59,24 @@ export const SuperAdminView: React.FC = () => {
   const [activeStoreLinksModal, setActiveStoreLinksModal] = useState<Loja | null>(null);
   const [searchLoja, setSearchLoja] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'ativas' | 'suspensas'>('todos');
+
+  // Estados para limpeza do histórico de logins
+  const [showClearAttemptsModal, setShowClearAttemptsModal] = useState(false);
+  const [isClearingAttempts, setIsClearingAttempts] = useState(false);
+  const [clearFilterMode, setClearFilterMode] = useState<'todas' | 'antigas_7dias'>('todas');
+  const [clearSuccessMsg, setClearSuccessMsg] = useState(false);
+
+  const handleConfirmClearAttempts = async () => {
+    setIsClearingAttempts(true);
+    try {
+      await clearLoginAttempts(clearFilterMode);
+      setShowClearAttemptsModal(false);
+      setClearSuccessMsg(true);
+      setTimeout(() => setClearSuccessMsg(false), 4000);
+    } finally {
+      setIsClearingAttempts(false);
+    }
+  };
 
   // Form State da Nova Loja
   const [nomeLoja, setNomeLoja] = useState('');
@@ -915,23 +938,44 @@ export const SuperAdminView: React.FC = () => {
 
           {/* Tabela de Tentativas de Acesso */}
           <div className="bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-xs overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between">
+            <div className="p-4 sm:p-5 border-b border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-stone-900 dark:text-white flex items-center gap-2">
                   <Clock className="w-4 h-4 text-stone-400" />
                   <span>Histórico de Tentativas de Login ({loginAttempts.length})</span>
                 </h3>
                 <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                  Registros em tempo real na nuvem Firestore para auditoria de segurança.
+                  Auditoria forense em tempo real: rastreamento de IP, dispositivo, navegador e alertas de novos aparelhos.
                 </p>
               </div>
+
+              <div className="flex items-center gap-2">
+                {loginAttempts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowClearAttemptsModal(true)}
+                    className="px-3.5 py-2 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
+                    title="Apagar tentativas de login antigas do sistema"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                    <span>Apagar Tentativas Antigas</span>
+                  </button>
+                )}
+              </div>
             </div>
+
+            {clearSuccessMsg && (
+              <div className="m-4 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-300 font-bold animate-in fade-in">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>Histórico de tentativas de login limpo com sucesso!</span>
+              </div>
+            )}
 
             {loginAttempts.length === 0 ? (
               <div className="p-12 text-center text-stone-400 space-y-2">
                 <ShieldCheck className="w-10 h-10 mx-auto text-emerald-500" />
                 <p className="text-sm font-bold text-stone-700 dark:text-stone-300">Nenhum incidente registrado</p>
-                <p className="text-xs text-stone-500">Todas as tentativas de acesso até agora foram normais.</p>
+                <p className="text-xs text-stone-500">Histórico limpo. Novas tentativas registrarão IP e dispositivo automaticamente.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -939,55 +983,152 @@ export const SuperAdminView: React.FC = () => {
                   <thead className="bg-stone-50 dark:bg-stone-800/60 text-stone-500 dark:text-stone-400 font-bold border-b border-stone-200 dark:border-stone-800 uppercase text-[10px]">
                     <tr>
                       <th className="px-4 py-3">Data / Horário</th>
-                      <th className="px-4 py-3">Usuário Tentado</th>
+                      <th className="px-4 py-3">Usuário & Loja</th>
+                      <th className="px-4 py-3">Endereço IP & Local</th>
+                      <th className="px-4 py-3">Dispositivo & Navegador</th>
                       <th className="px-4 py-3">Status do Acesso</th>
-                      <th className="px-4 py-3">Motivo / Detalhe</th>
+                      <th className="px-4 py-3">Auditoria de Risco</th>
                       <th className="px-4 py-3 text-right">Ação de Segurança</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                     {loginAttempts.map((attempt) => {
                       const lockout = isUserLockedOut(attempt.usuario);
+                      const isHighRisk = attempt.alerta_risco === 'alto_risco' || attempt.bloqueado;
+                      const isSuspicious = attempt.alerta_risco === 'suspeito' || attempt.is_novo_dispositivo || attempt.is_novo_ip;
 
                       return (
                         <tr
                           key={attempt.id}
-                          className={`hover:bg-stone-50/80 dark:hover:bg-stone-800/40 transition ${
-                            attempt.bloqueado ? 'bg-red-50/40 dark:bg-red-950/20' : ''
+                          className={`transition ${
+                            isHighRisk
+                              ? 'bg-red-50/60 dark:bg-red-950/30 hover:bg-red-100/50'
+                              : isSuspicious
+                              ? 'bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100/40'
+                              : 'hover:bg-stone-50/80 dark:hover:bg-stone-800/40'
                           }`}
                         >
-                          <td className="px-4 py-3 font-mono text-stone-600 dark:text-stone-400">
+                          {/* 1. Data e Horário */}
+                          <td className="px-4 py-3.5 font-mono text-stone-600 dark:text-stone-400 text-[11px] whitespace-nowrap">
                             {formatDateTime(attempt.data_hora)}
                           </td>
-                          <td className="px-4 py-3">
-                            <span className="font-bold text-stone-900 dark:text-white block font-mono">
-                              {attempt.usuario}
-                            </span>
+
+                          {/* 2. Usuário e Loja */}
+                          <td className="px-4 py-3.5">
+                            <div className="space-y-0.5">
+                              <span className="font-bold text-stone-900 dark:text-white block font-mono text-xs">
+                                {attempt.usuario}
+                              </span>
+                              {attempt.loja_nome ? (
+                                <span className="text-[10px] text-stone-500 dark:text-stone-400 block truncate max-w-[150px]">
+                                  Loja: {attempt.loja_nome}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold block">
+                                  Acesso Master / Dono
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-4 py-3">
+
+                          {/* 3. Endereço IP & Localização */}
+                          <td className="px-4 py-3.5">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-mono text-stone-800 dark:text-stone-200 font-bold text-xs bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded">
+                                  {attempt.ip_origem || 'IP Local / Protegido'}
+                                </span>
+                                {attempt.is_novo_ip && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
+                                    Novo IP
+                                  </span>
+                                )}
+                              </div>
+                              {attempt.cidade_regiao && (
+                                <span className="text-[10px] text-stone-500 dark:text-stone-400 flex items-center gap-1">
+                                  <MapPin className="w-2.5 h-2.5 text-stone-400 shrink-0" />
+                                  <span className="truncate max-w-[160px]">{attempt.cidade_regiao}</span>
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 4. Dispositivo & Navegador */}
+                          <td className="px-4 py-3.5">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-semibold text-stone-800 dark:text-stone-200">
+                                  {attempt.dispositivo || '💻 Computador Web'}
+                                </span>
+                                {attempt.is_novo_dispositivo && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                                    Novo Aparelho
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-stone-500 dark:text-stone-400 block font-mono">
+                                {attempt.navegador || 'Navegador Padrão'}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* 5. Status do Acesso */}
+                          <td className="px-4 py-3.5 whitespace-nowrap">
                             {attempt.bloqueado ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
                                 🚫 Bloqueado por Força Bruta
                               </span>
                             ) : attempt.sucesso ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                                 ✓ Login Concluído
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                ⚠️ PIN Incorreto
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                ⚠️ Senha/PIN Incorreto
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-stone-500 dark:text-stone-400">
-                            {attempt.motivo_falha || 'Autenticação autorizada'}
+
+                          {/* 6. Análise de Risco Forense */}
+                          <td className="px-4 py-3.5 min-w-[200px]">
+                            {isHighRisk ? (
+                              <div className="space-y-1">
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-red-600 text-white flex items-center gap-1 w-fit shadow-2xs">
+                                  🚨 ALTO RISCO DE ATAQUE
+                                </span>
+                                <p className="text-[11px] text-red-700 dark:text-red-400 font-semibold leading-tight">
+                                  {attempt.detalhe_seguranca || attempt.motivo_falha || 'Tentativa suspeita em aparelho desconhecido'}
+                                </p>
+                              </div>
+                            ) : isSuspicious ? (
+                              <div className="space-y-1">
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-500 text-stone-950 flex items-center gap-1 w-fit font-mono">
+                                  ⚠️ NOVO APARELHO / IP
+                                </span>
+                                <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-tight">
+                                  {attempt.detalhe_seguranca || 'Acesso registrado de dispositivo ou IP diferente'}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-0.5">
+                                <span className="text-[11px] text-stone-600 dark:text-stone-300 flex items-center gap-1">
+                                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                                  <span>{attempt.motivo_falha || 'Autenticação autorizada'}</span>
+                                </span>
+                                <span className="text-[10px] text-stone-400 block">
+                                  Dispositivo e IP habituais
+                                </span>
+                              </div>
+                            )}
                           </td>
-                          <td className="px-4 py-3 text-right">
+
+                          {/* 7. Ação de Segurança */}
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
                             {lockout.locked ? (
                               <button
                                 type="button"
                                 onClick={() => resetLoginLockout(attempt.usuario)}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition cursor-pointer"
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition cursor-pointer shadow-xs"
                               >
                                 Desbloquear Conta
                               </button>
@@ -1003,6 +1144,107 @@ export const SuperAdminView: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Modal de Limpeza de Tentativas de Login */}
+          {showClearAttemptsModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs animate-in fade-in">
+              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-2xl max-w-md w-full space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400 flex items-center justify-center shrink-0">
+                    <Trash2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-stone-900 dark:text-white">
+                      Limpar Tentativas de Login Antigas
+                    </h3>
+                    <p className="text-xs text-stone-500 dark:text-stone-400">
+                      Você tem {loginAttempts.length} registro(s) armazenado(s).
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                  Escolha abaixo como deseja limpar o histórico para iniciar os novos registros com IP e identificação de dispositivo:
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition ${
+                      clearFilterMode === 'todas'
+                        ? 'border-red-500 bg-red-50/50 dark:bg-red-950/30'
+                        : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/30'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="clearFilter"
+                      checked={clearFilterMode === 'todas'}
+                      onChange={() => setClearFilterMode('todas')}
+                      className="mt-0.5 accent-red-600"
+                    />
+                    <div>
+                      <strong className="text-xs block text-stone-900 dark:text-white">
+                        Apagar Todo o Histórico (Zerar)
+                      </strong>
+                      <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                        Remove todas as tentativas antigas para manter apenas os novos logins com IP e aparelho.
+                      </span>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition ${
+                      clearFilterMode === 'antigas_7dias'
+                        ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/30'
+                        : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/30'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="clearFilter"
+                      checked={clearFilterMode === 'antigas_7dias'}
+                      onChange={() => setClearFilterMode('antigas_7dias')}
+                      className="mt-0.5 accent-amber-600"
+                    />
+                    <div>
+                      <strong className="text-xs block text-stone-900 dark:text-white">
+                        Apagar Apenas Anteriores a 7 Dias
+                      </strong>
+                      <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                        Mantém os registros recentes da última semana e descarta os mais antigos.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-stone-100 dark:border-stone-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowClearAttemptsModal(false)}
+                    disabled={isClearingAttempts}
+                    className="px-4 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 font-bold text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmClearAttempts}
+                    disabled={isClearingAttempts}
+                    className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                  >
+                    {isClearingAttempts ? (
+                      <span>Apagando...</span>
+                    ) : (
+                      <>
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Confirmar Exclusão</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
