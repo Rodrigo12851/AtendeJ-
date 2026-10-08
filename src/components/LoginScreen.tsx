@@ -252,7 +252,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       (u) =>
         u.pin === pin &&
         u.perfil !== 'super_admin' &&
-        (u.loja_id === loja.id || (!u.loja_id && loja.id === 'loja_centro'))
+        u.loja_id === loja.id
     );
 
     if (matchedUser) {
@@ -264,7 +264,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         return;
       }
 
-      const success = loginWithPin(pin);
+      const success = loginWithPin(pin, loja.id);
       if (success) {
         recordLoginAttempt(matchedUser.usuario, true, undefined, loja.id, loja.nome);
         onLoginSuccess?.();

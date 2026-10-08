@@ -46,6 +46,7 @@ export const SuperAdminView: React.FC = () => {
     users,
     loginAttempts,
     toggleLojaAtiva,
+    deleteLoja,
     createStoreWithAdmin,
     resetLoginLockout,
     isUserLockedOut,
@@ -59,6 +60,28 @@ export const SuperAdminView: React.FC = () => {
   const [activeStoreLinksModal, setActiveStoreLinksModal] = useState<Loja | null>(null);
   const [searchLoja, setSearchLoja] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'ativas' | 'suspensas'>('todos');
+
+  // Estado para exclusão definitiva de loja
+  const [lojaToDelete, setLojaToDelete] = useState<Loja | null>(null);
+  const [isDeletingLoja, setIsDeletingLoja] = useState(false);
+  const [deleteLojaSuccess, setDeleteLojaSuccess] = useState<string | null>(null);
+
+  const handleConfirmDeleteLoja = async () => {
+    if (!lojaToDelete) return;
+    setIsDeletingLoja(true);
+    try {
+      const nomeRemovido = lojaToDelete.marca || lojaToDelete.nome;
+      await deleteLoja(lojaToDelete.id);
+      setLojaToDelete(null);
+      setDeleteLojaSuccess(`A loja "${nomeRemovido}" e todos os seus dados foram excluídos definitivamente do sistema.`);
+      setTimeout(() => setDeleteLojaSuccess(null), 5000);
+    } catch (err) {
+      console.error('Erro ao excluir loja:', err);
+      alert('Erro ao excluir loja do sistema.');
+    } finally {
+      setIsDeletingLoja(false);
+    }
+  };
 
   // Estados para limpeza do histórico de logins
   const [showClearAttemptsModal, setShowClearAttemptsModal] = useState(false);
@@ -634,6 +657,22 @@ export const SuperAdminView: React.FC = () => {
             </div>
           </div>
 
+          {deleteLojaSuccess && (
+            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center justify-between animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>{deleteLojaSuccess}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteLojaSuccess(null)}
+                className="p-1 hover:bg-emerald-100 dark:hover:bg-emerald-900 rounded-lg text-emerald-600 dark:text-emerald-400"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Cards das Lojas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {lojasFiltradas.map((loja) => {
@@ -749,18 +788,30 @@ export const SuperAdminView: React.FC = () => {
                       </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => toggleLojaAtiva(loja.id)}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                        loja.ativa
-                          ? 'bg-red-50 hover:bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300'
-                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      }`}
-                    >
-                      {loja.ativa ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                      <span>{loja.ativa ? 'Suspender Loja' : 'Ativar Loja'}</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleLojaAtiva(loja.id)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          loja.ativa
+                            ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        }`}
+                      >
+                        {loja.ativa ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                        <span>{loja.ativa ? 'Suspender' : 'Ativar'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setLojaToDelete(loja)}
+                        className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-red-600 hover:bg-red-700 text-white shadow-2xs"
+                        title="Excluir Loja Permanentemente do Sistema"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Excluir Loja</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -904,6 +955,73 @@ export const SuperAdminView: React.FC = () => {
                 className="px-5 py-2.5 rounded-xl bg-stone-200 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold text-xs transition cursor-pointer"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DEFINITIVA DE LOJA */}
+      {/* ========================================================================= */}
+      {lojaToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/75 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white dark:bg-stone-900 border-2 border-red-500/40 rounded-3xl p-6 shadow-2xl max-w-md w-full space-y-4">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="p-3 bg-red-100 dark:bg-red-950/60 rounded-2xl">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-stone-900 dark:text-white">
+                  Excluir Loja Permanentemente
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400">
+                  Esta ação não pode ser desfeita!
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-2xl text-xs text-red-800 dark:text-red-200 space-y-2">
+              <p>
+                Você está prestes a excluir a loja <strong>{lojaToDelete.marca || lojaToDelete.nome}</strong> (slug: <code>{lojaToDelete.slug}</code>).
+              </p>
+              <p className="font-semibold">
+                Serão removidos definitivamente:
+              </p>
+              <ul className="list-disc list-inside space-y-0.5 text-[11px] text-red-700 dark:text-red-300">
+                <li>O registro da empresa contratante</li>
+                <li>Todos os usuários, administradores e equipe cadastrados</li>
+                <li>Cardápio completo, produtos, tamanhos e bordas</li>
+                <li>Mesas, comandas e pedidos da loja</li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingLoja}
+                onClick={() => setLojaToDelete(null)}
+                className="px-4 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-semibold hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingLoja}
+                onClick={handleConfirmDeleteLoja}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-2"
+              >
+                {isDeletingLoja ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Excluindo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Sim, Excluir Esta Loja</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

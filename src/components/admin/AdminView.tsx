@@ -130,6 +130,12 @@ export const AdminView: React.FC = () => {
   const [userSenha, setUserSenha] = useState('');
   const [userPin, setUserPin] = useState('');
 
+  // Store-filtered users (avoids leaking staff between different stores)
+  const storeUsers = useMemo(() => {
+    const lojaId = currentLoja?.id || currentLojaId;
+    return users.filter((u) => u.loja_id === lojaId && u.perfil !== 'super_admin');
+  }, [users, currentLoja, currentLojaId]);
+
   // Store Settings Form State
   const [lojaMarca, setLojaMarca] = useState(currentLoja?.marca || 'Pizzaria Itália');
   const [lojaNome, setLojaNome] = useState(currentLoja?.nome || '');
@@ -139,6 +145,7 @@ export const AdminView: React.FC = () => {
   const [lojaTelefone, setLojaTelefone] = useState(currentLoja?.telefone || '');
   const [lojaTempo, setLojaTempo] = useState(currentLoja?.tempo_estimado_entrega || '30 - 45 min');
   const [lojaHorario, setLojaHorario] = useState(currentLoja?.horario_funcionamento || '18:00 às 23:30');
+  const [lojaFechadoManualmente, setLojaFechadoManualmente] = useState(currentLoja?.fechado_manualmente || false);
   const [lojaSaved, setLojaSaved] = useState(false);
 
   // New Neighborhood Fee State
@@ -199,6 +206,7 @@ export const AdminView: React.FC = () => {
       setLojaTelefone(currentLoja.telefone || '');
       setLojaTempo(currentLoja.tempo_estimado_entrega || '30 - 45 min');
       setLojaHorario(currentLoja.horario_funcionamento || '18:00 às 23:30');
+      setLojaFechadoManualmente(currentLoja.fechado_manualmente || false);
     }
   }, [currentLoja]);
 
@@ -216,6 +224,7 @@ export const AdminView: React.FC = () => {
       telefone: lojaTelefone.trim(),
       tempo_estimado_entrega: lojaTempo.trim(),
       horario_funcionamento: lojaHorario.trim(),
+      fechado_manualmente: lojaFechadoManualmente,
     });
     setLojaSaved(true);
     setTimeout(() => setLojaSaved(false), 3000);
@@ -471,7 +480,7 @@ export const AdminView: React.FC = () => {
               <option value="produtos">🍕 Cardápio ({products.length} produtos)</option>
               <option value="opcoes">📦 Opções & Bordas</option>
               <option value="mesas">🪑 Mesas ({tables.length} mesas)</option>
-              <option value="usuarios">👥 Equipe ({users.length} membros)</option>
+              <option value="usuarios">👥 Equipe ({storeUsers.length} membros)</option>
               <option value="cancelamentos">📋 Auditoria ({cancellationAuditList.length} registros)</option>
               <option value="configuracoes">⚙️ Configurações & Taxas da Loja</option>
             </select>
@@ -539,7 +548,7 @@ export const AdminView: React.FC = () => {
                   : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              Equipe ({users.length})
+              Equipe ({storeUsers.length})
             </button>
             <button
               onClick={() => setActiveTab('cancelamentos')}
@@ -1286,93 +1295,105 @@ export const AdminView: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {users.map((u) => (
-                <div
-                  key={u.id}
-                  className={`p-4 rounded-2xl border shadow-xs flex items-center justify-between transition ${
-                    u.ativo ? 'bg-white border-stone-200' : 'bg-stone-100/70 border-stone-300 opacity-75'
-                  }`}
-                >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-stone-900 dark:text-slate-100">{u.nome}</h4>
-                      <button
-                        onClick={() => toggleUserStatus(u.id)}
-                        title={u.ativo ? 'Clique para desativar acesso' : 'Clique para ativar acesso'}
-                        className={`px-1.5 py-0.2 rounded-md text-[9px] font-bold uppercase transition cursor-pointer ${
-                          u.ativo
-                            ? 'bg-emerald-100 text-emerald-800 hover:bg-amber-100 hover:text-amber-800'
-                            : 'bg-stone-300 text-stone-700 dark:text-slate-300 hover:bg-emerald-100 hover:text-emerald-800'
+              {storeUsers.length === 0 ? (
+                <div className="bg-white dark:bg-stone-900 rounded-2xl p-10 text-center border border-stone-200 dark:border-stone-800 shadow-xs col-span-full">
+                  <Users className="w-10 h-10 text-stone-300 dark:text-stone-600 mx-auto mb-2" />
+                  <h3 className="text-sm font-bold text-stone-700 dark:text-slate-200">
+                    Nenhum colaborador cadastrado ainda nesta loja
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 max-w-md mx-auto">
+                    Os colaboradores de outras lojas não aparecem aqui. Clique no botão <strong>"+ Novo Colaborador"</strong> acima para cadastrar os garçons, cozinheiros e caixas exclusivos desta loja.
+                  </p>
+                </div>
+              ) : (
+                storeUsers.map((u) => (
+                  <div
+                    key={u.id}
+                    className={`p-4 rounded-2xl border shadow-xs flex items-center justify-between transition ${
+                      u.ativo ? 'bg-white border-stone-200' : 'bg-stone-100/70 border-stone-300 opacity-75'
+                    }`}
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-stone-900 dark:text-slate-100">{u.nome}</h4>
+                        <button
+                          onClick={() => toggleUserStatus(u.id)}
+                          title={u.ativo ? 'Clique para desativar acesso' : 'Clique para ativar acesso'}
+                          className={`px-1.5 py-0.2 rounded-md text-[9px] font-bold uppercase transition cursor-pointer ${
+                            u.ativo
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-amber-100 hover:text-amber-800'
+                              : 'bg-stone-300 text-stone-700 dark:text-slate-300 hover:bg-emerald-100 hover:text-emerald-800'
+                          }`}
+                        >
+                          {u.ativo ? 'Ativo' : 'Inativo'}
+                        </button>
+                      </div>
+                      <div className="text-xs space-y-1 pt-1 font-mono">
+                        <div className="text-stone-600 dark:text-stone-300">
+                          Login: <strong className="text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded">{u.usuario}</strong>
+                        </div>
+                        <div className="text-stone-600 dark:text-stone-300">
+                          Senha: <span className="text-stone-400 font-sans tracking-widest">••••••••</span>
+                        </div>
+                        <div className="text-stone-500">
+                          PIN: <span className="text-amber-700 dark:text-amber-400 font-bold">{u.pin}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          u.perfil === 'admin' || u.perfil === 'super_admin'
+                            ? 'bg-red-50 text-red-800 border border-red-200'
+                            : u.perfil === 'garcom'
+                            ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                            : u.perfil === 'cozinha'
+                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                            : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                         }`}
                       >
-                        {u.ativo ? 'Ativo' : 'Inativo'}
-                      </button>
-                    </div>
-                    <div className="text-xs space-y-1 pt-1 font-mono">
-                      <div className="text-stone-600 dark:text-stone-300">
-                        Login: <strong className="text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded">{u.usuario}</strong>
-                      </div>
-                      <div className="text-stone-600 dark:text-stone-300">
-                        Senha: <span className="text-stone-400 font-sans tracking-widest">••••••••</span>
-                      </div>
-                      <div className="text-stone-500">
-                        PIN: <span className="text-amber-700 dark:text-amber-400 font-bold">{u.pin}</span>
-                      </div>
-                    </div>
-                  </div>
+                        {u.perfil}
+                      </span>
 
-                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        u.perfil === 'admin' || u.perfil === 'super_admin'
-                          ? 'bg-red-50 text-red-800 border border-red-200'
-                          : u.perfil === 'garcom'
-                          ? 'bg-blue-50 text-blue-800 border border-blue-200'
-                          : u.perfil === 'cozinha'
-                          ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                          : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                      }`}
-                    >
-                      {u.perfil}
-                    </span>
-
-                    <div className="flex items-center gap-1">
-                      {/* Alterar Senha */}
-                      <button
-                        onClick={async () => {
-                          const newPass = prompt(`Definir nova senha para "${u.nome}" (mínimo 6 caracteres):`);
-                          if (newPass !== null) {
-                            if (newPass.trim().length < 6) {
-                              alert('A senha deve conter no mínimo 6 caracteres.');
-                              return;
+                      <div className="flex items-center gap-1">
+                        {/* Alterar Senha */}
+                        <button
+                          onClick={async () => {
+                            const newPass = prompt(`Definir nova senha para "${u.nome}" (mínimo 6 caracteres):`);
+                            if (newPass !== null) {
+                              if (newPass.trim().length < 6) {
+                                alert('A senha deve conter no mínimo 6 caracteres.');
+                                return;
+                              }
+                              const { hash, salt } = await hashPassword(newPass.trim());
+                              updateUser({ ...u, senhaHash: hash, salt, senha: '' });
+                              alert(`Senha de ${u.nome} atualizada com sucesso!`);
                             }
-                            const { hash, salt } = await hashPassword(newPass.trim());
-                            updateUser({ ...u, senhaHash: hash, salt, senha: '' });
-                            alert(`Senha de ${u.nome} atualizada com sucesso!`);
-                          }
-                        }}
-                        title="Alterar Senha do Colaborador"
-                        className="p-1.5 text-stone-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition cursor-pointer"
-                      >
-                        <KeyRound className="w-4 h-4" />
-                      </button>
+                          }}
+                          title="Alterar Senha do Colaborador"
+                          className="p-1.5 text-stone-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </button>
 
-                      {/* Excluir Colaborador */}
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Tem certeza que deseja excluir o colaborador "${u.nome}"? Ele perderá todo o acesso ao sistema.`)) {
-                            deleteUser(u.id);
-                          }
-                        }}
-                        title="Excluir Colaborador / Revogar Acesso"
-                        className="p-1.5 text-stone-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        {/* Excluir Colaborador */}
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Tem certeza que deseja excluir o colaborador "${u.nome}"? Ele perderá todo o acesso ao sistema.`)) {
+                              deleteUser(u.id);
+                            }
+                          }}
+                          title="Excluir Colaborador / Revogar Acesso"
+                          className="p-1.5 text-stone-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
@@ -1759,7 +1780,33 @@ export const AdminView: React.FC = () => {
                     placeholder="18:00 às 23:30"
                     className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
                   />
+                  <p className="text-[10px] text-stone-500 mt-1">
+                    Ex: 18:00 às 23:30. Fora desse intervalo o cardápio avisa que a loja está fechada e bloqueia pedidos.
+                  </p>
                 </div>
+              </div>
+
+              {/* Controle Manual de Abertura / Fechamento */}
+              <div className="p-3.5 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-bold text-stone-800 dark:text-stone-200 block">
+                    Status de Atendimento (Controle Manual)
+                  </span>
+                  <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                    Se você precisar pausar os pedidos antes do horário de fechamento, ative esta opção.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLojaFechadoManualmente(!lojaFechadoManualmente)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                    lojaFechadoManualmente
+                      ? 'bg-red-600 text-white shadow-xs'
+                      : 'bg-emerald-600 text-white shadow-xs'
+                  }`}
+                >
+                  {lojaFechadoManualmente ? '🔴 Fechada Manualmente' : '🟢 Aberta para Pedidos'}
+                </button>
               </div>
 
               <div className="flex justify-end pt-3 border-t border-stone-100 dark:border-slate-800">

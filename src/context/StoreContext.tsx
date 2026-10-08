@@ -43,6 +43,7 @@ import {
   db,
   FIRESTORE_COLLECTIONS,
   saveLojaToFirestore,
+  deleteLojaFromFirestore,
   saveTableToFirestore,
   saveComandaToFirestore,
   saveOrderToFirestore,
@@ -100,7 +101,7 @@ interface StoreContextType {
   deletePizzaAddon: (id: string) => void;
 
   login: (usuario: string, senha: string) => boolean;
-  loginWithPin: (pin: string) => boolean;
+  loginWithPin: (pin: string, lojaId?: string) => boolean;
   logout: () => void;
   switchRole: (role: UserRole) => void;
   setCurrentUserById: (userId: string) => void;
@@ -143,6 +144,7 @@ interface StoreContextType {
   addTaxaBairro: (lojaId: string, bairro: string, valor: number) => void;
   deleteTaxaBairro: (lojaId: string, taxaId: string) => void;
   toggleLojaAtiva: (lojaId: string) => void;
+  deleteLoja: (lojaId: string) => Promise<void>;
   createStoreWithAdmin: (
     lojaData: { nome: string; slug: string; marca?: string; cnpj?: string; endereco?: string; telefone?: string; taxa_entrega?: number; plano?: 'basico' | 'pro' | 'enterprise' },
     adminData: { nome: string; usuario: string; senha?: string; senhaHash?: string; salt?: string; pin: string }
@@ -728,9 +730,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return false;
   };
 
-  const loginWithPin = (pin: string): boolean => {
+  const loginWithPin = (pin: string, lojaId?: string): boolean => {
     // Super admin NEVER logs in via staff PIN keypad! Super Admin requires Master username & password.
-    const found = users.find((u) => u.pin === pin && u.ativo && u.perfil !== 'super_admin');
+    const found = users.find(
+      (u) =>
+        u.pin === pin &&
+        u.ativo &&
+        u.perfil !== 'super_admin' &&
+        (!lojaId || u.loja_id === lojaId)
+    );
     if (found) {
       if (found.loja_id) {
         const userLoja = lojas.find((l) => l.id === found.loja_id);
@@ -1495,6 +1503,44 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     broadcastSync({ lojas: updated });
   };
 
+  const deleteLoja = async (lojaId: string) => {
+    // 1. Remove loja do estado
+    const updatedLojas = lojas.filter((l) => l.id !== lojaId);
+    setLojas(updatedLojas);
+
+    // 2. Remove todos os usuários vinculados à loja
+    const updatedUsers = users.filter((u) => u.loja_id !== lojaId);
+    setUsers(updatedUsers);
+
+    // 3. Remove produtos, mesas e comandas vinculados à loja
+    const updatedProducts = products.filter((p) => p.loja_id !== lojaId);
+    setProducts(updatedProducts);
+    const updatedTables = tables.filter((t) => t.loja_id !== lojaId);
+    setTables(updatedTables);
+    const updatedComandas = comandas.filter((c) => c.loja_id !== lojaId);
+    setComandas(updatedComandas);
+
+    // 4. Atualiza localStorage
+    try {
+      localStorage.setItem(STORAGE_KEYS.LOJAS, JSON.stringify(updatedLojas));
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updatedProducts));
+      localStorage.setItem(STORAGE_KEYS.TABLES, JSON.stringify(updatedTables));
+      localStorage.setItem(STORAGE_KEYS.COMANDAS, JSON.stringify(updatedComandas));
+    } catch (e) {
+      console.warn('Erro ao atualizar localStorage após exclusão de loja:', e);
+    }
+
+    // 5. Se a loja atual for a excluída, muda para outra
+    if (currentLojaId === lojaId) {
+      setCurrentLojaId(updatedLojas.length > 0 ? updatedLojas[0].id : 'todas');
+    }
+
+    // 6. Exclui do Firestore
+    await deleteLojaFromFirestore(lojaId);
+    broadcastSync({ lojas: updatedLojas, users: updatedUsers, products: updatedProducts, tables: updatedTables });
+  };
+
   const generateRandomToken = (prefix: string) => {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let rand = '';
@@ -1996,6 +2042,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         addTaxaBairro,
         deleteTaxaBairro,
         toggleLojaAtiva,
+        deleteLoja,
         createStoreWithAdmin,
         loginAttempts,
         recordLoginAttempt,

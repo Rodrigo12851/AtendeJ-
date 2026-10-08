@@ -17,6 +17,7 @@ export interface Loja {
   taxa_entrega: number;
   tempo_estimado_entrega?: string;
   horario_funcionamento?: string;
+  fechado_manualmente?: boolean;
   admin_usuario_id?: string;
   taxas_bairro?: TaxaBairro[];
   plano?: 'basico' | 'pro' | 'enterprise';

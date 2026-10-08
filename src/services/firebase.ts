@@ -117,6 +117,15 @@ export async function saveLojaToFirestore(loja: Loja): Promise<void> {
   }
 }
 
+export async function deleteLojaFromFirestore(lojaId: string): Promise<void> {
+  try {
+    const docRef = doc(db, FIRESTORE_COLLECTIONS.LOJAS, lojaId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.warn('[Firestore] Falha ao excluir loja na nuvem:', error);
+  }
+}
+
 export async function saveTableToFirestore(table: Table): Promise<void> {
   try {
     const docRef = doc(db, FIRESTORE_COLLECTIONS.TABLES, table.id);

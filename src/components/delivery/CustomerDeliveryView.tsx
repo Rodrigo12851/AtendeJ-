@@ -26,6 +26,7 @@ import {
 import { useStore } from '../../context/StoreContext';
 import { Product, OrderItem, Loja } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { getStoreOpenStatus } from '../../utils/storeHours';
 import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
 
 const CUSTOMER_PROFILE_KEY = 'atendeja_customer_profile_v1';
@@ -72,6 +73,11 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       logo_url: paramLogo || found.logo_url,
     };
   }, [lojas, lojaSlug]);
+
+  // Store status and operating hours (calculated accurately in real-time)
+  const storeStatus = useMemo(() => {
+    return getStoreOpenStatus(targetLoja);
+  }, [targetLoja]);
 
   // Set document title to brand name
   React.useEffect(() => {
@@ -203,6 +209,11 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   // Add regular product directly to cart
   const handleAddRegularProduct = (product: Product) => {
+    if (!storeStatus.isOpen) {
+      alert(`O estabelecimento está fechado no momento!\nHorário de funcionamento: ${storeStatus.horarioFormatado}.\nNovos pedidos não estão sendo aceitos agora.`);
+      return;
+    }
+
     if (product.isPizza || product.permitirTamanhos || product.permitirBordas) {
       setSelectedPizza(product);
       return;
@@ -238,6 +249,11 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   // Add Pizza from Customizer Modal (Handles 2+ flavors meio-a-meio)
   const handleAddPizzaToCart = (pizzaItem: OrderItem) => {
+    if (!storeStatus.isOpen) {
+      alert(`O estabelecimento está fechado no momento!\nHorário de atendimento: ${storeStatus.horarioFormatado}.`);
+      setSelectedPizza(null);
+      return;
+    }
     setCart((prev) => [...prev, pizzaItem]);
     setSelectedPizza(null);
   };
@@ -263,6 +279,10 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   // Submit Order
   const handleConfirmOrder = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!storeStatus.isOpen) {
+      alert(`O estabelecimento está fechado no momento!\nHorário de funcionamento: ${storeStatus.horarioFormatado}.\nNovos pedidos não podem ser enviados.`);
+      return;
+    }
     if (cart.length === 0 || !clienteNome || !clienteTelefone) return;
     const finalEndereco =
       tipoPedido === 'retirada'
@@ -438,10 +458,17 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
               <h1 className="text-xs sm:text-sm font-black tracking-tight text-white uppercase truncate">
                 {targetLoja.marca || targetLoja.nome}
               </h1>
-              <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 leading-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                <span>Loja Aberta</span>
-              </span>
+              {storeStatus.isOpen ? (
+                <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 leading-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <span>Loja Aberta</span>
+                </span>
+              ) : (
+                <span className="text-[10px] text-red-400 font-bold flex items-center gap-1 leading-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                  <span>Loja Fechada</span>
+                </span>
+              )}
             </div>
           </div>
 
@@ -514,9 +541,9 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   <span className="bg-red-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                     🛵 Delivery Oficial
                   </span>
-                  <span className="text-emerald-500 text-xs font-bold flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    Aberto Agora
+                  <span className={`${storeStatus.statusClass} text-xs font-bold flex items-center gap-1`}>
+                    <span className={`w-2 h-2 rounded-full ${storeStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                    {storeStatus.statusLabel}
                   </span>
                 </div>
                 <h2 className="text-lg sm:text-2xl font-black tracking-tight text-stone-900 dark:text-white leading-tight">
@@ -544,6 +571,11 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                       </a>
                     </>
                   )}
+                  <span>•</span>
+                  <span className="flex items-center gap-1 font-semibold text-stone-700 dark:text-stone-300">
+                    <Clock className="w-3.5 h-3.5 text-amber-500" />
+                    <span>{storeStatus.horarioFormatado}</span>
+                  </span>
                 </p>
               </div>
             </div>
@@ -609,6 +641,28 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
           )}
         </div>
 
+        {/* Banner de Loja Fechada */}
+        {!storeStatus.isOpen && (
+          <div className="p-4 sm:p-5 rounded-3xl bg-red-500/10 border-2 border-red-500/30 text-red-800 dark:text-red-200 shadow-sm flex items-start gap-3.5 animate-in fade-in">
+            <div className="p-2.5 bg-red-500/20 text-red-600 dark:text-red-400 rounded-2xl shrink-0">
+              <Clock className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-600 text-white tracking-wider">
+                  Fechado no Momento
+                </span>
+                <span className="text-xs font-bold text-red-700 dark:text-red-300">
+                  Horário: {storeStatus.horarioFormatado}
+                </span>
+              </div>
+              <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                {storeStatus.reason || `Nosso horário de funcionamento é de ${storeStatus.horarioFormatado}.`} Você pode consultar nosso cardápio e valores, mas <strong>novos pedidos de delivery só poderão ser aceitos durante o horário de atendimento</strong>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Order Submitted Success View */}
         {submittedOrderNumber !== null ? (
           <div className={`p-8 rounded-3xl border shadow-xl text-center space-y-4 max-w-md mx-auto my-8 animate-in zoom-in-95 ${cardBgClass}`}>
@@ -671,10 +725,21 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   </div>
                   <button
                     onClick={() => handleAddRegularProduct(specialOfferProduct)}
-                    className="mt-2 px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    disabled={!storeStatus.isOpen}
+                    className={`mt-2 px-5 py-2.5 font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-95 ${
+                      !storeStatus.isOpen
+                        ? 'bg-stone-500/60 text-stone-300 cursor-not-allowed'
+                        : 'bg-amber-400 hover:bg-amber-300 text-stone-950 cursor-pointer'
+                    }`}
                   >
-                    <span>{specialOfferProduct.isPizza ? 'PEÇA AGORA (ESCOLHER SABORES)' : 'ADICIONAR DA PROMOÇÃO'}</span>
-                    <ChevronRight className="w-4 h-4" />
+                    <span>
+                      {!storeStatus.isOpen
+                        ? 'LOJA FECHADA NO MOMENTO'
+                        : specialOfferProduct.isPizza
+                        ? 'PEÇA AGORA (ESCOLHER SABORES)'
+                        : 'ADICIONAR DA PROMOÇÃO'}
+                    </span>
+                    {storeStatus.isOpen && <ChevronRight className="w-4 h-4" />}
                   </button>
                 </div>
 
@@ -789,7 +854,13 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                           </span>
                           <button
                             onClick={() => handleAddRegularProduct(prod)}
-                            className="p-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition shadow-2xs active:scale-95 cursor-pointer"
+                            disabled={!storeStatus.isOpen}
+                            className={`p-2 rounded-xl font-bold transition shadow-2xs active:scale-95 ${
+                              !storeStatus.isOpen
+                                ? 'bg-stone-300 dark:bg-stone-800 text-stone-500 cursor-not-allowed'
+                                : 'bg-red-600 hover:bg-red-700 text-white cursor-pointer'
+                            }`}
+                            title={!storeStatus.isOpen ? 'Loja Fechada' : 'Adicionar ao Pedido'}
                           >
                             <Plus className="w-3.5 h-3.5" />
                           </button>
@@ -862,7 +933,13 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
                           <button
                             onClick={() => handleAddRegularProduct(product)}
-                            className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                            disabled={!storeStatus.isOpen}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition shadow-xs flex items-center gap-1.5 active:scale-95 ${
+                              !storeStatus.isOpen
+                                ? 'bg-stone-300 dark:bg-stone-800 text-stone-500 cursor-not-allowed'
+                                : 'bg-red-600 hover:bg-red-700 active:bg-red-800 text-white cursor-pointer'
+                            }`}
+                            title={!storeStatus.isOpen ? 'Loja Fechada' : 'Adicionar ao Pedido'}
                           >
                             <Plus className="w-3.5 h-3.5" />
                             <span>{product.isPizza ? 'Escolher Sabores' : 'Adicionar'}</span>
@@ -1191,10 +1268,19 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
               <button
                 type="submit"
-                className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-black text-sm rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+                disabled={!storeStatus.isOpen}
+                className={`w-full py-3.5 font-black text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 ${
+                  !storeStatus.isOpen
+                    ? 'bg-stone-300 dark:bg-stone-800 text-stone-500 cursor-not-allowed'
+                    : 'bg-red-600 hover:bg-red-700 text-white cursor-pointer'
+                }`}
               >
                 <Send className="w-4 h-4" />
-                <span>ENVIAR PEDIDO DE DELIVERY</span>
+                <span>
+                  {!storeStatus.isOpen
+                    ? `LOJA FECHADA NO MOMENTO (${storeStatus.horarioFormatado})`
+                    : 'ENVIAR PEDIDO DE DELIVERY'}
+                </span>
               </button>
             </form>
           </div>
