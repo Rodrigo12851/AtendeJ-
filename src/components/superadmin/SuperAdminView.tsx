@@ -115,7 +115,6 @@ export const SuperAdminView: React.FC = () => {
   const [adminNome, setAdminNome] = useState('');
   const [adminUsuario, setAdminUsuario] = useState('');
   const [adminSenha, setAdminSenha] = useState('');
-  const [adminPin, setAdminPin] = useState('1234');
 
   // Métricas do SaaS
   const metricas = useMemo(() => {
@@ -170,7 +169,7 @@ export const SuperAdminView: React.FC = () => {
 
   const handleCreateStore = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nomeLoja || !slugLoja || !adminNome || !adminUsuario || !adminPin) return;
+    if (!nomeLoja || !slugLoja || !adminNome || !adminUsuario) return;
 
     if (adminSenha.trim().length < 6) {
       alert('A senha do administrador deve conter no mínimo 6 caracteres.');
@@ -196,7 +195,7 @@ export const SuperAdminView: React.FC = () => {
         senhaHash: hash,
         salt,
         senha: '',
-        pin: adminPin,
+        pin: '',
       }
     );
 
@@ -210,7 +209,6 @@ export const SuperAdminView: React.FC = () => {
     setAdminNome('');
     setAdminUsuario('');
     setAdminSenha('');
-    setAdminPin('1234');
     setShowAddForm(false);
   };
 
@@ -517,7 +515,7 @@ export const SuperAdminView: React.FC = () => {
                     <Lock className="w-3.5 h-3.5" />
                     <span>2. Usuário Administrador / Gerente da Loja</span>
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
                       <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
                         Nome do Gerente *
@@ -562,21 +560,6 @@ export const SuperAdminView: React.FC = () => {
                         placeholder="Senha forte (mínimo 6 caracteres)"
                         value={adminSenha}
                         onChange={(e) => setAdminSenha(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
-                        PIN Rápido (4 dígitos) *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        maxLength={4}
-                        placeholder="1234"
-                        value={adminPin}
-                        onChange={(e) => setAdminPin(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
@@ -755,7 +738,7 @@ export const SuperAdminView: React.FC = () => {
                           Gerente: {adminUser?.nome || 'Admin Padrão'}
                         </span>
                         <span className="text-[10px] text-stone-500 font-mono">
-                          login: {adminUser?.usuario || 'admin'} • PIN: {adminUser?.pin || '****'}
+                          login: {adminUser?.usuario || 'admin'}
                         </span>
                       </div>
                     </div>

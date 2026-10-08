@@ -128,7 +128,6 @@ export const AdminView: React.FC = () => {
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState<'garcom' | 'cozinha' | 'caixa' | 'admin'>('garcom');
   const [userSenha, setUserSenha] = useState('');
-  const [userPin, setUserPin] = useState('');
 
   // Store-filtered users (avoids leaking staff between different stores)
   const storeUsers = useMemo(() => {
@@ -137,7 +136,7 @@ export const AdminView: React.FC = () => {
   }, [users, currentLoja, currentLojaId]);
 
   // Store Settings Form State
-  const [lojaMarca, setLojaMarca] = useState(currentLoja?.marca || 'Pizzaria Itália');
+  const [lojaMarca, setLojaMarca] = useState(currentLoja?.marca || currentLoja?.nome || '');
   const [lojaNome, setLojaNome] = useState(currentLoja?.nome || '');
   const [lojaLogoUrl, setLojaLogoUrl] = useState(currentLoja?.logo_url || '');
   const [lojaTaxa, setLojaTaxa] = useState(currentLoja?.taxa_entrega?.toString() || '7.00');
@@ -198,17 +197,17 @@ export const AdminView: React.FC = () => {
 
   useEffect(() => {
     if (currentLoja) {
-      setLojaMarca(currentLoja.marca || 'Pizzaria Itália');
-      setLojaNome(currentLoja.nome);
+      setLojaMarca(currentLoja.marca || currentLoja.nome || '');
+      setLojaNome(currentLoja.nome || '');
       setLojaLogoUrl(currentLoja.logo_url || '');
-      setLojaTaxa(currentLoja.taxa_entrega.toString());
+      setLojaTaxa(currentLoja.taxa_entrega !== undefined ? currentLoja.taxa_entrega.toString() : '7.00');
       setLojaEndereco(currentLoja.endereco || '');
       setLojaTelefone(currentLoja.telefone || '');
       setLojaTempo(currentLoja.tempo_estimado_entrega || '30 - 45 min');
       setLojaHorario(currentLoja.horario_funcionamento || '18:00 às 23:30');
       setLojaFechadoManualmente(currentLoja.fechado_manualmente || false);
     }
-  }, [currentLoja]);
+  }, [currentLoja?.id, currentLoja?.horario_funcionamento, currentLoja?.fechado_manualmente]);
 
   const handleSaveLoja = (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,7 +215,7 @@ export const AdminView: React.FC = () => {
     const taxaNum = parseFloat(lojaTaxa.replace(',', '.')) || 0;
     updateLoja({
       ...currentLoja,
-      marca: lojaMarca.trim() || 'Pizzaria Itália',
+      marca: lojaMarca.trim() || currentLoja.nome,
       nome: lojaNome.trim() || currentLoja.nome,
       logo_url: lojaLogoUrl.trim() || undefined,
       taxa_entrega: taxaNum,
@@ -426,26 +425,25 @@ export const AdminView: React.FC = () => {
   // Handle Save User
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userName || !userPin) return;
+    if (!userName.trim()) return;
     if (userSenha.trim().length < 6) {
       alert('A senha do colaborador deve conter no mínimo 6 caracteres.');
       return;
     }
     const { hash, salt } = await hashPassword(userSenha.trim());
     addUser({
-      nome: userName,
-      usuario: userName.toLowerCase().replace(/\s+/g, '.'),
+      nome: userName.trim(),
+      usuario: userName.trim().toLowerCase().replace(/\s+/g, '.'),
       senhaHash: hash,
       salt,
       senha: '',
-      pin: userPin,
+      pin: '',
       perfil: userRole,
       ativo: true,
       loja_id: currentLoja?.id,
     });
     setUserName('');
     setUserSenha('');
-    setUserPin('');
     setShowAddUserModal(false);
   };
 
@@ -1334,9 +1332,6 @@ export const AdminView: React.FC = () => {
                         </div>
                         <div className="text-stone-600 dark:text-stone-300">
                           Senha: <span className="text-stone-400 font-sans tracking-widest">••••••••</span>
-                        </div>
-                        <div className="text-stone-500">
-                          PIN: <span className="text-amber-700 dark:text-amber-400 font-bold">{u.pin}</span>
                         </div>
                       </div>
                     </div>
@@ -2341,20 +2336,6 @@ export const AdminView: React.FC = () => {
                   onChange={(e) => setUserSenha(e.target.value)}
                   placeholder="Senha do colaborador (mín. 6 caracteres)"
                   className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-mono text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-stone-400 focus:bg-white transition"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
-                  PIN Numérico de Acesso Rápido (4 dígitos):
-                </label>
-                <input
-                  type="password"
-                  maxLength={4}
-                  required
-                  value={userPin}
-                  onChange={(e) => setUserPin(e.target.value)}
-                  placeholder="Ex: 1234"
-                  className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-mono font-bold tracking-widest text-center text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-stone-400 focus:bg-white transition"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">

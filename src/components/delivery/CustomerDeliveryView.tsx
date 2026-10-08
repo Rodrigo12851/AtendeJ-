@@ -87,7 +87,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   // Products belonging to this store
   const storeProducts = useMemo(() => {
-    return allProducts.filter((p) => !p.loja_id || p.loja_id === targetLoja.id);
+    return allProducts.filter((p) => p.loja_id === targetLoja.id);
   }, [allProducts, targetLoja]);
 
   // Active Category Filter
@@ -878,7 +878,19 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                 {activeCategory === 'todos' ? 'Cardápio Completo' : `Itens de ${activeCategory.toUpperCase()}`}
               </h3>
 
-              {filteredProducts.length === 0 ? (
+              {storeProducts.length === 0 ? (
+                <div className="py-16 text-center text-stone-500 space-y-2 p-6 rounded-3xl border border-dashed border-stone-300 dark:border-stone-800">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto text-xl">
+                    🏪
+                  </div>
+                  <h4 className="text-sm font-bold text-stone-800 dark:text-stone-200">
+                    Cardápio em preparação
+                  </h4>
+                  <p className="text-xs text-stone-500 max-w-sm mx-auto">
+                    Esta loja ainda não possui produtos cadastrados no cardápio online. Os produtos serão adicionados em breve pela gerência.
+                  </p>
+                </div>
+              ) : filteredProducts.length === 0 ? (
                 <div className="py-12 text-center text-stone-500">
                   <p className="text-xs font-semibold">Nenhum produto encontrado para sua busca.</p>
                 </div>

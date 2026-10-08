@@ -345,7 +345,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     imagem: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80',
     ativo: true,
   },
-];
+].map((p) => ({ ...p, loja_id: p.loja_id || 'loja_centro' }));
 
 export const INITIAL_TABLES: Table[] = [
   { id: 'mesa_01', loja_id: 'loja_centro', numero: 1, capacidade: 4, status: 'livre', localizacao: 'Salão Principal' },
@@ -444,6 +444,7 @@ export const INITIAL_USERS: User[] = [
   },
   {
     id: 'user_admin',
+    loja_id: 'loja_centro',
     nome: 'Roberto Gerente',
     usuario: 'admin',
     senha: 'Rs20061991@',
@@ -585,7 +586,7 @@ export const INITIAL_COMANDAS: Comanda[] = [
       },
     ],
   },
-];
+].map((c) => ({ ...c, loja_id: c.loja_id || 'loja_centro' }));
 
 // Seeded Orders matching PRD
 export const INITIAL_ORDERS: Order[] = [
@@ -991,7 +992,7 @@ export const INITIAL_ORDERS: Order[] = [
       },
     ],
   },
-];
+].map((o) => ({ ...o, loja_id: o.loja_id || 'loja_centro' }));
 
 export const INITIAL_CASH_REGISTER: CashRegister = {
   id: 'caixa_hoje',
@@ -1335,5 +1336,5 @@ export const INITIAL_INGREDIENTS: Ingredient[] = [
     atualizado_por: 'Admin / Gerência',
     observacao: 'Papelão virgem especial.',
   },
-];
+].map((i) => ({ ...i, loja_id: i.loja_id || 'loja_centro' }));
 

@@ -15,7 +15,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { MASTER_PORTAL_TOKEN } from './data/initialData';
 
 const MainApp: React.FC = () => {
-  const { currentUser, lojas, logout } = useStore();
+  const { currentUser, lojas, logout, currentLojaId, setCurrentLojaId } = useStore();
   const [currentModule, setCurrentModule] = useState<UserRole>('garcom');
 
   // Check URL params for direct actions
@@ -114,6 +114,15 @@ const MainApp: React.FC = () => {
       }
     }
   }, [currentUser, isLoggedOut, isDonoPortal, publicLojaSlug, painelParam, targetLoja]);
+
+  // Synchronize active store ID in StoreContext to prevent leaks between stores
+  useEffect(() => {
+    if (targetLoja && targetLoja.id !== currentLojaId) {
+      setCurrentLojaId(targetLoja.id);
+    } else if (currentUser?.loja_id && currentUser.perfil !== 'super_admin' && currentUser.loja_id !== currentLojaId) {
+      setCurrentLojaId(currentUser.loja_id);
+    }
+  }, [targetLoja, currentUser, currentLojaId, setCurrentLojaId]);
 
   // 1. IF ?loja= URL parameter is present WITHOUT ?painel=, ALWAYS render ONLY Customer Delivery View
   if (publicLojaSlug && !painelParam) {

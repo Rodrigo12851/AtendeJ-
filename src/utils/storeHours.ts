@@ -53,18 +53,19 @@ export function getStoreOpenStatus(loja: Loja | undefined | null, customDate?: D
   }
 
   // 3. Validação matemática do Horário de Funcionamento
-  // Extrai horários como "18:00" e "23:30"
-  const timeRegex = /(\d{1,2}):(\d{2})/g;
-  const matches = [...horarioStr.matchAll(timeRegex)];
+  // Extrai horários como "18:00", "23:30", "18h", "23h30", etc.
+  const timeRegex = /(\d{1,2})(?:[:hH](\d{2})|h|H)?/g;
+  const matches = [...horarioStr.matchAll(timeRegex)].filter((m) => m[0] && m[1]);
 
   if (matches.length >= 2) {
     const startHour = parseInt(matches[0][1], 10);
-    const startMin = parseInt(matches[0][2], 10);
-    const endHour = parseInt(matches[1][1], 10);
-    const endMin = parseInt(matches[1][2], 10);
+    const startMin = matches[0][2] ? parseInt(matches[0][2], 10) : 0;
+    const rawEndHour = parseInt(matches[1][1], 10);
+    const endMin = matches[1][2] ? parseInt(matches[1][2], 10) : 0;
 
     const startTotal = startHour * 60 + startMin;
-    const endTotal = endHour * 60 + endMin;
+    // Se fecha à meia-noite (00:00 ou 24:00), considera 1440 min (fim do dia)
+    const endTotal = (rawEndHour === 0 && endMin === 0) ? 1440 : rawEndHour * 60 + endMin;
 
     const now = customDate || new Date();
     const nowTotal = now.getHours() * 60 + now.getMinutes();
@@ -72,10 +73,10 @@ export function getStoreOpenStatus(loja: Loja | undefined | null, customDate?: D
     let isWithinHours = false;
 
     if (endTotal > startTotal) {
-      // Abre e fecha no mesmo dia (ex: 18:00 às 23:30)
+      // Abre e fecha no mesmo dia (ex: 18:00 às 23:30 ou até 00:00)
       isWithinHours = nowTotal >= startTotal && nowTotal < endTotal;
     } else {
-      // Passa da meia-noite (ex: 18:00 às 01:30 ou 18:00 às 00:00)
+      // Passa da meia-noite (ex: 18:00 às 01:30)
       isWithinHours = nowTotal >= startTotal || nowTotal < endTotal;
     }
 

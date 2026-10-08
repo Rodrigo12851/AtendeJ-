@@ -17,7 +17,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   painelAlvo = 'admin',
   onLoginSuccess,
 }) => {
-  const { users, lojas, loginWithPin, recordLoginAttempt, isUserLockedOut, setCurrentUser, updateUser } = useStore();
+  const { users, lojas, recordLoginAttempt, isUserLockedOut, setCurrentUser, updateUser } = useStore();
 
   // Credenciais de Usuário e Senha
   const [usernameInput, setUsernameInput] = useState('');
@@ -25,10 +25,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Modo PIN alternativo para equipe
-  const [usePinMode, setUsePinMode] = useState(false);
-  const [enteredPin, setEnteredPin] = useState('');
 
   // Título e Ícone do Painel
   const panelInfo = (() => {
@@ -219,64 +215,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     }
   };
 
-  // -------------------------------------------------------------
-  // LOGIN VIA PIN RÁPIDO (OPCIONAL PARA EQUIPE NO SALÃO)
-  // -------------------------------------------------------------
-  const handlePinClick = (num: string) => {
-    if (enteredPin.length < 4) {
-      const next = enteredPin + num;
-      setEnteredPin(next);
-      setErrorMsg('');
-      if (next.length === 4) {
-        verifyPin(next);
-      }
-    }
-  };
-
-  const handleBackspace = () => {
-    setEnteredPin((prev) => prev.slice(0, -1));
-    setErrorMsg('');
-  };
-
-  const verifyPin = (pin: string) => {
-    if (!loja) return;
-
-    if (!loja.ativa || loja.status_assinatura === 'suspenso') {
-      setErrorMsg(`🚫 Estabelecimento Suspenso: A loja "${loja.nome}" está suspensa.`);
-      recordLoginAttempt(`pin_${pin}`, false, 'Tentativa PIN em loja suspensa', loja.id, loja.nome);
-      setEnteredPin('');
-      return;
-    }
-
-    const matchedUser = users.find(
-      (u) =>
-        u.pin === pin &&
-        u.perfil !== 'super_admin' &&
-        u.loja_id === loja.id
-    );
-
-    if (matchedUser) {
-      const lockout = isUserLockedOut(matchedUser.usuario);
-      if (lockout.locked) {
-        setErrorMsg(`🔒 Acesso bloqueado por segurança! Aguarde ${lockout.remainingMinutes} min.`);
-        recordLoginAttempt(matchedUser.usuario, false, 'Tentativa em conta bloqueada', loja.id, loja.nome);
-        setEnteredPin('');
-        return;
-      }
-
-      const success = loginWithPin(pin, loja.id);
-      if (success) {
-        recordLoginAttempt(matchedUser.usuario, true, undefined, loja.id, loja.nome);
-        onLoginSuccess?.();
-        return;
-      }
-    }
-
-    setErrorMsg('PIN incorreto para esta loja.');
-    recordLoginAttempt(`pin_invalido_${pin}`, false, 'PIN incorreto no terminal', loja.id, loja.nome);
-    setEnteredPin('');
-  };
-
   return (
     <div className="min-h-screen bg-[#FAF7F2] dark:bg-stone-950 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
       {/* Warm Ambient Glows */}
@@ -332,11 +270,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         {/* ========================================================================= */}
         {/* FORMULÁRIO DE LOGIN COM USUÁRIO E SENHA (MÍNIMO 6 CARACTERES) */}
         {/* ========================================================================= */}
-        {!usePinMode ? (
-          <form
-            onSubmit={handleUserPasswordLogin}
-            className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-3xl p-6 shadow-xl space-y-4"
-          >
+        <form
+          onSubmit={handleUserPasswordLogin}
+          className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-3xl p-6 shadow-xl space-y-4"
+        >
             <div className="text-center space-y-1 pb-2 border-b border-stone-100 dark:border-stone-800">
               <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto mb-2">
                 <Lock className="w-5 h-5" />
@@ -413,103 +350,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <KeyRound className="w-4 h-4 text-amber-400" />
               <span>{isSubmitting ? 'Validando...' : 'Acessar Terminal'}</span>
             </button>
-
-            {mode === 'loja_equipe' && (
-              <div className="pt-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUsePinMode(true);
-                    setErrorMsg('');
-                  }}
-                  className="text-xs font-semibold text-stone-500 hover:text-amber-600 transition cursor-pointer underline underline-offset-2"
-                >
-                  Ou entrar com PIN rápido de 4 dígitos
-                </button>
-              </div>
-            )}
           </form>
-        ) : (
-          /* ========================================================================= */
-          /* MODO SECUNDÁRIO: TERMINAL DA EQUIPE (PIN DE 4 DÍGITOS) */
-          /* ========================================================================= */
-          <div className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-3xl p-6 shadow-xl space-y-5">
-            <div className="text-center space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300 flex items-center justify-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-amber-600" />
-                Digite seu PIN de 4 dígitos
-              </span>
-
-              {/* PIN Dots */}
-              <div className="flex justify-center gap-3 py-2">
-                {[0, 1, 2, 3].map((idx) => (
-                  <div
-                    key={idx}
-                    className={`w-4 h-4 rounded-full border-2 transition-all duration-200 ${
-                      idx < enteredPin.length
-                        ? 'bg-red-600 border-red-500 scale-110 shadow-sm shadow-red-600/30'
-                        : 'border-stone-300 bg-stone-100 dark:border-stone-700 dark:bg-stone-800'
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {errorMsg && (
-                <p className="text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/40 p-2.5 rounded-xl border border-red-200 dark:border-red-900 animate-shake">
-                  {errorMsg}
-                </p>
-              )}
-            </div>
-
-            {/* Touch Number Pad */}
-            <div className="grid grid-cols-3 gap-2.5 max-w-[280px] mx-auto">
-              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => handlePinClick(num)}
-                  className="h-13 rounded-2xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-xl font-bold text-stone-900 dark:text-white border border-stone-200 dark:border-stone-700 shadow-2xs transition active:scale-95 flex items-center justify-center cursor-pointer"
-                >
-                  {num}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setEnteredPin('')}
-                className="h-13 rounded-2xl bg-stone-50 hover:bg-stone-100 dark:bg-stone-850 text-xs font-bold text-stone-500 border border-stone-200 dark:border-stone-700 transition flex items-center justify-center cursor-pointer"
-              >
-                Limpar
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePinClick('0')}
-                className="h-13 rounded-2xl bg-stone-100 hover:bg-stone-200 active:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-xl font-bold text-stone-900 dark:text-white border border-stone-200 dark:border-stone-700 shadow-2xs transition flex items-center justify-center cursor-pointer"
-              >
-                0
-              </button>
-              <button
-                type="button"
-                onClick={handleBackspace}
-                className="h-13 rounded-2xl bg-stone-50 hover:bg-stone-100 dark:bg-stone-850 text-sm font-bold text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700 transition flex items-center justify-center cursor-pointer"
-              >
-                ⌫
-              </button>
-            </div>
-
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setUsePinMode(false);
-                  setErrorMsg('');
-                }}
-                className="text-xs font-semibold text-stone-500 hover:text-amber-600 transition cursor-pointer underline underline-offset-2"
-              >
-                Voltar para login com usuário e senha
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className="text-center text-[11px] text-stone-400 space-y-1">
           <p className="font-medium text-stone-500 dark:text-stone-400">

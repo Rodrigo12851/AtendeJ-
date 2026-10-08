@@ -147,7 +147,7 @@ interface StoreContextType {
   deleteLoja: (lojaId: string) => Promise<void>;
   createStoreWithAdmin: (
     lojaData: { nome: string; slug: string; marca?: string; cnpj?: string; endereco?: string; telefone?: string; taxa_entrega?: number; plano?: 'basico' | 'pro' | 'enterprise' },
-    adminData: { nome: string; usuario: string; senha?: string; senhaHash?: string; salt?: string; pin: string }
+    adminData: { nome: string; usuario: string; senha?: string; senhaHash?: string; salt?: string; pin?: string }
   ) => void;
   loginAttempts: LoginAttempt[];
   recordLoginAttempt: (usuario: string, sucesso: boolean, motivo?: string, lojaId?: string, lojaNome?: string) => void;
@@ -214,13 +214,26 @@ const ensureUsersWithSecurePasswords = (userList: User[]): User[] => {
   return updated;
 };
 
+const DELETED_LOJAS_KEY = 'atendeja_deleted_lojas_v1';
+const getDeletedLojaIds = (): string[] => {
+  try {
+    const raw = localStorage.getItem(DELETED_LOJAS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [lojas, setLojas] = useState<Loja[]>(() => {
     try {
+      const deletedIds = getDeletedLojaIds();
       const saved = localStorage.getItem(STORAGE_KEYS.LOJAS);
-      return saved ? ensureLojaTokens(JSON.parse(saved)) : INITIAL_LOJAS;
+      const raw = saved ? ensureLojaTokens(JSON.parse(saved)) : INITIAL_LOJAS;
+      return raw.filter((l) => !deletedIds.includes(l.id));
     } catch {
-      return INITIAL_LOJAS;
+      const deletedIds = getDeletedLojaIds();
+      return INITIAL_LOJAS.filter((l) => !deletedIds.includes(l.id));
     }
   });
 
@@ -236,10 +249,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setCurrentLojaIdState(id);
     localStorage.setItem(STORAGE_KEYS.CURRENT_LOJA, id);
   };
-
-  const currentLoja = useMemo(() => {
-    return lojas.find((l) => l.id === currentLojaId) || lojas[0];
-  }, [lojas, currentLojaId]);
 
   // Load initial state safely from localStorage
   const [users, setUsers] = useState<User[]>(() => {
@@ -263,6 +272,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const defaultStaff = INITIAL_USERS.find((u) => u.perfil === 'garcom') || INITIAL_USERS[3];
     return defaultStaff;
   });
+
+  const currentLoja = useMemo(() => {
+    // Se o usuário autenticado pertence a uma loja específica e não é super_admin, prioriza a loja dele
+    if (currentUser?.loja_id && currentUser.perfil !== 'super_admin') {
+      const userStore = lojas.find((l) => l.id === currentUser.loja_id);
+      if (userStore) return userStore;
+    }
+    return lojas.find((l) => l.id === currentLojaId) || lojas[0];
+  }, [lojas, currentLojaId, currentUser]);
 
   const [tables, setTables] = useState<Table[]>(() => {
     try {
@@ -429,6 +447,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Sync state to localStorage on changes
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.LOJAS, JSON.stringify(lojas));
+  }, [lojas]);
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SIZES, JSON.stringify(pizzaSizes));
   }, [pizzaSizes]);
 
@@ -553,8 +575,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       collection(db, FIRESTORE_COLLECTIONS.LOJAS),
       (snapshot) => {
         if (!snapshot.empty) {
-          const remoteLojas = snapshot.docs.map((d) => d.data() as Loja);
-          setLojas(ensureLojaTokens(remoteLojas));
+          const deleted = getDeletedLojaIds();
+          const remoteLojas = snapshot.docs
+            .map((d) => d.data() as Loja)
+            .filter((l) => !deleted.includes(l.id));
+          if (remoteLojas.length > 0) {
+            setLojas(ensureLojaTokens(remoteLojas));
+          }
         }
       },
       (err) => console.warn('[Firestore Lojas Error]:', err.message)
@@ -1273,7 +1300,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const newProduct: Product = {
       ...prod,
       id: `prod_${Date.now()}`,
-      loja_id: prod.loja_id || (currentLojaId === 'todas' ? 'loja_centro' : currentLojaId),
+      loja_id: prod.loja_id || currentLoja?.id || (currentLojaId === 'todas' ? 'loja_centro' : currentLojaId),
     };
     const updated = [newProduct, ...products];
     setProducts(updated);
@@ -1336,7 +1363,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const newIngredient: Ingredient = {
       ...data,
       id: `ing_${Date.now()}`,
-      loja_id: data.loja_id || (currentLojaId === 'todas' ? 'loja_centro' : currentLojaId),
+      loja_id: data.loja_id || currentLoja?.id || (currentLojaId === 'todas' ? 'loja_centro' : currentLojaId),
       quantidade: Math.max(0, Math.round((Number(data.quantidade) || 0) * 100) / 100),
       estoque_minimo: Number(data.estoque_minimo) || 10,
       ultima_atualizacao: new Date().toISOString(),
@@ -1391,7 +1418,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const addTable = (numero: number, capacidade: number, localizacao: string) => {
     const newTable: Table = {
       id: `mesa_${numero.toString().padStart(2, '0')}`,
-      loja_id: currentLojaId === 'todas' ? 'loja_centro' : currentLojaId,
+      loja_id: currentLoja?.id || (currentLojaId === 'todas' ? 'loja_centro' : currentLojaId),
       numero,
       capacidade,
       status: 'livre',
@@ -1432,7 +1459,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const newUser: User = {
       ...userData,
       id: `user_${Date.now()}`,
-      loja_id: userData.loja_id || (currentLojaId === 'todas' ? undefined : currentLojaId),
+      loja_id: userData.loja_id || currentLoja?.id || (currentLojaId === 'todas' ? undefined : currentLojaId),
     };
     const updated = [...users, newUser];
     setUsers(updated);
@@ -1504,6 +1531,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteLoja = async (lojaId: string) => {
+    // 0. Grava ID na lista de excluídos para nunca mais ressurgir da nuvem ou cache
+    const deletedList = getDeletedLojaIds();
+    if (!deletedList.includes(lojaId)) {
+      deletedList.push(lojaId);
+      try {
+        localStorage.setItem(DELETED_LOJAS_KEY, JSON.stringify(deletedList));
+      } catch {}
+    }
+
     // 1. Remove loja do estado
     const updatedLojas = lojas.filter((l) => l.id !== lojaId);
     setLojas(updatedLojas);
@@ -1512,13 +1548,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const updatedUsers = users.filter((u) => u.loja_id !== lojaId);
     setUsers(updatedUsers);
 
-    // 3. Remove produtos, mesas e comandas vinculados à loja
+    // 3. Remove produtos, mesas, comandas e pedidos vinculados à loja
     const updatedProducts = products.filter((p) => p.loja_id !== lojaId);
     setProducts(updatedProducts);
     const updatedTables = tables.filter((t) => t.loja_id !== lojaId);
     setTables(updatedTables);
     const updatedComandas = comandas.filter((c) => c.loja_id !== lojaId);
     setComandas(updatedComandas);
+    const updatedOrders = orders.filter((o) => o.loja_id !== lojaId);
+    setOrders(updatedOrders);
 
     // 4. Atualiza localStorage
     try {
@@ -1527,6 +1565,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updatedProducts));
       localStorage.setItem(STORAGE_KEYS.TABLES, JSON.stringify(updatedTables));
       localStorage.setItem(STORAGE_KEYS.COMANDAS, JSON.stringify(updatedComandas));
+      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(updatedOrders));
     } catch (e) {
       console.warn('Erro ao atualizar localStorage após exclusão de loja:', e);
     }
@@ -1552,7 +1591,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const createStoreWithAdmin = (
     lojaData: { nome: string; slug: string; marca?: string; cnpj?: string; endereco?: string; telefone?: string; taxa_entrega?: number; plano?: 'basico' | 'pro' | 'enterprise' },
-    adminData: { nome: string; usuario: string; senha?: string; senhaHash?: string; salt?: string; pin: string }
+    adminData: { nome: string; usuario: string; senha?: string; senhaHash?: string; salt?: string; pin?: string }
   ) => {
     const lojaId = `loja_${Date.now()}`;
     const adminId = `user_admin_${Date.now()}`;
@@ -1570,7 +1609,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       senha: adminData.senhaHash ? '' : safePassword,
       senhaHash: adminData.senhaHash,
       salt: adminData.salt,
-      pin: adminData.pin,
+      pin: '', // Sem PIN: autenticação exclusiva por login e senha
       perfil: 'admin',
       ativo: true,
       avatar: '👨‍💼',
@@ -1604,6 +1643,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setLojas(updatedLojas);
     setUsers(updatedUsers);
+    try {
+      localStorage.setItem(STORAGE_KEYS.LOJAS, JSON.stringify(updatedLojas));
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
+    } catch {}
     saveLojaToFirestore(newLoja);
     broadcastSync({ lojas: updatedLojas, users: updatedUsers });
   };
@@ -1939,27 +1982,27 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Filtered views based on active store (or all if 'todas')
   const filteredTables = useMemo(() => {
     if (currentLojaId === 'todas') return tables;
-    return tables.filter((t) => !t.loja_id || t.loja_id === currentLojaId);
+    return tables.filter((t) => t.loja_id === currentLojaId);
   }, [tables, currentLojaId]);
 
   const filteredProducts = useMemo(() => {
     if (currentLojaId === 'todas') return products;
-    return products.filter((p) => !p.loja_id || p.loja_id === currentLojaId);
+    return products.filter((p) => p.loja_id === currentLojaId);
   }, [products, currentLojaId]);
 
   const filteredIngredients = useMemo(() => {
     if (currentLojaId === 'todas') return ingredients;
-    return ingredients.filter((i) => !i.loja_id || i.loja_id === currentLojaId);
+    return ingredients.filter((i) => i.loja_id === currentLojaId);
   }, [ingredients, currentLojaId]);
 
   const filteredOrders = useMemo(() => {
     if (currentLojaId === 'todas') return orders;
-    return orders.filter((o) => !o.loja_id || o.loja_id === currentLojaId);
+    return orders.filter((o) => o.loja_id === currentLojaId);
   }, [orders, currentLojaId]);
 
   const filteredComandas = useMemo(() => {
     if (currentLojaId === 'todas') return comandas;
-    return comandas.filter((c) => !c.loja_id || c.loja_id === currentLojaId);
+    return comandas.filter((c) => c.loja_id === currentLojaId);
   }, [comandas, currentLojaId]);
 
   return (
