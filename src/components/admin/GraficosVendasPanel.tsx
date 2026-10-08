@@ -74,7 +74,7 @@ export const GraficosVendasPanel: React.FC<GraficosVendasPanelProps> = ({
   categories,
   initialPeriod = '7dias',
 }) => {
-  const { isDarkMode } = useStore();
+  const { isDarkMode, currentLoja } = useStore();
   const chartTextColor = isDarkMode ? '#f8fafc' : '#141414';
   const chartGridColor = isDarkMode ? '#334155' : '#e5e7eb';
 
@@ -321,7 +321,7 @@ export const GraficosVendasPanel: React.FC<GraficosVendasPanelProps> = ({
 
   // Handler para copiar relatório resumido
   const handleCopyReport = () => {
-    const text = `📊 RELATÓRIO EXECUTIVO DE VENDAS - PIZZARIA ITÁLIA
+    const text = `📊 RELATÓRIO EXECUTIVO DE VENDAS - ${currentLoja?.marca?.toUpperCase() || 'ESTABELECIMENTO'}
 Período: ${periodo.toUpperCase()}
 Faturamento Total: ${formatCurrency(totalSalesPeriod)}
 Total de Pedidos: ${totalOrdersPeriod}

@@ -91,7 +91,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   }, [allProducts, targetLoja]);
 
   // Active Category Filter
-  const [activeCategory, setActiveCategory] = useState<string>('pizzas');
+  const [activeCategory, setActiveCategory] = useState<string>('todos');
 
   // Cart State
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -628,7 +628,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Pesquise por pizza, sabor, bebida, porção ou sobremesa..."
+            placeholder="Pesquise por lanche, burger, pizza, bebida, porção ou sobremesa..."
             className={`w-full pl-12 pr-4 py-3.5 rounded-2xl text-xs sm:text-sm font-semibold shadow-xs focus:outline-hidden focus:ring-2 focus:ring-red-500 transition ${inputBgClass}`}
           />
           {searchQuery && (
@@ -805,7 +805,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
             </div>
 
             {/* Section: "Mais Pedidos" (Featured Vertical Gallery Cards with Top Photos) */}
-            {!searchQuery && activeCategory === 'pizzas' && featuredProducts.length > 0 && (
+            {!searchQuery && (activeCategory === 'todos' || activeCategory === 'pizzas' || activeCategory === 'lanches') && featuredProducts.length > 0 && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm sm:text-base font-black tracking-tight uppercase flex items-center gap-1.5">

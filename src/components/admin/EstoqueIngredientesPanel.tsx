@@ -25,6 +25,7 @@ import { formatCurrency, formatDateTime } from '../../utils/formatters';
 
 export const EstoqueIngredientesPanel: React.FC = () => {
   const {
+    currentLoja,
     ingredients,
     updateIngredientStock,
     adjustIngredientStock,
@@ -251,7 +252,7 @@ export const EstoqueIngredientesPanel: React.FC = () => {
       return;
     }
     const lines = [
-      `=== LISTA DE REPOSIÇÃO DE ESTOQUE (PIZZARIA ITÁLIA) ===`,
+      `=== LISTA DE REPOSIÇÃO DE ESTOQUE (${currentLoja?.marca?.toUpperCase() || 'ESTABELECIMENTO'}) ===`,
       `Data: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}`,
       `Total de itens críticos (< 10 un): ${lowStockItems.length}`,
       ``,

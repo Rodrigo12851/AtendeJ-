@@ -159,7 +159,7 @@ export const SuperAdminStoresModal: React.FC<SuperAdminStoresModalProps> = ({ on
                         setSlugLoja(e.target.value.toLowerCase().replace(/\s+/g, '-'));
                       }
                     }}
-                    placeholder="Ex: Pizzaria Itália — Morumbi"
+                    placeholder="Ex: Pizzaria Bella Itália ou Smash Burger"
                     className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl text-xs text-stone-900 dark:text-slate-100 font-medium"
                   />
                 </div>

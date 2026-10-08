@@ -7,7 +7,6 @@ import {
   LogOut,
   Volume2,
   VolumeX,
-  RotateCcw,
   Pizza,
   Building2,
   Share2,
@@ -36,7 +35,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
     setAudioEnabled,
     isDarkMode,
     setDarkMode,
-    resetToSeedData,
     tables,
     comandas,
     orders,
@@ -48,12 +46,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
 
   const [showStoresModal, setShowStoresModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-
-  const handleReset = () => {
-    if (window.confirm('Deseja reiniciar todos os dados da pizzaria para o estado inicial de demonstração?')) {
-      resetToSeedData();
-    }
-  };
 
   const handleCopyDeliveryLink = () => {
     const slug = currentLoja?.slug || 'loja-centro';
@@ -334,17 +326,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
                 {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
               </button>
 
-              {/* Reset Demo Data Button (Apenas Admin e Super Admin) */}
-              {(currentUser?.perfil === 'admin' || currentUser?.perfil === 'super_admin') && (
-                <button
-                  onClick={handleReset}
-                  className="p-2 rounded-lg border border-stone-800 bg-stone-800/50 text-stone-400 hover:text-white hover:bg-stone-800 transition cursor-pointer"
-                  title="Restaurar dados de teste"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              )}
-
               {/* Operator Badge */}
               <div className="flex items-center gap-2 pl-2 border-l border-stone-800">
                 <div className="w-7 h-7 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-[10px] font-mono font-bold text-amber-300">
@@ -587,17 +568,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
           >
             {audioEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
           </button>
-
-          {/* Reset Demo Data (Apenas Admin e Super Admin) */}
-          {(currentUser?.perfil === 'admin' || currentUser?.perfil === 'super_admin') && (
-            <button
-              onClick={handleReset}
-              className="p-1.5 rounded-lg border border-stone-800 bg-stone-800/50 text-stone-400 hover:text-white hover:bg-stone-800 transition shrink-0 cursor-pointer"
-              title="Restaurar dados de teste"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          )}
 
           {/* Full Operator Badge */}
           <div className="flex items-center gap-1.5 pl-1.5 border-l border-stone-800 shrink-0">

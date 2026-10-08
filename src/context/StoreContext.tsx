@@ -214,6 +214,33 @@ const ensureUsersWithSecurePasswords = (userList: User[]): User[] => {
   return updated;
 };
 
+const MIGRATION_TWO_STORES_FLAG = 'atendeja_migrated_two_stores_v4';
+
+const ensureDemoStoresUpdated = (storeList: Loja[]): Loja[] => {
+  return storeList.map((l) => {
+    if (l.id === 'loja_centro') {
+      return { ...l, marca: 'Pizzaria Bella Itália' };
+    }
+    if (l.id === 'loja_shopping') {
+      return {
+        ...l,
+        marca: 'Smash Burger House',
+        nome: l.nome.includes('Burger') ? l.nome : 'Filial — Shopping',
+      };
+    }
+    return l;
+  });
+};
+
+const ensureStoreProducts = (prodList: Product[]): Product[] => {
+  const hasBurgerProducts = prodList.some((p) => p.loja_id === 'loja_shopping');
+  if (!hasBurgerProducts) {
+    const burgerSeed = INITIAL_PRODUCTS.filter((p) => p.loja_id === 'loja_shopping');
+    return [...prodList, ...burgerSeed];
+  }
+  return prodList;
+};
+
 const DELETED_LOJAS_KEY = 'atendeja_deleted_lojas_v1';
 const getDeletedLojaIds = (): string[] => {
   try {
@@ -228,8 +255,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [lojas, setLojas] = useState<Loja[]>(() => {
     try {
       const deletedIds = getDeletedLojaIds();
+      const hasMigrated = localStorage.getItem(MIGRATION_TWO_STORES_FLAG);
+      if (!hasMigrated) {
+        localStorage.setItem(MIGRATION_TWO_STORES_FLAG, 'true');
+        localStorage.setItem(STORAGE_KEYS.LOJAS, JSON.stringify(INITIAL_LOJAS));
+        return INITIAL_LOJAS.filter((l) => !deletedIds.includes(l.id));
+      }
       const saved = localStorage.getItem(STORAGE_KEYS.LOJAS);
-      const raw = saved ? ensureLojaTokens(JSON.parse(saved)) : INITIAL_LOJAS;
+      const raw = saved ? ensureDemoStoresUpdated(ensureLojaTokens(JSON.parse(saved))) : INITIAL_LOJAS;
       return raw.filter((l) => !deletedIds.includes(l.id));
     } catch {
       const deletedIds = getDeletedLojaIds();
@@ -285,7 +318,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [tables, setTables] = useState<Table[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.TABLES);
-      return saved ? JSON.parse(saved) : INITIAL_TABLES;
+      if (!saved) return INITIAL_TABLES;
+      const list: Table[] = JSON.parse(saved);
+      const hasBurgerTables = list.some((t) => t.loja_id === 'loja_shopping');
+      if (!hasBurgerTables) {
+        const burgerTables = INITIAL_TABLES.filter((t) => t.loja_id === 'loja_shopping');
+        return [...list, ...burgerTables];
+      }
+      return list;
     } catch {
       return INITIAL_TABLES;
     }
@@ -303,7 +343,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-      return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+      const list = saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+      return ensureStoreProducts(list);
     } catch {
       return INITIAL_PRODUCTS;
     }
@@ -321,7 +362,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [orders, setOrders] = useState<Order[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.ORDERS);
-      return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+      const list: Order[] = saved ? JSON.parse(saved) : INITIAL_ORDERS;
+      const hasBurgerOrders = list.some((o) => o.loja_id === 'loja_shopping');
+      if (!hasBurgerOrders) {
+        const burgerSeed = INITIAL_ORDERS.filter((o) => o.loja_id === 'loja_shopping');
+        return [...list, ...burgerSeed];
+      }
+      return list;
     } catch {
       return INITIAL_ORDERS;
     }
@@ -330,7 +377,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [comandas, setComandas] = useState<Comanda[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.COMANDAS);
-      return saved ? JSON.parse(saved) : INITIAL_COMANDAS;
+      const list: Comanda[] = saved ? JSON.parse(saved) : INITIAL_COMANDAS;
+      const hasBurgerComandas = list.some((c) => c.loja_id === 'loja_shopping');
+      if (!hasBurgerComandas) {
+        const burgerSeed = INITIAL_COMANDAS.filter((c) => c.loja_id === 'loja_shopping');
+        return [...list, ...burgerSeed];
+      }
+      return list;
     } catch {
       return INITIAL_COMANDAS;
     }
@@ -580,7 +633,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             .map((d) => d.data() as Loja)
             .filter((l) => !deleted.includes(l.id));
           if (remoteLojas.length > 0) {
-            setLojas(ensureLojaTokens(remoteLojas));
+            setLojas(ensureDemoStoresUpdated(ensureLojaTokens(remoteLojas)));
           }
         }
       },
