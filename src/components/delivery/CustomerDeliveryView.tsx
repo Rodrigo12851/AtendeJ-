@@ -34,6 +34,23 @@ const CUSTOMER_PROFILE_KEY = 'atendeja_customer_profile_v1';
 const CUSTOMER_ORDERS_KEY = 'atendeja_customer_orders_v1';
 const DEFAULT_FOOD_IMG = 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80';
 
+const DEFAULT_BURGER_ADDONS = [
+  { id: 'add_bacon', nome: 'Bacon Crocante Extra', preco: 5.0 },
+  { id: 'add_cheddar', nome: 'Cheddar Cremoso Melt', preco: 4.5 },
+  { id: 'add_smash', nome: 'Smash Burger 90g Extra', preco: 8.5 },
+  { id: 'add_cebola', nome: 'Cebola Caramelizada', preco: 3.5 },
+  { id: 'add_maionese', nome: 'Maionese Especial da Casa', preco: 3.0 },
+  { id: 'add_ovo', nome: 'Ovo Frito na Manteiga', preco: 3.0 },
+];
+
+const DEFAULT_PORTION_ADDONS = [
+  { id: 'add_queijo', nome: 'Queijo Parmesão / Ralado Extra', preco: 5.0 },
+  { id: 'add_bacon_cubos', nome: 'Farofa de Bacon Crocante', preco: 6.0 },
+  { id: 'add_molho_barbecue', nome: 'Pote Molho Barbecue', preco: 3.5 },
+  { id: 'add_maionese_verde', nome: 'Pote Maionese Verde', preco: 3.5 },
+  { id: 'add_cheddar_creme', nome: 'Cheddar Cremoso Extra', preco: 5.0 },
+];
+
 interface CustomerDeliveryViewProps {
   lojaSlug: string;
 }
@@ -121,6 +138,16 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [showCartModal, setShowCartModal] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState<Product | null>(null);
+  const [selectedBurgerOrItem, setSelectedBurgerOrItem] = useState<Product | null>(null);
+  const [itemModalQtd, setItemModalQtd] = useState<number>(1);
+  const [selectedItemAddons, setSelectedItemAddons] = useState<{ id: string; nome: string; preco: number }[]>([]);
+  const [itemModalObs, setItemModalObs] = useState<string>('');
+
+  const availableAddonsForCurrentItem = useMemo(() => {
+    if (!selectedBurgerOrItem) return [];
+    if (selectedBurgerOrItem.categoria_id === 'porcoes') return DEFAULT_PORTION_ADDONS;
+    return DEFAULT_BURGER_ADDONS;
+  }, [selectedBurgerOrItem]);
 
   // Favorites state
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -231,7 +258,49 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     return storeProducts.find((p) => p.destaque) || storeProducts[0];
   }, [storeProducts]);
 
-  // Add regular product directly to cart
+  const handleOpenItemCustomizer = (product: Product) => {
+    if (!storeStatus.isOpen) {
+      alert(`O estabelecimento está fechado no momento!\nHorário de atendimento: ${storeStatus.horarioFormatado}.\nNovos pedidos não estão sendo aceitos agora.`);
+      return;
+    }
+    setSelectedBurgerOrItem(product);
+    setItemModalQtd(1);
+    setSelectedItemAddons([]);
+    setItemModalObs('');
+  };
+
+  const handleConfirmCustomItem = () => {
+    if (!selectedBurgerOrItem) return;
+    if (!storeStatus.isOpen) {
+      alert(`O estabelecimento está fechado no momento!\nHorário de atendimento: ${storeStatus.horarioFormatado}.`);
+      setSelectedBurgerOrItem(null);
+      return;
+    }
+
+    const extrasTotal = selectedItemAddons.reduce((acc, curr) => acc + curr.preco, 0);
+    const precoUnitarioTotal = selectedBurgerOrItem.preco + extrasTotal;
+    const precoTotal = precoUnitarioTotal * itemModalQtd;
+
+    const newItem: OrderItem = {
+      id: `cust_item_${Date.now()}_${Math.random()}`,
+      produto_id: selectedBurgerOrItem.id,
+      nome: selectedBurgerOrItem.nome,
+      quantidade: itemModalQtd,
+      preco_unitario: precoUnitarioTotal,
+      preco_total: precoTotal,
+      adicionais: selectedItemAddons.map((a) => ({ nome: a.nome, preco: a.preco })),
+      observacao: itemModalObs.trim() || undefined,
+      status: 'ativo',
+    };
+
+    setCart((prev) => [...prev, newItem]);
+    setSelectedBurgerOrItem(null);
+    setItemModalQtd(1);
+    setSelectedItemAddons([]);
+    setItemModalObs('');
+  };
+
+  // Add regular product directly to cart or open customizer
   const handleAddRegularProduct = (product: Product) => {
     if (!storeStatus.isOpen) {
       alert(`O estabelecimento está fechado no momento!\nHorário de funcionamento: ${storeStatus.horarioFormatado}.\nNovos pedidos não estão sendo aceitos agora.`);
@@ -243,8 +312,20 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       return;
     }
 
+    if (
+      product.categoria_id === 'lanches' ||
+      product.categoria_id === 'hamburgueres' ||
+      product.categoria_id === 'porcoes' ||
+      product.permitirAdicionais
+    ) {
+      handleOpenItemCustomizer(product);
+      return;
+    }
+
     setCart((prev) => {
-      const existingIdx = prev.findIndex((item) => item.produto_id === product.id);
+      const existingIdx = prev.findIndex(
+        (item) => item.produto_id === product.id && (!item.adicionais || item.adicionais.length === 0) && !item.observacao
+      );
       if (existingIdx >= 0) {
         const updated = [...prev];
         const currentItem = updated[existingIdx];
@@ -975,11 +1056,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                       className={`rounded-2xl border overflow-hidden shadow-xs hover:shadow-md transition flex flex-col sm:flex-row justify-between p-3 gap-3 ${cardBgClass}`}
                     >
                       {/* Product Photo */}
-                      <div className="relative w-full sm:w-28 h-32 sm:h-28 rounded-xl overflow-hidden shrink-0 bg-stone-800">
+                      <div
+                        onClick={() => handleAddRegularProduct(product)}
+                        className="relative w-full sm:w-28 h-32 sm:h-28 rounded-xl overflow-hidden shrink-0 bg-stone-800 cursor-pointer group"
+                      >
                         <img
                           src={product.imagem || DEFAULT_FOOD_IMG}
                           alt={product.nome}
-                          className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                           onError={(e) => {
                             const target = e.currentTarget;
                             if (target.src !== DEFAULT_FOOD_IMG) {
@@ -998,7 +1082,10 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                       <div className="flex-1 flex flex-col justify-between space-y-2">
                         <div>
                           <div className="flex items-start justify-between gap-2">
-                            <h4 className="text-xs sm:text-sm font-bold leading-tight">
+                            <h4
+                              onClick={() => handleAddRegularProduct(product)}
+                              className="text-xs sm:text-sm font-bold leading-tight cursor-pointer hover:text-red-500 dark:hover:text-amber-400 transition"
+                            >
                               {product.nome}
                             </h4>
                             <button
@@ -1033,7 +1120,13 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                             title={!storeStatus.isOpen ? 'Loja Fechada' : 'Adicionar ao Pedido'}
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>{product.isPizza ? 'Escolher Sabores' : 'Adicionar'}</span>
+                            <span>
+                              {product.isPizza
+                                ? 'Escolher Sabores'
+                                : (product.categoria_id === 'lanches' || product.categoria_id === 'hamburgueres' || product.categoria_id === 'porcoes' || product.permitirAdicionais)
+                                ? 'Personalizar'
+                                : 'Adicionar'}
+                            </span>
                           </button>
                         </div>
                       </div>
@@ -1105,6 +1198,16 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                       )}
                       {item.borda && item.borda.nome !== 'Sem borda' && (
                         <p className="text-[10px] text-stone-400">Borda: {item.borda.nome}</p>
+                      )}
+                      {item.adicionais && item.adicionais.length > 0 && (
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                          + {item.adicionais.map((a) => a.nome).join(', ')}
+                        </p>
+                      )}
+                      {item.observacao && (
+                        <p className="text-[10px] text-stone-500 dark:text-stone-400 italic">
+                          Obs: "{item.observacao}"
+                        </p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -1385,6 +1488,152 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
           onClose={() => setSelectedPizza(null)}
           onConfirm={handleAddPizzaToCart}
         />
+      )}
+
+      {/* Modal de Adicionais & Personalização de Burgers, Lanches e Porções */}
+      {selectedBurgerOrItem && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/80 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#1A1A22] text-stone-900 dark:text-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-stone-200 dark:border-stone-800 max-w-md w-full overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150">
+            {/* Header com imagem */}
+            <div className="relative h-44 sm:h-48 w-full bg-stone-800 overflow-hidden shrink-0">
+              <img
+                src={selectedBurgerOrItem.imagem || DEFAULT_FOOD_IMG}
+                alt={selectedBurgerOrItem.nome}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
+                }}
+              />
+              <button
+                onClick={() => setSelectedBurgerOrItem(null)}
+                className="absolute top-3 right-3 p-2 bg-stone-900/80 hover:bg-stone-900 text-white rounded-full backdrop-blur-xs cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="absolute bottom-2 left-3 bg-stone-900/85 text-amber-400 font-mono font-black text-sm px-3 py-1 rounded-xl backdrop-blur-xs">
+                Base: {formatCurrency(selectedBurgerOrItem.preco)}
+              </div>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+              <div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-stone-900 dark:text-white">
+                  {selectedBurgerOrItem.nome}
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
+                  {selectedBurgerOrItem.descricao}
+                </p>
+              </div>
+
+              {/* Lista de Adicionais */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                  <span>Turbine seu pedido (Adicionais)</span>
+                  <span className="text-[10px] text-stone-400 lowercase font-normal">opcional</span>
+                </div>
+
+                <div className="space-y-2">
+                  {availableAddonsForCurrentItem.map((addon) => {
+                    const isSelected = selectedItemAddons.some((a) => a.id === addon.id);
+                    return (
+                      <label
+                        key={addon.id}
+                        className={`flex items-center justify-between p-3 rounded-2xl border text-xs cursor-pointer transition select-none ${
+                          isSelected
+                            ? 'bg-amber-500/10 border-amber-500 text-stone-900 dark:text-white font-bold ring-1 ring-amber-500/30'
+                            : 'bg-stone-50 dark:bg-stone-900/70 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:border-stone-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              if (isSelected) {
+                                setSelectedItemAddons((prev) => prev.filter((a) => a.id !== addon.id));
+                              } else {
+                                setSelectedItemAddons((prev) => [...prev, addon]);
+                              }
+                            }}
+                            className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 cursor-pointer accent-amber-500"
+                          />
+                          <span>+ {addon.nome}</span>
+                        </div>
+                        <span className="font-mono font-bold text-amber-500">
+                          +{formatCurrency(addon.preco)}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Observações */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block">
+                  Observações do Item
+                </label>
+                <textarea
+                  value={itemModalObs}
+                  onChange={(e) => setItemModalObs(e.target.value)}
+                  placeholder="Ex: sem cebola, ponto da carne, sem picles, molho à parte..."
+                  className={`w-full p-3 rounded-2xl text-xs resize-none h-16 ${inputBgClass}`}
+                />
+              </div>
+
+              {/* Seletor de Quantidade */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+                <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                  Quantidade:
+                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setItemModalQtd((q) => Math.max(1, q - 1))}
+                    className="w-8 h-8 rounded-xl bg-stone-200 dark:bg-stone-800 text-stone-900 dark:text-white font-bold flex items-center justify-center hover:bg-stone-300 dark:hover:bg-stone-700 cursor-pointer"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono font-black text-sm w-4 text-center">
+                    {itemModalQtd}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setItemModalQtd((q) => q + 1)}
+                    className="w-8 h-8 rounded-xl bg-stone-200 dark:bg-stone-800 text-stone-900 dark:text-white font-bold flex items-center justify-center hover:bg-stone-300 dark:hover:bg-stone-700 cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer do Modal */}
+            <div className="p-4 bg-stone-50 dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 space-y-2">
+              <button
+                type="button"
+                onClick={handleConfirmCustomItem}
+                className="w-full py-3.5 px-4 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-stone-950 font-black text-sm rounded-2xl shadow-lg transition flex items-center justify-between cursor-pointer"
+              >
+                <span>Adicionar à Sacola</span>
+                <span className="font-mono">
+                  {formatCurrency(
+                    (selectedBurgerOrItem.preco + selectedItemAddons.reduce((a, c) => a + c.preco, 0)) * itemModalQtd
+                  )}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedBurgerOrItem(null)}
+                className="w-full py-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xs font-semibold cursor-pointer"
+              >
+                Voltar ao Cardápio
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal Histórico de Pedidos ("Meus Pedidos") */}
