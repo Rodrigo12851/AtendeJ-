@@ -27,6 +27,7 @@ import {
   Share2,
   ShoppingBag,
   UtensilsCrossed,
+  X,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Comanda, Order, Table, PaymentMethod, CashEntry, OrderStatus } from '../../types';
@@ -44,6 +45,7 @@ export const CaixaView: React.FC = () => {
     registerPayment,
     applyDiscount,
     closeComanda,
+    ensureOrderComanda,
     openCashRegister,
     closeCashRegister,
     addCashEntry,
@@ -53,6 +55,8 @@ export const CaixaView: React.FC = () => {
 
   const [caixaActiveTab, setCaixaActiveTab] = useState<'comandas' | 'pedidos'>('comandas');
   const [selectedComandaId, setSelectedComandaId] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<'todas' | 'fechar'>('todas');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedDeliveryLink, setCopiedDeliveryLink] = useState(false);
@@ -70,11 +74,11 @@ export const CaixaView: React.FC = () => {
     setTimeout(() => setCopiedDeliveryLink(false), 2500);
   };
 
-  // Pedidos & Delivery / Retirada tracking state
-  const [deliveryFilter, setDeliveryFilter] = useState<'todos' | 'novo' | 'em_preparo' | 'a_caminho' | 'entregue'>('todos');
+  // Pedidos & Delivery / Retirada tracking state (Caixa Operacional)
+  const [deliveryFilter, setDeliveryFilter] = useState<'todos' | 'novo' | 'em_preparo' | 'a_caminho'>('todos');
   const [deliverySearch, setDeliverySearch] = useState<string>('');
 
-  const [retiradaFilter, setRetiradaFilter] = useState<'todos' | 'novo' | 'em_preparo' | 'pronto' | 'entregue'>('todos');
+  const [retiradaFilter, setRetiradaFilter] = useState<'todos' | 'novo' | 'em_preparo' | 'pronto'>('todos');
   const [retiradaSearch, setRetiradaSearch] = useState<string>('');
 
   const [pedidosCanalFilter, setPedidosCanalFilter] = useState<'todos' | 'delivery' | 'retirada' | 'mesa'>('todos');
@@ -120,6 +124,27 @@ export const CaixaView: React.FC = () => {
     return comandas.find((c) => c.id === selectedComandaId) || null;
   }, [comandas, selectedComandaId]);
 
+  // Selected order (if from Retirada or Delivery)
+  const activeOrder = useMemo(() => {
+    if (selectedOrderId) {
+      return orders.find((o) => o.id === selectedOrderId) || null;
+    }
+    if (activeComanda && activeComanda.pedidos_ids.length > 0) {
+      return (
+        orders.find(
+          (o) =>
+            activeComanda.pedidos_ids.includes(o.id) &&
+            (o.tipo_pedido === 'retirada' || o.tipo_pedido === 'delivery')
+        ) || null
+      );
+    }
+    return null;
+  }, [orders, selectedOrderId, activeComanda]);
+
+  const isOrderCheckout = useMemo(() => {
+    return !!activeOrder && (!activeComanda?.mesa_numero || activeComanda.mesa_numero === 0);
+  }, [activeOrder, activeComanda]);
+
   // Associated table
   const activeTable = useMemo(() => {
     if (!activeComanda) return null;
@@ -129,8 +154,11 @@ export const CaixaView: React.FC = () => {
   // Orders and active items for active comanda
   const activeComandaOrders = useMemo(() => {
     if (!activeComanda) return [];
-    return orders.filter((o) => activeComanda.pedidos_ids.includes(o.id));
-  }, [orders, activeComanda]);
+    const direct = orders.filter((o) => activeComanda.pedidos_ids.includes(o.id));
+    if (direct.length > 0) return direct;
+    if (activeOrder) return [activeOrder];
+    return [];
+  }, [orders, activeComanda, activeOrder]);
 
   const allActiveItems = useMemo(() => {
     return activeComandaOrders.flatMap((o) => o.itens.filter((it) => it.status === 'ativo'));
@@ -154,7 +182,44 @@ export const CaixaView: React.FC = () => {
     setPaymentAmountInput(val.toFixed(2));
   };
 
-  // Register payment handler
+  // Select Order (Retirada ou Delivery) para conferência e pagamento no Caixa
+  const handleSelectOrder = (order: Order) => {
+    const cmd = ensureOrderComanda(order);
+    setSelectedComandaId(cmd.id);
+    setSelectedOrderId(order.id);
+    setSplitMode('nenhum');
+    setPaymentSuccessMessage(null);
+    const paid = cmd.pagamentos.reduce((acc, p) => acc + p.valor, 0);
+    const rem = Math.max(0, cmd.total - paid);
+    setPaymentAmountInput(rem > 0 ? rem.toFixed(2).replace('.', ',') : '');
+
+    if (order.forma_pagamento) {
+      const clean = order.forma_pagamento.toLowerCase();
+      if (clean.includes('pix')) setSelectedPaymentMethod('pix');
+      else if (clean.includes('cred') || clean.includes('créd')) setSelectedPaymentMethod('credito');
+      else if (clean.includes('deb') || clean.includes('déb')) setSelectedPaymentMethod('debito');
+      else if (clean.includes('din') || clean.includes('cash')) setSelectedPaymentMethod('dinheiro');
+    }
+    if (order.troco_para) {
+      setTrocoParaInput(order.troco_para.toFixed(2).replace('.', ','));
+    } else {
+      setTrocoParaInput('');
+    }
+  };
+
+  // Select Mesa Comanda
+  const handleSelectComanda = (cmd: Comanda) => {
+    setSelectedComandaId(cmd.id);
+    setSelectedOrderId(null);
+    setSplitMode('nenhum');
+    setPaymentSuccessMessage(null);
+    const paid = cmd.pagamentos.reduce((acc, p) => acc + p.valor, 0);
+    const rem = Math.max(0, cmd.total - paid);
+    setPaymentAmountInput(rem > 0 ? rem.toFixed(2).replace('.', ',') : '');
+    setTrocoParaInput('');
+  };
+
+  // Register payment handler (com suporte a pagamento misto / múltiplas formas)
   const handleAddPayment = () => {
     if (!activeComanda) return;
     const val = parseFloat(paymentAmountInput.replace(',', '.'));
@@ -171,11 +236,38 @@ export const CaixaView: React.FC = () => {
       splitMode === 'itens' ? selectedItemIdsForSplit : undefined
     );
 
-    // Reset inputs
-    setPaymentAmountInput('');
+    const newTotalPaid = totalPaid + val;
+    const newRem = Math.max(0, activeComanda.total - newTotalPaid);
+
+    if (newRem > 0.05) {
+      setPaymentSuccessMessage(
+        `Pagamento parcial de ${formatCurrency(val)} (${selectedPaymentMethod.toUpperCase()}) registrado! Restam ${formatCurrency(newRem)} a receber.`
+      );
+      setPaymentAmountInput(newRem.toFixed(2).replace('.', ','));
+    } else {
+      setPaymentSuccessMessage(null);
+      setPaymentAmountInput('');
+    }
+
     setTrocoParaInput('');
     setPayerName('');
     setSelectedItemIdsForSplit([]);
+  };
+
+  // Fast-track: Quitar todo o saldo restante com 1 clique na forma de pagamento selecionada
+  const handleQuickFullPayment = (method?: PaymentMethod) => {
+    if (!activeComanda || remainingBalance <= 0) return;
+    const met = method || selectedPaymentMethod;
+    registerPayment(
+      activeComanda.id,
+      met,
+      remainingBalance,
+      undefined,
+      payerName.trim() || undefined
+    );
+    setPaymentAmountInput('');
+    setTrocoParaInput('');
+    setPaymentSuccessMessage(null);
   };
 
   // Open discount modal with current comanda discount prefilled
@@ -192,15 +284,20 @@ export const CaixaView: React.FC = () => {
     setShowDiscountModal(true);
   };
 
-  // Complete checkout & close comanda
+  // Complete checkout & close comanda / finalize order
   const handleFinalizeComanda = () => {
     if (!activeComanda) return;
     if (remainingBalance > 0.05) {
-      alert('Não é possível fechar comanda com saldo pendente!');
+      alert(`Atenção: Quite o saldo restante de ${formatCurrency(remainingBalance)} para concluir a comanda.`);
       return;
+    }
+    if (activeOrder) {
+      updateOrderStatus(activeOrder.id, 'entregue');
     }
     closeComanda(activeComanda.id);
     setSelectedComandaId(null);
+    setSelectedOrderId(null);
+    setPaymentSuccessMessage(null);
   };
 
   // Total sales in this shift
@@ -246,24 +343,37 @@ export const CaixaView: React.FC = () => {
     return o.tipo_pedido === 'mesa' || !!o.mesa_numero;
   };
 
-  // Channel Lists
+  // Channel Lists (all orders, including completed for Tab 2 / History)
   const allDeliveryOrders = useMemo(() => orders.filter(isDeliveryOrder), [orders]);
   const allRetiradaOrders = useMemo(() => orders.filter(isRetiradaOrder), [orders]);
   const allMesaOrders = useMemo(() => orders.filter(isMesaOrder), [orders]);
 
-  // Status counts per channel
-  const countNovosDelivery = useMemo(() => allDeliveryOrders.filter((o) => o.status === 'novo').length, [allDeliveryOrders]);
-  const countNovosRetirada = useMemo(() => allRetiradaOrders.filter((o) => o.status === 'novo').length, [allRetiradaOrders]);
+  // Operational active lists (excludes 'entregue' and 'cancelado' from Coluna 1 & Coluna 2)
+  const activeDeliveryOrders = useMemo(() => {
+    return allDeliveryOrders.filter((o) => o.status !== 'entregue' && o.status !== 'cancelado');
+  }, [allDeliveryOrders]);
+
+  const activeRetiradaOrders = useMemo(() => {
+    return allRetiradaOrders.filter((o) => o.status !== 'entregue' && o.status !== 'cancelado');
+  }, [allRetiradaOrders]);
+
+  // Mesas comandas abertas (exclui comandas de balcão/delivery na coluna 3)
+  const openMesaComandas = useMemo(() => {
+    return openComandas.filter((c) => c.mesa_numero > 0);
+  }, [openComandas]);
+
+  // Status counts per operational channel
+  const countNovosDelivery = useMemo(() => activeDeliveryOrders.filter((o) => o.status === 'novo').length, [activeDeliveryOrders]);
+  const countNovosRetirada = useMemo(() => activeRetiradaOrders.filter((o) => o.status === 'novo').length, [activeRetiradaOrders]);
   const countNovosMesa = useMemo(() => allMesaOrders.filter((o) => o.status === 'novo').length, [allMesaOrders]);
   const countNovosTotal = countNovosDelivery + countNovosRetirada + countNovosMesa;
 
-  // Filtered Delivery orders (Coluna 1)
+  // Filtered Delivery orders (Coluna 1 - Apenas pedidos ativos pendentes)
   const deliveryOrders = useMemo(() => {
-    return allDeliveryOrders.filter((o) => {
+    return activeDeliveryOrders.filter((o) => {
       if (deliveryFilter === 'novo' && o.status !== 'novo') return false;
       if (deliveryFilter === 'em_preparo' && o.status !== 'em_preparo') return false;
       if (deliveryFilter === 'a_caminho' && o.status !== 'a_caminho') return false;
-      if (deliveryFilter === 'entregue' && o.status !== 'entregue') return false;
 
       if (deliverySearch) {
         const q = deliverySearch.toLowerCase();
@@ -275,15 +385,14 @@ export const CaixaView: React.FC = () => {
       }
       return true;
     });
-  }, [allDeliveryOrders, deliveryFilter, deliverySearch]);
+  }, [activeDeliveryOrders, deliveryFilter, deliverySearch]);
 
-  // Filtered Retirada orders (Coluna 2)
+  // Filtered Retirada orders (Coluna 2 - Apenas pedidos ativos pendentes)
   const retiradaOrders = useMemo(() => {
-    return allRetiradaOrders.filter((o) => {
+    return activeRetiradaOrders.filter((o) => {
       if (retiradaFilter === 'novo' && o.status !== 'novo') return false;
       if (retiradaFilter === 'em_preparo' && o.status !== 'em_preparo') return false;
       if (retiradaFilter === 'pronto' && o.status !== 'pronto') return false;
-      if (retiradaFilter === 'entregue' && o.status !== 'entregue') return false;
 
       if (retiradaSearch) {
         const q = retiradaSearch.toLowerCase();
@@ -294,9 +403,9 @@ export const CaixaView: React.FC = () => {
       }
       return true;
     });
-  }, [allRetiradaOrders, retiradaFilter, retiradaSearch]);
+  }, [activeRetiradaOrders, retiradaFilter, retiradaSearch]);
 
-  // Orders filtering and status counts for Caixa Pedidos tab (Tab 2)
+  // Orders filtering and status counts for Caixa Pedidos tab (Tab 2 - Com Histórico de Entregues)
   const filteredCaixaOrders = useMemo(() => {
     return orders.filter((order) => {
       if (pedidosCanalFilter === 'delivery' && !isDeliveryOrder(order)) return false;
@@ -321,6 +430,11 @@ export const CaixaView: React.FC = () => {
       return true;
     });
   }, [orders, pedidosCanalFilter, pedidosFilterStatus, pedidosSearch]);
+
+  // Separated lists per channel for Tab 2 "Todos"
+  const pedidosDeliveryList = useMemo(() => filteredCaixaOrders.filter(isDeliveryOrder), [filteredCaixaOrders]);
+  const pedidosRetiradaList = useMemo(() => filteredCaixaOrders.filter(isRetiradaOrder), [filteredCaixaOrders]);
+  const pedidosMesaList = useMemo(() => filteredCaixaOrders.filter(isMesaOrder), [filteredCaixaOrders]);
 
   const countNovos = useMemo(() => orders.filter((o) => o.status === 'novo').length, [orders]);
   const countPreparo = useMemo(() => orders.filter((o) => o.status === 'em_preparo').length, [orders]);
@@ -449,7 +563,7 @@ export const CaixaView: React.FC = () => {
                     <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                       🛵 Delivery
                       <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold">
-                        {allDeliveryOrders.length}
+                        {activeDeliveryOrders.length}
                       </span>
                     </h2>
                     <p className="text-[10px] text-stone-500 dark:text-slate-400">Entrega motoboy no endereço</p>
@@ -489,7 +603,7 @@ export const CaixaView: React.FC = () => {
                       : 'bg-stone-50 dark:bg-slate-950 text-stone-600 dark:text-slate-400 border-stone-200 dark:border-slate-800 hover:bg-stone-100 dark:hover:bg-slate-900'
                   }`}
                 >
-                  Todos ({allDeliveryOrders.length})
+                  Ativos ({activeDeliveryOrders.length})
                 </button>
                 <button
                   type="button"
@@ -544,7 +658,7 @@ export const CaixaView: React.FC = () => {
                 {deliveryOrders.length === 0 ? (
                   <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs space-y-1.5">
                     <Bike className="w-8 h-8 mx-auto opacity-40 text-purple-400" />
-                    <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de delivery.</p>
+                    <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de delivery pendente.</p>
                     <p className="text-[11px]">Novos pedidos para entrega via motoboy aparecerão aqui automaticamente.</p>
                   </div>
                 ) : (
@@ -553,7 +667,7 @@ export const CaixaView: React.FC = () => {
                     const isPreparo = order.status === 'em_preparo';
                     const isPronto = order.status === 'pronto';
                     const isACaminho = order.status === 'a_caminho';
-                    const isEntregue = order.status === 'entregue';
+                    const isSelected = selectedOrderId === order.id;
 
                     const orderTotal =
                       order.itens
@@ -566,16 +680,19 @@ export const CaixaView: React.FC = () => {
                     return (
                       <div
                         key={order.id}
-                        className={`p-3 rounded-xl border text-xs transition shadow-2xs space-y-2 relative ${
-                          isNovo
-                            ? 'bg-red-50/50 dark:bg-slate-950 border-2 border-red-500 ring-2 ring-red-500/20'
+                        onClick={() => handleSelectOrder(order)}
+                        className={`p-3 rounded-xl border text-xs transition shadow-2xs space-y-2 relative cursor-pointer ${
+                          isSelected
+                            ? 'bg-purple-900/10 dark:bg-purple-950/40 border-2 border-purple-600 ring-2 ring-purple-600/40 shadow-md'
+                            : isNovo
+                            ? 'bg-red-50/50 dark:bg-slate-950 border-2 border-red-500 ring-2 ring-red-500/20 hover:bg-red-50/80'
                             : isPreparo
-                            ? 'bg-amber-50/40 dark:bg-slate-950 border-2 border-amber-400/90 dark:border-amber-500'
+                            ? 'bg-amber-50/40 dark:bg-slate-950 border-2 border-amber-400/90 dark:border-amber-500 hover:bg-amber-50/70'
                             : isPronto
-                            ? 'bg-emerald-50/30 dark:bg-slate-950 border-2 border-emerald-500'
+                            ? 'bg-emerald-50/30 dark:bg-slate-950 border-2 border-emerald-500 hover:bg-emerald-50/60'
                             : isACaminho
-                            ? 'bg-purple-50/30 dark:bg-slate-950 border-2 border-purple-500'
-                            : 'bg-stone-50/70 dark:bg-slate-950 border border-stone-200 dark:border-slate-800'
+                            ? 'bg-purple-50/30 dark:bg-slate-950 border-2 border-purple-500 hover:bg-purple-50/60'
+                            : 'bg-stone-50/70 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 hover:bg-stone-100'
                         }`}
                       >
                         {/* Card Header */}
@@ -590,31 +707,33 @@ export const CaixaView: React.FC = () => {
                           </div>
 
                           {/* Status Badge */}
-                          {isNovo && (
-                            <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">
-                              ● NOVO
-                            </span>
-                          )}
-                          {isPreparo && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1">
-                              <Flame className="w-2.5 h-2.5" /> PREPARO
-                            </span>
-                          )}
-                          {isPronto && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1">
-                              <Check className="w-2.5 h-2.5" /> PRONTO
-                            </span>
-                          )}
-                          {isACaminho && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-purple-600 text-white rounded-md flex items-center gap-1">
-                              <Bike className="w-2.5 h-2.5" /> A CAMINHO
-                            </span>
-                          )}
-                          {isEntregue && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-stone-700 text-stone-300 rounded-md">
-                              ENTREGUE
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {isSelected && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-purple-700 text-white rounded-md shadow-xs animate-pulse">
+                                ✓ NO CAIXA
+                              </span>
+                            )}
+                            {isNovo && (
+                              <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">
+                                ● NOVO
+                              </span>
+                            )}
+                            {isPreparo && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1">
+                                <Flame className="w-2.5 h-2.5" /> PREPARO
+                              </span>
+                            )}
+                            {isPronto && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1">
+                                <Check className="w-2.5 h-2.5" /> PRONTO
+                              </span>
+                            )}
+                            {isACaminho && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-purple-600 text-white rounded-md flex items-center gap-1">
+                                <Bike className="w-2.5 h-2.5" /> A CAMINHO
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Customer / Order Info */}
@@ -682,7 +801,10 @@ export const CaixaView: React.FC = () => {
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => setPrintingOrder({ order, autoPrint: false })}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPrintingOrder({ order, autoPrint: false });
+                              }}
                               className="p-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-200 rounded-lg text-xs transition cursor-pointer"
                               title="Reimprimir comanda de produção"
                             >
@@ -692,7 +814,10 @@ export const CaixaView: React.FC = () => {
                             {isNovo && (
                               <button
                                 type="button"
-                                onClick={() => handleConfirmOrder(order)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleConfirmOrder(order);
+                                }}
                                 className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
                                 title="Confirmar pedido e imprimir comanda"
                               >
@@ -704,7 +829,10 @@ export const CaixaView: React.FC = () => {
                             {isPreparo && (
                               <button
                                 type="button"
-                                onClick={() => updateOrderStatus(order.id, 'a_caminho')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateOrderStatus(order.id, 'a_caminho');
+                                }}
                                 className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
                               >
                                 <Bike className="w-3 h-3" />
@@ -712,16 +840,23 @@ export const CaixaView: React.FC = () => {
                               </button>
                             )}
 
-                            {isACaminho && (
-                              <button
-                                type="button"
-                                onClick={() => updateOrderStatus(order.id, 'entregue')}
-                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
-                              >
-                                <Check className="w-3 h-3" />
-                                <span>Entregue</span>
-                              </button>
-                            )}
+                            {/* Botão para receber no Caixa / Finalizar */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectOrder(order);
+                              }}
+                              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95 ${
+                                isSelected
+                                  ? 'bg-purple-700 text-white'
+                                  : 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700'
+                              }`}
+                              title="Conferir itens e receber pagamento no Caixa"
+                            >
+                              <Receipt className="w-3 h-3 text-purple-300" />
+                              <span>{isSelected ? 'No Caixa' : 'Receber ➔'}</span>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -745,7 +880,7 @@ export const CaixaView: React.FC = () => {
                     <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                       🛍️ Retirada (Buscar)
                       <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-bold">
-                        {allRetiradaOrders.length}
+                        {activeRetiradaOrders.length}
                       </span>
                     </h2>
                     <p className="text-[10px] text-stone-500 dark:text-slate-400">Pede no site e retira na loja</p>
@@ -770,7 +905,7 @@ export const CaixaView: React.FC = () => {
                       : 'bg-stone-50 dark:bg-slate-950 text-stone-600 dark:text-slate-400 border-stone-200 dark:border-slate-800 hover:bg-stone-100 dark:hover:bg-slate-900'
                   }`}
                 >
-                  Todos ({allRetiradaOrders.length})
+                  Ativos ({activeRetiradaOrders.length})
                 </button>
                 <button
                   type="button"
@@ -825,7 +960,7 @@ export const CaixaView: React.FC = () => {
                 {retiradaOrders.length === 0 ? (
                   <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs space-y-1.5">
                     <ShoppingBag className="w-8 h-8 mx-auto opacity-40 text-amber-500" />
-                    <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de retirada.</p>
+                    <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de retirada pendente.</p>
                     <p className="text-[11px]">Pedidos onde o cliente busca no balcão aparecerão aqui.</p>
                   </div>
                 ) : (
@@ -833,7 +968,7 @@ export const CaixaView: React.FC = () => {
                     const isNovo = order.status === 'novo';
                     const isPreparo = order.status === 'em_preparo';
                     const isPronto = order.status === 'pronto';
-                    const isEntregue = order.status === 'entregue';
+                    const isSelected = selectedOrderId === order.id;
 
                     const orderTotal = order.itens
                       .filter((it) => it.status === 'ativo')
@@ -844,14 +979,17 @@ export const CaixaView: React.FC = () => {
                     return (
                       <div
                         key={order.id}
-                        className={`p-3 rounded-xl border text-xs transition shadow-2xs space-y-2 relative ${
-                          isNovo
-                            ? 'bg-red-50/50 dark:bg-slate-950 border-2 border-red-500 ring-2 ring-red-500/20'
+                        onClick={() => handleSelectOrder(order)}
+                        className={`p-3 rounded-xl border text-xs transition shadow-2xs space-y-2 relative cursor-pointer ${
+                          isSelected
+                            ? 'bg-amber-900/10 dark:bg-amber-950/40 border-2 border-amber-600 ring-2 ring-amber-600/40 shadow-md'
+                            : isNovo
+                            ? 'bg-red-50/50 dark:bg-slate-950 border-2 border-red-500 ring-2 ring-red-500/20 hover:bg-red-50/80'
                             : isPreparo
-                            ? 'bg-amber-50/40 dark:bg-slate-950 border-2 border-amber-400/90 dark:border-amber-500'
+                            ? 'bg-amber-50/40 dark:bg-slate-950 border-2 border-amber-400/90 dark:border-amber-500 hover:bg-amber-50/70'
                             : isPronto
-                            ? 'bg-emerald-50/30 dark:bg-slate-950 border-2 border-emerald-500'
-                            : 'bg-stone-50/70 dark:bg-slate-950 border border-stone-200 dark:border-slate-800'
+                            ? 'bg-emerald-50/30 dark:bg-slate-950 border-2 border-emerald-500 hover:bg-emerald-50/60'
+                            : 'bg-stone-50/70 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 hover:bg-stone-100'
                         }`}
                       >
                         {/* Card Header */}
@@ -866,26 +1004,28 @@ export const CaixaView: React.FC = () => {
                           </div>
 
                           {/* Status Badge */}
-                          {isNovo && (
-                            <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">
-                              ● NOVO
-                            </span>
-                          )}
-                          {isPreparo && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1">
-                              <Flame className="w-2.5 h-2.5" /> PREPARO
-                            </span>
-                          )}
-                          {isPronto && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1">
-                              <Check className="w-2.5 h-2.5" /> PRONTO
-                            </span>
-                          )}
-                          {isEntregue && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-stone-700 text-stone-300 rounded-md">
-                              RETIRADO
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {isSelected && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-amber-600 text-white rounded-md shadow-xs animate-pulse">
+                                ✓ NO CAIXA
+                              </span>
+                            )}
+                            {isNovo && (
+                              <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">
+                                ● NOVO
+                              </span>
+                            )}
+                            {isPreparo && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1">
+                                <Flame className="w-2.5 h-2.5" /> PREPARO
+                              </span>
+                            )}
+                            {isPronto && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1">
+                                <Check className="w-2.5 h-2.5" /> PRONTO
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Customer / Order Info */}
@@ -949,7 +1089,10 @@ export const CaixaView: React.FC = () => {
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => setPrintingOrder({ order, autoPrint: false })}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPrintingOrder({ order, autoPrint: false });
+                              }}
                               className="p-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-200 rounded-lg text-xs transition cursor-pointer"
                               title="Reimprimir comanda de produção"
                             >
@@ -959,7 +1102,10 @@ export const CaixaView: React.FC = () => {
                             {isNovo && (
                               <button
                                 type="button"
-                                onClick={() => handleConfirmOrder(order)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleConfirmOrder(order);
+                                }}
                                 className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
                                 title="Confirmar pedido e imprimir comanda"
                               >
@@ -971,7 +1117,10 @@ export const CaixaView: React.FC = () => {
                             {isPreparo && (
                               <button
                                 type="button"
-                                onClick={() => updateOrderStatus(order.id, 'pronto')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateOrderStatus(order.id, 'pronto');
+                                }}
                                 className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
                               >
                                 <Check className="w-3 h-3" />
@@ -979,16 +1128,23 @@ export const CaixaView: React.FC = () => {
                               </button>
                             )}
 
-                            {isPronto && (
-                              <button
-                                type="button"
-                                onClick={() => updateOrderStatus(order.id, 'entregue')}
-                                className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
-                              >
-                                <ShoppingBag className="w-3 h-3" />
-                                <span>Entregar no Balcão</span>
-                              </button>
-                            )}
+                            {/* Botão de Enviar ao Caixa para Receber / Entregar */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectOrder(order);
+                              }}
+                              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95 ${
+                                isSelected
+                                  ? 'bg-amber-600 text-white'
+                                  : 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700'
+                              }`}
+                              title="Conferir itens, mudar forma de pagamento e entregar no Caixa"
+                            >
+                              <Receipt className="w-3 h-3 text-amber-300" />
+                              <span>{isSelected ? 'No Caixa' : 'Receber / Entregar ➔'}</span>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1012,7 +1168,7 @@ export const CaixaView: React.FC = () => {
                     <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                       🍽️ Mesas & Comandas
                       <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold">
-                        {openComandas.length}
+                        {openMesaComandas.length}
                       </span>
                     </h2>
                     <p className="text-[10px] text-stone-500 dark:text-slate-400">Consumo presencial no salão</p>
@@ -1059,12 +1215,12 @@ export const CaixaView: React.FC = () => {
 
               {/* Comandas List */}
               <div className="space-y-2 max-h-[44vh] overflow-y-auto pr-1 flex-1">
-                {openComandas.length === 0 ? (
+                {openMesaComandas.length === 0 ? (
                   <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs">
                     Nenhuma comanda aberta no salão.
                   </div>
                 ) : (
-                  openComandas
+                  openMesaComandas
                     .filter((cmd) => {
                       const table = tables.find((t) => t.id === cmd.mesa_id);
                       if (filterMode === 'fechar' && table?.status !== 'aguardando_fechamento') {
@@ -1082,18 +1238,14 @@ export const CaixaView: React.FC = () => {
                     })
                     .map((cmd) => {
                       const table = tables.find((t) => t.id === cmd.mesa_id);
-                      const isSelected = cmd.id === selectedComandaId;
+                      const isSelected = selectedComandaId === cmd.id && !selectedOrderId;
                       const isWaitingClose = table?.status === 'aguardando_fechamento';
 
                       return (
                         <button
                           key={cmd.id}
                           type="button"
-                          onClick={() => {
-                            setSelectedComandaId(cmd.id);
-                            setSplitMode('nenhum');
-                            setPaymentAmountInput(cmd.total.toFixed(2));
-                          }}
+                          onClick={() => handleSelectComanda(cmd)}
                           className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between cursor-pointer relative ${
                             isSelected
                               ? 'bg-stone-900 dark:bg-slate-800 text-white border-2 border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg'
@@ -1195,50 +1347,104 @@ export const CaixaView: React.FC = () => {
             </div>
           ) : (
             <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-5 space-y-4">
-              {/* Comanda Header */}
+              {/* Comanda / Pedido Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-stone-200 dark:border-slate-800">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-stone-900 dark:text-slate-100">
-                      Mesa {activeComanda.mesa_numero.toString().padStart(2, '0')}
-                    </span>
-                    <span className="text-xs font-mono font-bold bg-stone-100 dark:bg-slate-800 text-stone-700 dark:text-slate-300 border border-stone-200 dark:border-slate-700 px-2 py-0.5 rounded-md">
-                      {activeComanda.numero}
-                    </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isOrderCheckout && activeOrder ? (
+                      activeOrder.tipo_pedido === 'retirada' ? (
+                        <>
+                          <span className="px-2.5 py-1 text-xs font-black uppercase bg-amber-600 text-white rounded-lg flex items-center gap-1 shadow-xs">
+                            <ShoppingBag className="w-3.5 h-3.5" /> RETIRADA (BALCÃO)
+                          </span>
+                          <span className="text-base font-bold text-stone-900 dark:text-slate-100 font-mono">
+                            Pedido #{activeOrder.id}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="px-2.5 py-1 text-xs font-black uppercase bg-purple-600 text-white rounded-lg flex items-center gap-1 shadow-xs">
+                            <Bike className="w-3.5 h-3.5" /> DELIVERY
+                          </span>
+                          <span className="text-base font-bold text-stone-900 dark:text-slate-100 font-mono">
+                            Pedido #{activeOrder.id}
+                          </span>
+                        </>
+                      )
+                    ) : (
+                      <>
+                        <span className="text-lg font-bold text-stone-900 dark:text-slate-100">
+                          Mesa {activeComanda.mesa_numero.toString().padStart(2, '0')}
+                        </span>
+                        <span className="text-xs font-mono font-bold bg-stone-100 dark:bg-slate-800 text-stone-700 dark:text-slate-300 border border-stone-200 dark:border-slate-700 px-2 py-0.5 rounded-md">
+                          {activeComanda.numero}
+                        </span>
+                      </>
+                    )}
                   </div>
-                  <span className="text-xs text-stone-500 dark:text-slate-400">
-                    {activeComanda.cliente_nome && (
-                      <span className="text-emerald-500 font-bold mr-2">
-                        👤 Cliente: {activeComanda.cliente_nome} •
+
+                  <div className="text-xs text-stone-500 dark:text-slate-400 mt-1 space-y-0.5">
+                    {(activeOrder?.cliente_nome || activeComanda.cliente_nome) && (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold block">
+                        👤 Cliente: {activeOrder?.cliente_nome || activeComanda.cliente_nome}
+                        {(activeOrder?.cliente_telefone || activeOrder?.delivery_info?.telefone) && (
+                          <span className="font-normal text-stone-500 ml-1">
+                            ({activeOrder?.cliente_telefone || activeOrder?.delivery_info?.telefone})
+                          </span>
+                        )}
                       </span>
                     )}
-                    Garçom: <strong className="text-stone-700 dark:text-slate-300">{activeComanda.garcom_nome}</strong> • Aberta às {formatTime(activeComanda.abertura)}
-                  </span>
+                    {isOrderCheckout && activeOrder?.cliente_endereco && (
+                      <span className="text-stone-700 dark:text-slate-300 flex items-start gap-1 text-[11px]">
+                        <MapPin className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
+                        <span>{activeOrder.cliente_endereco}</span>
+                      </span>
+                    )}
+                    <span className="text-[11px] text-stone-400 block">
+                      {isOrderCheckout
+                        ? `Pedido recebido às ${formatTime(activeOrder?.criado_em || activeComanda.abertura)}`
+                        : `Garçom: ${activeComanda.garcom_nome} • Aberta às ${formatTime(activeComanda.abertura)}`}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     onClick={() => setShowReceiptModal(true)}
-                    className="px-3 py-1.5 bg-stone-50 hover:bg-stone-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-200 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                    className="px-2.5 py-1.5 bg-stone-50 hover:bg-stone-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-200 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                    title="Imprimir Cupom / Conta"
                   >
                     <Printer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    <span>Imprimir Conta</span>
+                    <span>Imprimir</span>
                   </button>
 
                   <button
                     onClick={handleOpenDiscountModal}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs ${
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer shadow-2xs ${
                       activeComanda.desconto > 0
-                        ? 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
-                        : 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60'
+                        ? 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                        : 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60'
                     }`}
                   >
                     <Percent className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     <span>
                       {activeComanda.desconto > 0
-                        ? `Desconto: -${formatCurrency(activeComanda.desconto)}`
+                        ? `-${formatCurrency(activeComanda.desconto)}`
                         : 'Desconto'}
                     </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedComandaId(null);
+                      setSelectedOrderId(null);
+                      setPaymentSuccessMessage(null);
+                    }}
+                    className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    title="Desmarcar / Fechar painel de pagamento"
+                  >
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -1273,6 +1479,12 @@ export const CaixaView: React.FC = () => {
                   <span>Subtotal dos produtos:</span>
                   <span className="font-semibold font-mono text-stone-900 dark:text-slate-200">{formatCurrency(activeComanda.subtotal)}</span>
                 </div>
+                {isOrderCheckout && activeOrder?.taxa_entrega && activeOrder.taxa_entrega > 0 ? (
+                  <div className="flex justify-between text-purple-700 dark:text-purple-400 font-semibold">
+                    <span>Taxa de Entrega:</span>
+                    <span className="font-mono">+ {formatCurrency(activeOrder.taxa_entrega)}</span>
+                  </div>
+                ) : null}
                 {activeComanda.desconto > 0 && (
                   <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-semibold">
                     <span>Desconto:</span>
@@ -1280,7 +1492,7 @@ export const CaixaView: React.FC = () => {
                   </div>
                 )}
                 <div className="flex justify-between items-baseline font-bold text-sm pt-2 border-t border-stone-200 dark:border-slate-800 text-stone-900 dark:text-slate-100">
-                  <span>Total da Comanda:</span>
+                  <span>Total da Conta:</span>
                   <span className="text-base font-bold font-mono text-stone-900 dark:text-white">{formatCurrency(activeComanda.total)}</span>
                 </div>
                 {totalPaid > 0 && (
@@ -1290,7 +1502,7 @@ export const CaixaView: React.FC = () => {
                   </div>
                 )}
                 <div className="flex justify-between text-sm font-bold text-red-600 dark:text-red-400 pt-1 border-t border-stone-200/60 dark:border-slate-800">
-                  <span>Saldo Restante:</span>
+                  <span>Saldo Restante a Receber:</span>
                   <span className="font-bold font-mono">{formatCurrency(remainingBalance)}</span>
                 </div>
               </div>
@@ -1439,11 +1651,55 @@ export const CaixaView: React.FC = () => {
               </div>
 
               {/* Payment Methods & Execution */}
+              {paymentSuccessMessage && (
+                <div className="p-3 bg-emerald-50 border border-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="font-medium">{paymentSuccessMessage}</span>
+                  </div>
+                  <button
+                    onClick={() => setPaymentSuccessMessage(null)}
+                    className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {remainingBalance > 0 ? (
                 <div className="space-y-3 pt-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-slate-300 block">
-                    Registrar Forma de Pagamento
-                  </span>
+                  <div className="flex items-center justify-between gap-1 flex-wrap">
+                    <span className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-slate-300">
+                      Registrar Forma de Pagamento
+                    </span>
+                    <div className="flex items-center gap-1 text-[10px]">
+                      <span className="text-stone-400">Atalho quitar:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickFullPayment('pix')}
+                        className="px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 rounded font-bold cursor-pointer"
+                        title="Quitar saldo restante no PIX"
+                      >
+                        PIX
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickFullPayment('dinheiro')}
+                        className="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 rounded font-bold cursor-pointer"
+                        title="Quitar saldo restante no Dinheiro"
+                      >
+                        Dinheiro
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickFullPayment('credito')}
+                        className="px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 rounded font-bold cursor-pointer"
+                        title="Quitar saldo restante no Cartão de Crédito"
+                      >
+                        Cartão
+                      </button>
+                    </div>
+                  </div>
 
                   {/* Payment Method Selector Pills */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1582,7 +1838,7 @@ export const CaixaView: React.FC = () => {
               {activeComanda.pagamentos.length > 0 && (
                 <div className="space-y-1.5 pt-2 border-t border-stone-200 dark:border-slate-800">
                   <span className="text-xs font-semibold text-stone-500 dark:text-slate-400 uppercase tracking-wider block">
-                    Pagamentos Registrados:
+                    Pagamentos Registrados ({activeComanda.pagamentos.length}):
                   </span>
                   <div className="space-y-1.5">
                     {activeComanda.pagamentos.map((pag) => (
@@ -1617,12 +1873,32 @@ export const CaixaView: React.FC = () => {
                   onClick={handleFinalizeComanda}
                   className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-xs flex items-center justify-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  <Lock className="w-4 h-4 text-white" />
-                  <span>Fechar Comanda e Liberar Mesa</span>
+                  {isOrderCheckout && activeOrder ? (
+                    activeOrder.tipo_pedido === 'retirada' ? (
+                      <>
+                        <ShoppingBag className="w-4 h-4 text-white" />
+                        <span>Finalizar Pagamento & Entregar no Balcão 🛍️</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bike className="w-4 h-4 text-white" />
+                        <span>Finalizar Pagamento & Concluir Entrega 🛵</span>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4 text-white" />
+                      <span>Fechar Comanda e Liberar Mesa</span>
+                    </>
+                  )}
                 </button>
                 {remainingBalance > 0.05 && (
                   <p className="text-xs text-center text-stone-500 dark:text-slate-400 mt-2">
-                    * Quite o saldo restante de <span className="font-bold font-mono text-stone-900 dark:text-slate-200">{formatCurrency(remainingBalance)}</span> para liberar a mesa.
+                    * Quite o saldo restante de{' '}
+                    <span className="font-bold font-mono text-stone-900 dark:text-slate-200">
+                      {formatCurrency(remainingBalance)}
+                    </span>{' '}
+                    para {isOrderCheckout ? 'finalizar o pedido e entregar' : 'liberar a mesa'}.
                   </p>
                 )}
               </div>
@@ -1783,7 +2059,7 @@ export const CaixaView: React.FC = () => {
           </div>
         </div>
 
-          {/* Pedidos Grid Cards */}
+          {/* Pedidos Cards View */}
           {filteredCaixaOrders.length === 0 ? (
             <div className="p-12 text-center bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs space-y-2">
               <ChefHat className="w-10 h-10 text-stone-400 dark:text-slate-600 mx-auto" />
@@ -1794,7 +2070,296 @@ export const CaixaView: React.FC = () => {
                 Novos pedidos recebidos via mesa ou delivery aparecerão aqui em tempo real.
               </p>
             </div>
+          ) : pedidosCanalFilter === 'todos' ? (
+            /* Visualização separada em 3 colunas independentes para Canal: Todos (Delivery, Retirada, Mesas) */
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+              {/* Coluna 1: 🛵 Delivery */}
+              <div className="bg-stone-50/60 dark:bg-slate-900/60 border border-stone-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 flex flex-col">
+                <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                      <Bike className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h3 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                        🛵 Delivery
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold">
+                          {pedidosDeliveryList.length}
+                        </span>
+                      </h3>
+                      <p className="text-[10px] text-stone-500 dark:text-slate-400">Entregas motoboy com histórico</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {pedidosDeliveryList.length === 0 ? (
+                    <p className="text-xs text-stone-400 py-8 text-center font-medium">Nenhum pedido de delivery neste filtro.</p>
+                  ) : (
+                    pedidosDeliveryList.map((order) => {
+                      const isNovo = order.status === 'novo';
+                      const isPreparo = order.status === 'em_preparo';
+                      const isPronto = order.status === 'pronto';
+                      const isACaminho = order.status === 'a_caminho';
+                      const isEntregue = order.status === 'entregue';
+                      const totalOrder = order.itens
+                        .filter((it) => it.status === 'ativo')
+                        .reduce((acc, it) => acc + it.preco_total, 0) + (order.taxa_entrega || 0);
+
+                      return (
+                        <div
+                          key={order.id}
+                          className={`rounded-2xl border transition shadow-xs flex flex-col justify-between overflow-hidden ${
+                            isNovo
+                              ? 'bg-red-50/40 dark:bg-slate-900 border-2 border-red-500 ring-2 ring-red-500/20'
+                              : isPreparo
+                              ? 'bg-white dark:bg-slate-900 border-2 border-amber-400/80 dark:border-amber-500/80'
+                              : isPronto
+                              ? 'bg-white dark:bg-slate-900 border-2 border-emerald-500'
+                              : isACaminho
+                              ? 'bg-white dark:bg-slate-900 border-2 border-purple-500'
+                              : 'bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 opacity-90'
+                          }`}
+                        >
+                          <div className="p-3 bg-stone-50 dark:bg-slate-950 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-purple-600 text-white rounded-md flex items-center gap-1 shadow-xs">
+                                <Bike className="w-3 h-3" /> DELIVERY
+                              </span>
+                              <span className="text-xs font-mono font-bold text-stone-500 dark:text-slate-400">
+                                #{order.id}
+                              </span>
+                            </div>
+                            <div>
+                              {isNovo && <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">● NOVO</span>}
+                              {isPreparo && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1"><Flame className="w-2.5 h-2.5" /> EM PREPARO</span>}
+                              {isPronto && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1"><Check className="w-2.5 h-2.5" /> PRONTO</span>}
+                              {isACaminho && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-purple-600 text-white rounded-md flex items-center gap-1"><Bike className="w-2.5 h-2.5" /> A CAMINHO</span>}
+                              {isEntregue && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-stone-700 text-stone-200 rounded-md">✓ ENTREGUE</span>}
+                            </div>
+                          </div>
+                          <div className="p-3.5 space-y-2 flex-1 text-xs">
+                            <div className="bg-stone-50/80 dark:bg-slate-950 p-2.5 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1">
+                              {order.cliente_nome && <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1.5"><span className="text-emerald-500">👤</span><span>{order.cliente_nome}</span></div>}
+                              {(order.delivery_info?.telefone || order.cliente_telefone) && <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1 text-[11px]"><Phone className="w-2.5 h-2.5 text-stone-400" /><span>{order.delivery_info?.telefone || order.cliente_telefone}</span></div>}
+                              {(order.delivery_info?.endereco || order.cliente_endereco) && <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1"><MapPin className="w-2.5 h-2.5 text-red-500 shrink-0 mt-0.5" /><span className="text-[10px] leading-tight font-medium">{order.delivery_info?.endereco || order.cliente_endereco}</span></div>}
+                              <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
+                            </div>
+                            <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
+                              {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
+                                <div key={idx} className="pt-1 first:pt-0 flex justify-between text-[11px]">
+                                  <span>{it.quantidade}x {it.nome}</span>
+                                  <span className="font-mono text-stone-600 dark:text-slate-400">{formatCurrency(it.preco_total)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="p-3 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap">
+                            <span className="font-mono font-bold text-xs text-purple-600 dark:text-purple-400">{formatCurrency(totalOrder)}</span>
+                            <div className="flex items-center gap-1">
+                              <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
+                              {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Confirmar</button>}
+                              {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'a_caminho')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Despachar</button>}
+                              <button type="button" onClick={() => { handleSelectOrder(order); setCaixaActiveTab('comandas'); }} className="px-2 py-1 bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs">
+                                <Receipt className="w-3 h-3 text-purple-300" />
+                                <span>Caixa ➔</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Coluna 2: 🛍️ Retirada (Buscar) */}
+              <div className="bg-stone-50/60 dark:bg-slate-900/60 border border-stone-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 flex flex-col">
+                <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                      <ShoppingBag className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h3 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                        🛍️ Retirada (Buscar)
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-bold">
+                          {pedidosRetiradaList.length}
+                        </span>
+                      </h3>
+                      <p className="text-[10px] text-stone-500 dark:text-slate-400">Retiradas no balcão com histórico</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {pedidosRetiradaList.length === 0 ? (
+                    <p className="text-xs text-stone-400 py-8 text-center font-medium">Nenhum pedido de retirada neste filtro.</p>
+                  ) : (
+                    pedidosRetiradaList.map((order) => {
+                      const isNovo = order.status === 'novo';
+                      const isPreparo = order.status === 'em_preparo';
+                      const isPronto = order.status === 'pronto';
+                      const isEntregue = order.status === 'entregue';
+                      const totalOrder = order.itens
+                        .filter((it) => it.status === 'ativo')
+                        .reduce((acc, it) => acc + it.preco_total, 0);
+
+                      return (
+                        <div
+                          key={order.id}
+                          className={`rounded-2xl border transition shadow-xs flex flex-col justify-between overflow-hidden ${
+                            isNovo
+                              ? 'bg-red-50/40 dark:bg-slate-900 border-2 border-red-500 ring-2 ring-red-500/20'
+                              : isPreparo
+                              ? 'bg-white dark:bg-slate-900 border-2 border-amber-400/80 dark:border-amber-500/80'
+                              : isPronto
+                              ? 'bg-white dark:bg-slate-900 border-2 border-emerald-500'
+                              : 'bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 opacity-90'
+                          }`}
+                        >
+                          <div className="p-3 bg-stone-50 dark:bg-slate-950 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-amber-600 text-white rounded-md flex items-center gap-1 shadow-xs">
+                                <ShoppingBag className="w-3 h-3" /> RETIRADA
+                              </span>
+                              <span className="text-xs font-mono font-bold text-stone-500 dark:text-slate-400">
+                                #{order.id}
+                              </span>
+                            </div>
+                            <div>
+                              {isNovo && <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">● NOVO</span>}
+                              {isPreparo && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1"><Flame className="w-2.5 h-2.5" /> EM PREPARO</span>}
+                              {isPronto && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1"><Check className="w-2.5 h-2.5" /> PRONTO</span>}
+                              {isEntregue && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-stone-700 text-stone-200 rounded-md">✓ RETIRADO</span>}
+                            </div>
+                          </div>
+                          <div className="p-3.5 space-y-2 flex-1 text-xs">
+                            <div className="bg-stone-50/80 dark:bg-slate-950 p-2.5 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1">
+                              {order.cliente_nome && <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1.5"><span className="text-amber-500">👤</span><span>{order.cliente_nome}</span></div>}
+                              {(order.delivery_info?.telefone || order.cliente_telefone) && <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1 text-[11px]"><Phone className="w-2.5 h-2.5 text-stone-400" /><span>{order.delivery_info?.telefone || order.cliente_telefone}</span></div>}
+                              <div className="text-amber-800 dark:text-amber-300 font-semibold flex items-center gap-1 text-[10px]"><ShoppingBag className="w-2.5 h-2.5 text-amber-600" /><span>Retirada no balcão da loja</span></div>
+                              <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
+                            </div>
+                            <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
+                              {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
+                                <div key={idx} className="pt-1 first:pt-0 flex justify-between text-[11px]">
+                                  <span>{it.quantidade}x {it.nome}</span>
+                                  <span className="font-mono text-stone-600 dark:text-slate-400">{formatCurrency(it.preco_total)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="p-3 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap">
+                            <span className="font-mono font-bold text-xs text-amber-600 dark:text-amber-400">{formatCurrency(totalOrder)}</span>
+                            <div className="flex items-center gap-1">
+                              <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
+                              {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Confirmar</button>}
+                              {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'pronto')} className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Pronto</button>}
+                              <button type="button" onClick={() => { handleSelectOrder(order); setCaixaActiveTab('comandas'); }} className="px-2 py-1 bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs">
+                                <Receipt className="w-3 h-3 text-amber-300" />
+                                <span>Caixa ➔</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Coluna 3: 🍽️ Mesas & Salão */}
+              <div className="bg-stone-50/60 dark:bg-slate-900/60 border border-stone-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 flex flex-col">
+                <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                      <UtensilsCrossed className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h3 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                        🍽️ Mesas & Salão
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold">
+                          {pedidosMesaList.length}
+                        </span>
+                      </h3>
+                      <p className="text-[10px] text-stone-500 dark:text-slate-400">Consumo em mesas com histórico</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {pedidosMesaList.length === 0 ? (
+                    <p className="text-xs text-stone-400 py-8 text-center font-medium">Nenhum pedido de mesa neste filtro.</p>
+                  ) : (
+                    pedidosMesaList.map((order) => {
+                      const isNovo = order.status === 'novo';
+                      const isPreparo = order.status === 'em_preparo';
+                      const isPronto = order.status === 'pronto';
+                      const isEntregue = order.status === 'entregue';
+                      const totalOrder = order.itens
+                        .filter((it) => it.status === 'ativo')
+                        .reduce((acc, it) => acc + it.preco_total, 0);
+
+                      return (
+                        <div
+                          key={order.id}
+                          className={`rounded-2xl border transition shadow-xs flex flex-col justify-between overflow-hidden ${
+                            isNovo
+                              ? 'bg-red-50/40 dark:bg-slate-900 border-2 border-red-500 ring-2 ring-red-500/20'
+                              : isPreparo
+                              ? 'bg-white dark:bg-slate-900 border-2 border-amber-400/80 dark:border-amber-500/80'
+                              : isPronto
+                              ? 'bg-white dark:bg-slate-900 border-2 border-emerald-500'
+                              : 'bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 opacity-90'
+                          }`}
+                        >
+                          <div className="p-3 bg-stone-50 dark:bg-slate-950 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-stone-900 dark:bg-slate-800 text-white rounded-md shadow-xs flex items-center gap-1">
+                                <UtensilsCrossed className="w-3 h-3" /> MESA {order.mesa_numero?.toString().padStart(2, '0') || '00'}
+                              </span>
+                              <span className="text-xs font-mono font-bold text-stone-500 dark:text-slate-400">
+                                #{order.id}
+                              </span>
+                            </div>
+                            <div>
+                              {isNovo && <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">● NOVO</span>}
+                              {isPreparo && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1"><Flame className="w-2.5 h-2.5" /> EM PREPARO</span>}
+                              {isPronto && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1"><Check className="w-2.5 h-2.5" /> PRONTO</span>}
+                              {isEntregue && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-stone-700 text-stone-200 rounded-md">✓ ENTREGUE</span>}
+                            </div>
+                          </div>
+                          <div className="p-3.5 space-y-2 flex-1 text-xs">
+                            <div className="bg-stone-50/80 dark:bg-slate-950 p-2.5 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1">
+                              {order.cliente_nome && <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1.5"><span className="text-emerald-500">👤</span><span>{order.cliente_nome}</span></div>}
+                              {order.garcom_nome && <div className="text-stone-600 dark:text-slate-400 text-[11px]">Atendente: {order.garcom_nome}</div>}
+                              <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
+                            </div>
+                            <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
+                              {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
+                                <div key={idx} className="pt-1 first:pt-0 flex justify-between text-[11px]">
+                                  <span>{it.quantidade}x {it.nome}</span>
+                                  <span className="font-mono text-stone-600 dark:text-slate-400">{formatCurrency(it.preco_total)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="p-3 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap">
+                            <span className="font-mono font-bold text-xs text-stone-900 dark:text-white">{formatCurrency(totalOrder)}</span>
+                            <div className="flex items-center gap-1">
+                              <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
+                              {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Confirmar</button>}
+                              {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'pronto')} className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Pronto</button>}
+                              {isPronto && <button type="button" onClick={() => updateOrderStatus(order.id, 'entregue')} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Entregue</button>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
           ) : (
+            /* Visualização em Grid tradicional para um canal específico (Delivery, Retirada ou Mesas) */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredCaixaOrders.map((order) => {
                 const isNovo = order.status === 'novo';
@@ -1806,7 +2371,7 @@ export const CaixaView: React.FC = () => {
 
                 const totalOrder = order.itens
                   .filter((it) => it.status === 'ativo')
-                  .reduce((acc, it) => acc + it.preco_total, 0);
+                  .reduce((acc, it) => acc + it.preco_total, 0) + (order.taxa_entrega || 0);
 
                 return (
                   <div
@@ -1820,10 +2385,9 @@ export const CaixaView: React.FC = () => {
                         ? 'bg-white dark:bg-slate-900 border-2 border-emerald-500'
                         : isACaminho
                         ? 'bg-white dark:bg-slate-900 border-2 border-purple-500'
-                        : 'bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 opacity-80'
+                        : 'bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 opacity-90'
                     }`}
                   >
-                    {/* Header */}
                     <div className="p-3.5 bg-stone-50 dark:bg-slate-950 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         {order.tipo_pedido === 'retirada' ? (
@@ -1843,198 +2407,45 @@ export const CaixaView: React.FC = () => {
                           #{order.id}
                         </span>
                       </div>
-
-                      {/* Status Badge */}
-                      {isNovo && (
-                        <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">
-                          ● NOVO PEDIDO
-                        </span>
-                      )}
-                      {isPreparo && (
-                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1">
-                          <Flame className="w-3 h-3" /> EM PREPARO
-                        </span>
-                      )}
-                      {isPronto && (
-                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1">
-                          <Check className="w-3 h-3" /> PRONTO
-                        </span>
-                      )}
-                      {isACaminho && (
-                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-purple-600 text-white rounded-md flex items-center gap-1">
-                          <Bike className="w-3 h-3" /> A CAMINHO
-                        </span>
-                      )}
-                      {isEntregue && (
-                        <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-stone-700 text-stone-200 rounded-md">
-                          ENTREGUE
-                        </span>
-                      )}
+                      <div>
+                        {isNovo && <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">● NOVO PEDIDO</span>}
+                        {isPreparo && <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1"><Flame className="w-3 h-3" /> EM PREPARO</span>}
+                        {isPronto && <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1"><Check className="w-3 h-3" /> PRONTO</span>}
+                        {isACaminho && <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-purple-600 text-white rounded-md flex items-center gap-1"><Bike className="w-3 h-3" /> A CAMINHO</span>}
+                        {isEntregue && <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-stone-700 text-stone-200 rounded-md">ENTREGUE</span>}
+                      </div>
                     </div>
-
-                    {/* Body: Customer info & Items */}
                     <div className="p-4 space-y-3 flex-1 text-xs">
-                      {/* Customer / Waiter / Delivery Address info */}
                       <div className="bg-stone-50/80 dark:bg-slate-950 p-2.5 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1">
-                        {order.cliente_nome && (
-                          <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1.5">
-                            <span className="text-emerald-500">👤</span>
-                            <span>Cliente: {order.cliente_nome}</span>
-                          </div>
-                        )}
-                        {order.garcom_nome && (
-                          <div className="text-stone-600 dark:text-slate-400">
-                            Atendente: {order.garcom_nome}
-                          </div>
-                        )}
-                        {(order.delivery_info?.telefone || order.cliente_telefone) && (
-                          <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-stone-400" />
-                            <span>{order.delivery_info?.telefone || order.cliente_telefone}</span>
-                          </div>
-                        )}
+                        {order.cliente_nome && <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1.5"><span className="text-emerald-500">👤</span><span>Cliente: {order.cliente_nome}</span></div>}
+                        {order.garcom_nome && <div className="text-stone-600 dark:text-slate-400">Atendente: {order.garcom_nome}</div>}
+                        {(order.delivery_info?.telefone || order.cliente_telefone) && <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3 text-stone-400" /><span>{order.delivery_info?.telefone || order.cliente_telefone}</span></div>}
                         {order.tipo_pedido === 'retirada' ? (
-                          <div className="text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1 text-[11px]">
-                            <ShoppingBag className="w-3 h-3 text-amber-500" />
-                            <span>Retirada no Balcão — Cliente busca na loja</span>
-                          </div>
+                          <div className="text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-1 text-[11px]"><ShoppingBag className="w-3 h-3 text-amber-500" /><span>Retirada no Balcão</span></div>
                         ) : (order.delivery_info?.endereco || order.cliente_endereco) ? (
-                          <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1">
-                            <MapPin className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
-                            <span className="text-[11px] leading-tight font-medium">
-                              {order.delivery_info?.endereco || order.cliente_endereco}
-                            </span>
-                          </div>
+                          <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1"><MapPin className="w-3 h-3 text-red-500 shrink-0 mt-0.5" /><span className="text-[11px] leading-tight font-medium">{order.delivery_info?.endereco || order.cliente_endereco}</span></div>
                         ) : null}
-                        <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>Recebido às {formatTime(order.criado_em)}</span>
-                        </div>
+                        <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" /><span>Recebido às {formatTime(order.criado_em)}</span></div>
                       </div>
-
-                      {/* Items */}
                       <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
-                        {order.itens
-                          .filter((it) => it.status === 'ativo')
-                          .map((it, idx) => (
-                            <div key={idx} className="pt-1.5 first:pt-0">
-                              <div className="flex items-center justify-between font-semibold text-stone-900 dark:text-white">
-                                <span>
-                                  {it.quantidade}x {it.nome}
-                                </span>
-                                <span className="font-mono text-stone-700 dark:text-slate-300">
-                                  {formatCurrency(it.preco_total)}
-                                </span>
-                              </div>
-                              {it.sabores && it.sabores.length > 0 && (
-                                <p className="text-[10px] text-stone-500 dark:text-slate-400 pl-2">
-                                  › {it.sabores.join(' + ')}
-                                </p>
-                              )}
-                              {it.observacao && (
-                                <p className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold pl-2">
-                                  Obs: {it.observacao}
-                                </p>
-                              )}
-                            </div>
-                          ))}
+                        {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
+                          <div key={idx} className="pt-1.5 first:pt-0 flex items-center justify-between font-semibold text-stone-900 dark:text-white">
+                            <span>{it.quantidade}x {it.nome}</span>
+                            <span className="font-mono text-stone-700 dark:text-slate-300">{formatCurrency(it.preco_total)}</span>
+                          </div>
+                        ))}
                       </div>
-
-                      {order.observacao && (
-                        <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg text-amber-900 dark:text-amber-300 font-semibold text-[11px]">
-                          Obs Geral: {order.observacao}
-                        </div>
-                      )}
                     </div>
-
-                    {/* Card Footer: Total & Actions */}
-                    <div className="p-3.5 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 space-y-2.5">
-                      <div className="flex items-center justify-between font-bold">
-                        <span className="text-xs text-stone-600 dark:text-slate-400">Total do Pedido:</span>
-                        <span className="text-sm font-mono text-stone-900 dark:text-white">
-                          {formatCurrency(totalOrder)}
-                        </span>
-                      </div>
-
-                      {/* Action Buttons */}
+                    <div className="p-3.5 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-sm font-bold font-mono text-stone-900 dark:text-white">{formatCurrency(totalOrder)}</span>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPrintingOrder({ order, autoPrint: false })}
-                          className="px-3 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 hover:bg-stone-100 dark:hover:bg-slate-800 text-stone-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
-                          title="Imprimir comanda térmica do pedido"
-                        >
-                          <Printer className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Imprimir</span>
+                        <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="px-3 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-semibold cursor-pointer shadow-2xs"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
+                        {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">Confirmar 🖨️</button>}
+                        {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'pronto')} className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">Pronto 🍕</button>}
+                        <button type="button" onClick={() => { handleSelectOrder(order); setCaixaActiveTab('comandas'); }} className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs">
+                          <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Caixa ➔</span>
                         </button>
-
-                        {/* Lifecycle buttons */}
-                        {isNovo && (
-                          <button
-                            type="button"
-                            onClick={() => handleConfirmOrder(order)}
-                            className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
-                            title="Confirma pedido, avança para preparo e dispara impressão automática"
-                          >
-                            <Printer className="w-3.5 h-3.5 text-amber-300" />
-                            <span>Confirmar & Imprimir 🖨️</span>
-                          </button>
-                        )}
-
-                        {isPreparo && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(order.id, 'pronto')}
-                            className="flex-1 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Marcar Pronto 🍕</span>
-                          </button>
-                        )}
-
-                        {isPronto && isDelivery && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(order.id, 'a_caminho')}
-                            className="flex-1 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
-                          >
-                            <Bike className="w-3.5 h-3.5" />
-                            <span>Despachar / A Caminho 🛵</span>
-                          </button>
-                        )}
-
-                        {isPronto && order.tipo_pedido === 'retirada' && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(order.id, 'entregue')}
-                            className="flex-1 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>Entregar no Balcão 🛍️</span>
-                          </button>
-                        )}
-
-                        {isPronto && !isDelivery && order.tipo_pedido !== 'retirada' && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(order.id, 'entregue')}
-                            className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Entregue na Mesa ✓</span>
-                          </button>
-                        )}
-
-                        {isACaminho && (
-                          <button
-                            type="button"
-                            onClick={() => updateOrderStatus(order.id, 'entregue')}
-                            className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs active:scale-98"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Confirmar Entrega Concluída 🏠</span>
-                          </button>
-                        )}
                       </div>
                     </div>
                   </div>

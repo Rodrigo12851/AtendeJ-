@@ -121,6 +121,7 @@ interface StoreContextType {
     itens_pagos_ids?: string[]
   ) => void;
   closeComanda: (comandaId: string) => void;
+  ensureOrderComanda: (order: Order) => Comanda;
   openCashRegister: (valorInicial: number) => void;
   closeCashRegister: (valorFinal: number, observacoes?: string) => void;
   addCashEntry: (tipo: 'suprimento' | 'sangria', motivo: string, valor: number) => void;
@@ -1282,7 +1283,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         : c
     );
 
-    // Release table
+    // Release table (if dine-in table comanda)
     const updatedTables = tables.map((t) =>
       t.id === comanda.mesa_id
         ? {
@@ -1296,18 +1297,68 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         : t
     );
 
+    // Also mark associated orders as delivered ('entregue')
+    const updatedOrders = orders.map((o) =>
+      comanda.pedidos_ids.includes(o.id) && o.status !== 'entregue'
+        ? { ...o, status: 'entregue' as const, entregue_em: new Date().toISOString() }
+        : o
+    );
+
     setComandas(updatedComandas);
     setTables(updatedTables);
+    setOrders(updatedOrders);
+
     const closedCmd = updatedComandas.find((c) => c.id === comandaId);
     if (closedCmd) saveComandaToFirestore(closedCmd);
     const releasedTbl = updatedTables.find((t) => t.id === comanda.mesa_id);
     if (releasedTbl) saveTableToFirestore(releasedTbl);
+    const deliveredOrders = updatedOrders.filter((o) => comanda.pedidos_ids.includes(o.id));
+    deliveredOrders.forEach((o) => saveOrderToFirestore(o));
 
     if (audioEnabled) {
       playCashChime();
     }
     broadcastSound('cash');
-    broadcastSync({ comandas: updatedComandas, tables: updatedTables });
+    broadcastSync({ comandas: updatedComandas, tables: updatedTables, orders: updatedOrders });
+  };
+
+  const ensureOrderComanda = (order: Order): Comanda => {
+    const existing = comandas.find(
+      (c) => c.pedidos_ids.includes(order.id) || (order.comanda_id && c.id === order.comanda_id)
+    );
+    if (existing) return existing;
+
+    const subtotal = order.itens
+      .filter((it) => it.status === 'ativo')
+      .reduce((a, c) => a + c.preco_total, 0);
+    const total = subtotal + (order.taxa_entrega || 0);
+    const comandaId = order.comanda_id || `cmd_order_${order.id}`;
+
+    const isRetirada = order.tipo_pedido === 'retirada';
+    const newComanda: Comanda = {
+      id: comandaId,
+      loja_id: order.loja_id || currentLoja?.id || (currentLojaId === 'todas' ? 'loja_centro' : currentLojaId),
+      numero: isRetirada ? `#${order.id} (Retirada)` : `#${order.id} (Delivery)`,
+      mesa_id: isRetirada ? 'retirada' : 'delivery',
+      mesa_numero: 0,
+      garcom_id: 'online',
+      garcom_nome: isRetirada ? 'Retirada no Balcão' : 'Delivery Oficial',
+      cliente_nome: order.cliente_nome,
+      status: order.status === 'entregue' ? 'fechada' : 'aberta',
+      abertura: order.criado_em,
+      pedidos_ids: [order.id],
+      subtotal,
+      taxa_servico: 0,
+      desconto: 0,
+      total,
+      pagamentos: [],
+    };
+
+    const updatedComandas = [newComanda, ...comandas];
+    setComandas(updatedComandas);
+    saveComandaToFirestore(newComanda);
+    broadcastSync({ comandas: updatedComandas });
+    return newComanda;
   };
 
   // Cash Register actions
@@ -1866,9 +1917,33 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       status: 'ativo' as const,
     }));
 
+    const subtotal = preparedItens.reduce((a, c) => a + c.preco_total, 0);
+    const total = subtotal + finalTaxaEntrega;
+    const comandaId = `cmd_order_${nextOrderId}`;
+
+    const newComanda: Comanda = {
+      id: comandaId,
+      loja_id: lojaId,
+      numero: isRetirada ? `#${nextOrderId} (Retirada)` : `#${nextOrderId} (Delivery)`,
+      mesa_id: isRetirada ? 'retirada' : 'delivery',
+      mesa_numero: 0,
+      garcom_id: 'online',
+      garcom_nome: isRetirada ? 'Retirada no Balcão' : 'Delivery Oficial',
+      cliente_nome: clienteInfo.nome,
+      status: 'aberta',
+      abertura: nowIso,
+      pedidos_ids: [nextOrderId],
+      subtotal,
+      taxa_servico: 0,
+      desconto: 0,
+      total,
+      pagamentos: [],
+    };
+
     const newOrder: Order = {
       id: nextOrderId,
       loja_id: lojaId,
+      comanda_id: comandaId,
       status: 'novo',
       observacao: observacao || '',
       criado_em: nowIso,
@@ -1883,15 +1958,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const updatedOrders = [newOrder, ...orders];
+    const updatedComandas = [newComanda, ...comandas];
 
     const newNotif: SystemNotification = {
       id: `notif_${Date.now()}`,
       loja_id: lojaId,
       tipo: 'novo_pedido',
       titulo: isRetirada ? `🛍️ Pedido Retirada Balcão #${nextOrderId}` : `🛵 Pedido Delivery #${nextOrderId}`,
-      mensagem: `Cliente: ${clienteInfo.nome} (${clienteInfo.telefone}) — Total: R$ ${(
-        preparedItens.reduce((a, c) => a + c.preco_total, 0) + finalTaxaEntrega
-      ).toFixed(2)}`,
+      mensagem: `Cliente: ${clienteInfo.nome} (${clienteInfo.telefone}) — Total: R$ ${total.toFixed(2)}`,
       data: nowIso,
       lida: false,
       pedido_id: nextOrderId,
@@ -1900,14 +1974,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const updatedNotifs = [newNotif, ...notifications];
 
     setOrders(updatedOrders);
+    setComandas(updatedComandas);
     setNotifications(updatedNotifs);
     saveOrderToFirestore(newOrder);
+    saveComandaToFirestore(newComanda);
 
     if (audioEnabled) {
       playKitchenBell();
     }
     broadcastSound('kitchen');
-    broadcastSync({ orders: updatedOrders, notifications: updatedNotifs });
+    broadcastSync({ orders: updatedOrders, comandas: updatedComandas, notifications: updatedNotifs });
 
     return newOrder;
   };
@@ -2122,6 +2198,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         applyDiscount,
         registerPayment,
         closeComanda,
+        ensureOrderComanda,
         openCashRegister,
         closeCashRegister,
         addCashEntry,
