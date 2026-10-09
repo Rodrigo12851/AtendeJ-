@@ -22,6 +22,7 @@ import {
   RotateCcw,
   Sparkles,
   Lock,
+  Store,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, OrderItem, Loja } from '../../types';
@@ -31,6 +32,7 @@ import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
 
 const CUSTOMER_PROFILE_KEY = 'atendeja_customer_profile_v1';
 const CUSTOMER_ORDERS_KEY = 'atendeja_customer_orders_v1';
+const DEFAULT_FOOD_IMG = 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80';
 
 interface CustomerDeliveryViewProps {
   lojaSlug: string;
@@ -54,12 +56,13 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   // Search Query State
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Find store by slug or fallback, with query param overrides for external devices
-  const targetLoja: Loja = useMemo(() => {
+  // Find store by slug or ID. NUNCA faz fallback para outra loja caso tenha sido excluída!
+  const targetLoja: Loja | null = useMemo(() => {
     const found =
       lojas.find((l) => l.slug.toLowerCase() === lojaSlug.toLowerCase()) ||
-      lojas.find((l) => l.id === lojaSlug) ||
-      lojas[0];
+      lojas.find((l) => l.id.toLowerCase() === lojaSlug.toLowerCase());
+
+    if (!found) return null;
 
     const urlParams = new URLSearchParams(window.location.search);
     const paramMarca = urlParams.get('marca');
@@ -76,19 +79,40 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   // Store status and operating hours (calculated accurately in real-time)
   const storeStatus = useMemo(() => {
+    if (!targetLoja) {
+      return {
+        isOpen: false,
+        statusLabel: 'Fechada',
+        statusClass: 'text-red-500',
+        horarioFormatado: '',
+        mensagem: 'Estabelecimento fechado',
+      };
+    }
     return getStoreOpenStatus(targetLoja);
   }, [targetLoja]);
 
   // Set document title to brand name
   React.useEffect(() => {
+    if (!targetLoja) {
+      document.title = 'Estabelecimento Não Encontrado | AtendeJá';
+      return;
+    }
     const brandDisplay = targetLoja.marca ? `${targetLoja.marca} - ${targetLoja.nome}` : targetLoja.nome;
     document.title = `${brandDisplay} | Cardápio Digital & Delivery`;
   }, [targetLoja]);
 
   // Products belonging to this store
   const storeProducts = useMemo(() => {
+    if (!targetLoja) return [];
     return allProducts.filter((p) => p.loja_id === targetLoja.id);
   }, [allProducts, targetLoja]);
+
+  // Exibe apenas categorias que possuem produtos cadastrados nesta loja específica
+  const availableCategories = useMemo(() => {
+    return categories.filter((cat) =>
+      storeProducts.some((p) => p.categoria_id === cat.id && p.ativo)
+    );
+  }, [categories, storeProducts]);
 
   // Active Category Filter
   const [activeCategory, setActiveCategory] = useState<string>('todos');
@@ -204,7 +228,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   // Special Offer Product for Banner
   const specialOfferProduct = useMemo(() => {
-    return storeProducts.find((p) => p.isPizza && p.destaque) || storeProducts[0];
+    return storeProducts.find((p) => p.destaque) || storeProducts[0];
   }, [storeProducts]);
 
   // Add regular product directly to cart
@@ -436,6 +460,59 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     );
   }
 
+  if (!targetLoja) {
+    return (
+      <div className="min-h-screen bg-[#FAF7F2] dark:bg-stone-950 flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="max-w-md w-full bg-white dark:bg-stone-900 border border-red-200 dark:border-red-900/50 rounded-3xl p-8 shadow-2xl space-y-5">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-950/50 text-red-600 rounded-2xl flex items-center justify-center mx-auto ring-8 ring-red-50 dark:ring-red-950/30">
+            <Store className="w-8 h-8" />
+          </div>
+          <div>
+            <span className="text-xs uppercase tracking-wider font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-3 py-1 rounded-full">
+              Loja Indisponível
+            </span>
+            <h2 className="text-2xl font-bold text-stone-900 dark:text-white mt-3">
+              Estabelecimento Não Encontrado
+            </h2>
+            <p className="text-stone-600 dark:text-stone-300 text-sm mt-2">
+              Este cardápio digital ou estabelecimento não existe mais ou foi desativado da plataforma AtendeJá.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const renderStoreIcon = (size: 'sm' | 'lg' = 'sm') => {
+    const text = `${targetLoja.marca || ''} ${targetLoja.nome || ''}`.toLowerCase();
+    const isBurger = text.includes('burger') || text.includes('hamburg') || text.includes('smash');
+    const fallbackEmoji = isBurger ? '🍔' : (text.includes('pizza') || text.includes('pizzaria') ? '🍕' : '🍽️');
+
+    if (targetLoja.logo_url) {
+      return (
+        <img
+          src={targetLoja.logo_url}
+          alt={targetLoja.marca || targetLoja.nome}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            const parent = e.currentTarget.parentElement;
+            if (parent) {
+              parent.innerHTML = `<span class="${size === 'sm' ? 'text-base' : 'text-3xl'}">${fallbackEmoji}</span>`;
+            }
+          }}
+        />
+      );
+    }
+    if (isBurger) {
+      return <span className={size === 'sm' ? 'text-base' : 'text-3xl'}>🍔</span>;
+    }
+    const isPizza = text.includes('pizza') || text.includes('pizzaria');
+    if (isPizza) {
+      return size === 'sm' ? <Pizza className="w-4 h-4" /> : <Pizza className="w-8 h-8" />;
+    }
+    return <span className={size === 'sm' ? 'text-base' : 'text-3xl'}>🍽️</span>;
+  };
+
   return (
     <div className={`min-h-screen font-sans pb-28 transition-colors duration-200 ${bgClass}`}>
       {/* 1. Slim Sticky Top Bar (Compact & Functional - Not blocking mobile screen) */}
@@ -444,15 +521,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
           {/* Store Mini Identity */}
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-red-600 to-amber-500 flex items-center justify-center text-white shadow-xs shrink-0 overflow-hidden">
-              {targetLoja.logo_url ? (
-                <img
-                  src={targetLoja.logo_url}
-                  alt={targetLoja.marca || targetLoja.nome}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <Pizza className="w-4 h-4" />
-              )}
+              {renderStoreIcon('sm')}
             </div>
             <div className="min-w-0">
               <h1 className="text-xs sm:text-sm font-black tracking-tight text-white uppercase truncate">
@@ -526,15 +595,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-red-600 via-amber-500 to-red-500 flex items-center justify-center text-white shadow-md shrink-0 overflow-hidden border border-stone-700">
-                {targetLoja.logo_url ? (
-                  <img
-                    src={targetLoja.logo_url}
-                    alt={targetLoja.marca || targetLoja.nome}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Pizza className="w-8 h-8" />
-                )}
+                {renderStoreIcon('lg')}
               </div>
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -745,9 +806,15 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
                 <div className="relative shrink-0 w-48 h-48 sm:w-56 sm:h-56 rounded-2xl overflow-hidden shadow-2xl border-2 border-white/20">
                   <img
-                    src={specialOfferProduct.imagem || 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600'}
+                    src={specialOfferProduct.imagem || DEFAULT_FOOD_IMG}
                     alt={specialOfferProduct.nome}
                     className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (target.src !== DEFAULT_FOOD_IMG) {
+                        target.src = DEFAULT_FOOD_IMG;
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -779,7 +846,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   <span className="text-[11px] font-bold">Todos</span>
                 </button>
 
-                {categories.map((cat) => (
+                {availableCategories.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
@@ -822,9 +889,15 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     >
                       <div className="relative h-32 sm:h-36 overflow-hidden bg-stone-800">
                         <img
-                          src={prod.imagem || 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600'}
+                          src={prod.imagem || DEFAULT_FOOD_IMG}
                           alt={prod.nome}
                           className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (target.src !== DEFAULT_FOOD_IMG) {
+                              target.src = DEFAULT_FOOD_IMG;
+                            }
+                          }}
                         />
                         <button
                           onClick={() => toggleFavorite(prod.id)}
@@ -904,9 +977,15 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                       {/* Product Photo */}
                       <div className="relative w-full sm:w-28 h-32 sm:h-28 rounded-xl overflow-hidden shrink-0 bg-stone-800">
                         <img
-                          src={product.imagem || 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600'}
+                          src={product.imagem || DEFAULT_FOOD_IMG}
                           alt={product.nome}
                           className="w-full h-full object-cover hover:scale-105 transition duration-300"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (target.src !== DEFAULT_FOOD_IMG) {
+                              target.src = DEFAULT_FOOD_IMG;
+                            }
+                          }}
                         />
                         {product.isPizza && (
                           <span className="absolute bottom-1 left-1 bg-amber-500 text-stone-950 font-black text-[9px] px-1.5 py-0.5 rounded-md uppercase tracking-tighter">

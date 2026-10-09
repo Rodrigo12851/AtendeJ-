@@ -233,12 +233,19 @@ const ensureDemoStoresUpdated = (storeList: Loja[]): Loja[] => {
 };
 
 const ensureStoreProducts = (prodList: Product[]): Product[] => {
-  const hasBurgerProducts = prodList.some((p) => p.loja_id === 'loja_shopping');
-  if (!hasBurgerProducts) {
-    const burgerSeed = INITIAL_PRODUCTS.filter((p) => p.loja_id === 'loja_shopping');
-    return [...prodList, ...burgerSeed];
-  }
-  return prodList;
+  const burgerSeed = INITIAL_PRODUCTS.filter((p) => p.loja_id === 'loja_shopping');
+  const hasBurger = prodList.some((p) => p.loja_id === 'loja_shopping');
+
+  let list = hasBurger ? prodList : [...prodList, ...burgerSeed];
+
+  // Sincroniza imagens e campos atualizados dos produtos padrão de demonstração
+  return list.map((p) => {
+    const match = INITIAL_PRODUCTS.find((init) => init.id === p.id);
+    if (match && match.imagem && (!p.imagem || p.imagem !== match.imagem)) {
+      return { ...p, imagem: match.imagem };
+    }
+    return p;
+  });
 };
 
 const DELETED_LOJAS_KEY = 'atendeja_deleted_lojas_v1';
