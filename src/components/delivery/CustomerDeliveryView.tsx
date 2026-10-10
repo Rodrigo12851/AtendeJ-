@@ -276,11 +276,9 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     return storeProducts.filter((p) => (isProductPromotionActive(p) || p.destaque) && p.ativo).slice(0, 6);
   }, [storeProducts]);
 
-  // Banner Offers Carousel (produtos em promoção ou destaque da loja)
+  // Banner Offers Carousel (apenas produtos com PROMOÇÃO ATIVA E VÁLIDA da loja)
   const bannerOffers = useMemo(() => {
-    const list = storeProducts.filter((p) => (isProductPromotionActive(p) || p.destaque) && p.ativo);
-    if (list.length > 0) return list.slice(0, 5);
-    return storeProducts.filter((p) => p.ativo).slice(0, 5);
+    return storeProducts.filter((p) => isProductPromotionActive(p) && p.ativo);
   }, [storeProducts]);
 
   const [bannerIndex, setBannerIndex] = useState(0);
@@ -327,13 +325,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       });
     });
 
-    // Se houver produto em promoção/destaque, inclui Promoções caso ainda não esteja na lista
-    if (specialOfferProduct && !list.some((c) => c.id === 'promocoes')) {
+    // Se houver produto com promoção ativa, inclui a categoria Promoções
+    const hasActivePromo = storeProducts.some((p) => isProductPromotionActive(p) && p.ativo);
+    if (hasActivePromo && !list.some((c) => c.id === 'promocoes')) {
       list.push({ id: 'promocoes', label: 'Promoções', icon: '🔥' });
     }
 
     return list;
-  }, [availableCategories, specialOfferProduct]);
+  }, [availableCategories, storeProducts]);
 
   const handleOpenItemCustomizer = (product: Product) => {
     if (!storeStatus.isOpen) {
@@ -913,12 +912,13 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
             {/* ======================================================== */}
             {currentTab === 'inicio' && !searchQuery && (
               <div className="space-y-6 animate-in fade-in duration-200">
-                {/* 1. Hero Banner / Super Combo (Compacto e horizontal lado a lado no celular, espaçoso no PC, com troca automática) */}
-                <div
-                  onMouseEnter={() => setIsBannerHovered(true)}
-                  onMouseLeave={() => setIsBannerHovered(false)}
-                  className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg bg-gradient-to-r from-[#4A044E] via-[#58085C] to-[#2E0233] text-white p-3.5 sm:p-6 lg:p-8 border border-purple-900/40 flex flex-row items-center justify-between gap-2.5 sm:gap-6 transition-all"
-                >
+                {/* 1. Hero Banner / Super Combo (Exibido SOMENTE se houver promoção ativa na loja) */}
+                {bannerOffers.length > 0 && specialOfferProduct && (
+                  <div
+                    onMouseEnter={() => setIsBannerHovered(true)}
+                    onMouseLeave={() => setIsBannerHovered(false)}
+                    className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg bg-gradient-to-r from-[#4A044E] via-[#58085C] to-[#2E0233] text-white p-3.5 sm:p-6 lg:p-8 border border-purple-900/40 flex flex-row items-center justify-between gap-2.5 sm:gap-6 transition-all"
+                  >
                   {/* Left Carousel Arrow */}
                   {bannerOffers.length > 1 && (
                     <button
@@ -1040,6 +1040,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     ))}
                   </div>
                 </div>
+              )}
 
                 {/* 2. Círculos de Categorias (Apenas categorias com produtos cadastrados, halo ativo e tamanho compacto no mobile) */}
                 {displayCategoryCircles.length > 0 && (
