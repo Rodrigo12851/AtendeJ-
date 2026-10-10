@@ -261,10 +261,19 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     return storeProducts.filter((p) => p.destaque && p.ativo).slice(0, 4);
   }, [storeProducts]);
 
-  // Special Offer Product for Banner
-  const specialOfferProduct = useMemo(() => {
-    return storeProducts.find((p) => p.destaque) || storeProducts[0];
+  // Banner Offers Carousel (produtos em destaque ou primeiros produtos da loja)
+  const bannerOffers = useMemo(() => {
+    const list = storeProducts.filter((p) => p.destaque && p.ativo);
+    if (list.length > 0) return list.slice(0, 5);
+    return storeProducts.filter((p) => p.ativo).slice(0, 5);
   }, [storeProducts]);
+
+  const [bannerIndex, setBannerIndex] = useState(0);
+
+  const specialOfferProduct = useMemo(() => {
+    if (bannerOffers.length === 0) return null;
+    return bannerOffers[bannerIndex % bannerOffers.length];
+  }, [bannerOffers, bannerIndex]);
 
   // Categorias exibidas nos círculos (apenas as que possuem produtos cadastrados nesta loja)
   const displayCategoryCircles = useMemo(() => {
@@ -853,32 +862,60 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
             {/* ======================================================== */}
             {currentTab === 'inicio' && !searchQuery && (
               <div className="space-y-6 animate-in fade-in duration-200">
-                {/* 1. Hero Banner / Super Combo (Expansivo com imagem lateral) */}
-                <div className="relative rounded-3xl overflow-hidden shadow-xl bg-gradient-to-r from-[#7C2D12] via-[#541C04] to-[#451A03] text-white p-5 sm:p-7 lg:p-8 border border-amber-950/40 flex flex-col md:flex-row items-center justify-between min-h-[190px] gap-6">
+                {/* 1. Hero Banner / Super Combo (Expansivo no PC com gradiente roxo, setas < > e contador) */}
+                <div className="relative rounded-3xl overflow-hidden shadow-xl bg-gradient-to-r from-[#4A044E] via-[#58085C] to-[#2E0233] text-white p-5 sm:p-7 lg:p-8 border border-purple-900/40 flex flex-col md:flex-row items-center justify-between min-h-[190px] gap-6">
+                  {/* Left Carousel Arrow */}
+                  {bannerOffers.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setBannerIndex((prev) => (prev > 0 ? prev - 1 : bannerOffers.length - 1))}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-xs text-white flex items-center justify-center font-bold text-sm z-20 cursor-pointer transition shadow-md"
+                      title="Oferta anterior"
+                    >
+                      ‹
+                    </button>
+                  )}
+
+                  {/* Right Carousel Arrow */}
+                  {bannerOffers.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setBannerIndex((prev) => (prev + 1) % bannerOffers.length)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-xs text-white flex items-center justify-center font-bold text-sm z-20 cursor-pointer transition shadow-md"
+                      title="Próxima oferta"
+                    >
+                      ›
+                    </button>
+                  )}
+
                   {/* Banner Left Content */}
-                  <div className="space-y-2 z-10 w-full md:max-w-xl">
+                  <div className="space-y-2 z-10 w-full md:max-w-xl pl-2 sm:pl-4">
                     <div className="flex items-center gap-3">
                       <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/20 text-white font-black text-[10px] uppercase tracking-wider backdrop-blur-xs">
-                        🔥 OFERTA DO DIA
+                        {targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger'))
+                          ? 'BURGER ARTESANAL'
+                          : 'OFERTA ESPECIAL'}
                       </span>
-                      <span className="text-[11px] font-bold text-white/70 font-mono tracking-widest">
-                        1/5
-                      </span>
+                      {bannerOffers.length > 0 && (
+                        <span className="text-[11px] font-bold text-white/70 font-mono tracking-widest">
+                          {(bannerIndex % bannerOffers.length) + 1}/{bannerOffers.length}
+                        </span>
+                      )}
                     </div>
 
                     <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight uppercase leading-tight text-white drop-shadow-xs">
-                      {specialOfferProduct ? specialOfferProduct.nome : 'X-BACON'}
+                      {specialOfferProduct ? specialOfferProduct.nome : 'DOUBLE CHEDDAR'}
                     </h2>
-                    <p className="text-xs sm:text-sm text-amber-200/90 font-medium uppercase line-clamp-2">
-                      {specialOfferProduct ? specialOfferProduct.descricao : 'BATATA + REFRI'}
+                    <p className="text-xs sm:text-sm text-pink-200/90 font-medium uppercase line-clamp-2">
+                      {specialOfferProduct ? specialOfferProduct.descricao : '2 CARNES + CHEDDAR MELT'}
                     </p>
 
                     <div className="flex items-baseline gap-2 pt-1">
                       <span className="text-2xl sm:text-3xl font-black font-mono text-[#FF8A00] drop-shadow-xs">
-                        {formatCurrency(specialOfferProduct ? specialOfferProduct.preco : 29.90)}
+                        {formatCurrency(specialOfferProduct ? specialOfferProduct.preco : 31.90)}
                       </span>
                       <span className="text-xs sm:text-sm line-through text-white/50 font-mono">
-                        {formatCurrency(specialOfferProduct ? specialOfferProduct.preco * 1.3 : 39.90)}
+                        {formatCurrency(specialOfferProduct ? specialOfferProduct.preco * 1.15 : 34.90)}
                       </span>
                     </div>
 
@@ -900,7 +937,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   </div>
 
                   {/* Banner Image */}
-                  <div className="w-32 h-32 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-2xl overflow-hidden shadow-2xl shrink-0 border-2 border-white/20 bg-stone-900">
+                  <div className="w-32 h-32 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-2xl overflow-hidden shadow-2xl shrink-0 border-2 border-white/20 bg-stone-900 pr-0 mr-2 sm:mr-4">
                     <img
                       src={specialOfferProduct?.imagem || DEFAULT_FOOD_IMG}
                       alt="Super Combo"
@@ -914,55 +951,84 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
                   {/* Carousel Dots */}
                   <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-                    <span className="w-5 h-1.5 rounded-full bg-[#FF8A00]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                    {bannerOffers.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setBannerIndex(idx)}
+                        className={`transition-all rounded-full cursor-pointer ${
+                          idx === (bannerIndex % bannerOffers.length)
+                            ? 'w-5 h-1.5 bg-[#FF8A00]'
+                            : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/70'
+                        }`}
+                      />
+                    ))}
                   </div>
                 </div>
 
-                {/* 2. Círculos de Categorias (Aparecem SOMENTE categorias com produtos cadastrados, e tamanho compacto no celular) */}
+                {/* 2. Círculos de Categorias (Apenas categorias com produtos cadastrados, halo ativo e tamanho compacto no mobile) */}
                 {displayCategoryCircles.length > 0 && (
                   <div className="py-1">
                     <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-6 lg:gap-8">
-                      {displayCategoryCircles.map((catItem) => (
-                        <button
-                          key={catItem.id}
-                          onClick={() => {
-                            setActiveCategory(catItem.id);
-                            setCurrentTab('cardapio');
-                          }}
-                          className="flex flex-col items-center gap-1 sm:gap-1.5 group cursor-pointer shrink-0"
-                        >
-                          <div className="w-11 h-11 sm:w-13 sm:h-13 md:w-15 md:h-15 rounded-full bg-[#FF8A00] hover:bg-[#E07A00] active:scale-95 text-white flex items-center justify-center text-lg sm:text-xl md:text-2xl shadow-sm transition-all group-hover:shadow-md">
-                            {catItem.icon}
-                          </div>
-                          <span className="text-[10px] sm:text-xs font-bold text-stone-800 dark:text-stone-200 tracking-tight text-center max-w-[70px] sm:max-w-[85px] truncate">
-                            {catItem.label}
-                          </span>
-                        </button>
-                      ))}
+                      {displayCategoryCircles.map((catItem) => {
+                        const isCatActive = activeCategory === catItem.id;
+                        return (
+                          <button
+                            key={catItem.id}
+                            onClick={() => {
+                              setActiveCategory(catItem.id);
+                              setCurrentTab('cardapio');
+                            }}
+                            className="flex flex-col items-center gap-1 sm:gap-1.5 group cursor-pointer shrink-0"
+                          >
+                            <div
+                              className={`w-11 h-11 sm:w-13 sm:h-13 md:w-15 md:h-15 rounded-full flex items-center justify-center text-lg sm:text-xl md:text-2xl transition-all ${
+                                isCatActive
+                                  ? 'bg-[#FF8A00] text-white ring-4 ring-[#FF8A00]/30 border-2 border-[#FF8A00] shadow-md scale-105'
+                                  : 'bg-[#FF8A00] hover:bg-[#E07A00] active:scale-95 text-white shadow-xs group-hover:shadow-md'
+                              }`}
+                            >
+                              {catItem.icon}
+                            </div>
+                            <span
+                              className={`text-[10px] sm:text-xs tracking-tight text-center max-w-[70px] sm:max-w-[85px] truncate ${
+                                isCatActive
+                                  ? 'font-black text-[#FF8A00]'
+                                  : 'font-bold text-stone-800 dark:text-stone-200'
+                              }`}
+                            >
+                              {catItem.label}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
-                {/* 3. Seção "Mais pedidos" (3 colunas no PC conforme Imagem 2) */}
+                {/* 3. Seção "Mais pedidos" / Categoria Ativa (com contador de itens à direita) */}
                 <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pb-1">
                     <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-white tracking-tight">
-                      Mais pedidos
+                      {activeCategory === 'todos'
+                        ? 'Mais pedidos'
+                        : availableCategories.find((c) => c.id === activeCategory)?.nome || 'Mais pedidos'}
                     </h3>
-                    <button
-                      onClick={() => {
-                        setActiveCategory('todos');
-                        setCurrentTab('cardapio');
-                      }}
-                      className="text-xs font-bold text-[#FF8A00] hover:underline flex items-center gap-0.5 cursor-pointer"
-                    >
-                      <span>Ver todos</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
+                        {(activeCategory === 'todos' ? (featuredProducts.length || storeProducts.length) : filteredProducts.length)}{' '}
+                        {(activeCategory === 'todos' ? (featuredProducts.length || storeProducts.length) : filteredProducts.length) === 1 ? 'item' : 'itens'}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setActiveCategory('todos');
+                          setCurrentTab('cardapio');
+                        }}
+                        className="text-xs font-bold text-[#FF8A00] hover:underline flex items-center gap-0.5 cursor-pointer ml-1"
+                      >
+                        <span>Ver todos</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Clean Product Cards Grid (1 col mobile, 2 col tablet, 3 col desktop - Expansivo!) */}
@@ -1044,6 +1110,59 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* 4. Caixa Informativa / Destaques do App (Conforme Imagem de Referência) */}
+                <div className={`rounded-3xl p-6 sm:p-7 border shadow-xs transition-colors ${isDarkMode ? 'bg-[#1E1E28] border-stone-800' : 'bg-white border-stone-100'}`}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
+                        ⭐
+                      </div>
+                      <div>
+                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Cardápio Completo</h4>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
+                          Fotos de alta qualidade e descrições detalhadas de cada item
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
+                        🔍
+                      </div>
+                      <div>
+                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Pesquisa Rápida</h4>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
+                          Encontre por nome, ingrediente ou categoria num instante
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
+                        🛒
+                      </div>
+                      <div>
+                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Sacola Intuitiva</h4>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
+                          Adicione adicionais, observações e cupons sem complicação
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
+                        ⏱️
+                      </div>
+                      <div>
+                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Acompanhamento ao Vivo</h4>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
+                          Veja o status do seu pedido desde a cozinha até a entrega
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1187,6 +1306,59 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     })}
                   </div>
                 )}
+
+                {/* Caixa Informativa / Destaques do App também na aba Cardápio */}
+                <div className={`rounded-3xl p-6 sm:p-7 border shadow-xs transition-colors mt-6 ${isDarkMode ? 'bg-[#1E1E28] border-stone-800' : 'bg-white border-stone-100'}`}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
+                        ⭐
+                      </div>
+                      <div>
+                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Cardápio Completo</h4>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
+                          Fotos de alta qualidade e descrições detalhadas de cada item
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
+                        🔍
+                      </div>
+                      <div>
+                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Pesquisa Rápida</h4>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
+                          Encontre por nome, ingrediente ou categoria num instante
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
+                        🛒
+                      </div>
+                      <div>
+                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Sacola Intuitiva</h4>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
+                          Adicione adicionais, observações e cupons sem complicação
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
+                        ⏱️
+                      </div>
+                      <div>
+                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Acompanhamento ao Vivo</h4>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
+                          Veja o status do seu pedido desde a cozinha até a entrega
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
