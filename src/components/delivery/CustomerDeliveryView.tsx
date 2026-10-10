@@ -280,6 +280,18 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   }, [storeProducts]);
 
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [isBannerHovered, setIsBannerHovered] = useState(false);
+
+  // Passagem automática das promoções / carrossel (a cada 4 segundos)
+  useEffect(() => {
+    if (bannerOffers.length <= 1 || isBannerHovered) return;
+
+    const interval = setInterval(() => {
+      setBannerIndex((prev) => (prev + 1) % bannerOffers.length);
+    }, 4000); // 4 segundos
+
+    return () => clearInterval(interval);
+  }, [bannerOffers.length, isBannerHovered]);
 
   const specialOfferProduct = useMemo(() => {
     if (bannerOffers.length === 0) return null;
@@ -894,8 +906,12 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
             {/* ======================================================== */}
             {currentTab === 'inicio' && !searchQuery && (
               <div className="space-y-6 animate-in fade-in duration-200">
-                {/* 1. Hero Banner / Super Combo (Compacto e horizontal lado a lado no celular, espaçoso no PC) */}
-                <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg bg-gradient-to-r from-[#4A044E] via-[#58085C] to-[#2E0233] text-white p-3.5 sm:p-6 lg:p-8 border border-purple-900/40 flex flex-row items-center justify-between gap-2.5 sm:gap-6">
+                {/* 1. Hero Banner / Super Combo (Compacto e horizontal lado a lado no celular, espaçoso no PC, com troca automática) */}
+                <div
+                  onMouseEnter={() => setIsBannerHovered(true)}
+                  onMouseLeave={() => setIsBannerHovered(false)}
+                  className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg bg-gradient-to-r from-[#4A044E] via-[#58085C] to-[#2E0233] text-white p-3.5 sm:p-6 lg:p-8 border border-purple-900/40 flex flex-row items-center justify-between gap-2.5 sm:gap-6 transition-all"
+                >
                   {/* Left Carousel Arrow */}
                   {bannerOffers.length > 1 && (
                     <button
