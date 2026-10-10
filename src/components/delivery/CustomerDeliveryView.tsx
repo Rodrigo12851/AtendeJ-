@@ -737,73 +737,75 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
             </button>
           </nav>
 
-          {/* Right: Store Status Badge, Theme Toggle, Bell, Profile & Cart */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Badge Aberto / Fechado posicionado exatamente à direita conforme solicitação */}
-            <div className="flex flex-col items-end justify-center mr-1">
+          {/* Right: Theme Toggle, Bell, Profile & Cart with Store Status Badge underneath */}
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2.5">
+              <button
+                onClick={() => setDarkMode(!isDarkMode)}
+                className="p-2 rounded-xl text-stone-700 dark:text-amber-400 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer"
+                title={isDarkMode ? 'Mudar para Tema Claro' : 'Mudar para Tema Escuro'}
+              >
+                {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-600" />}
+              </button>
+
+              <button
+                onClick={() => {
+                  if (customerOrders.length > 0) setCurrentTab('pedidos');
+                  else if (cart.length > 0) setShowCartModal(true);
+                  else alert('Nenhuma notificação nova no momento.');
+                }}
+                className="p-2 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition relative cursor-pointer"
+                title="Notificações e Pedidos Ativos"
+              >
+                <Bell className="w-5 h-5" />
+                {(activeOrder || customerOrders.length > 0) && (
+                  <span className="absolute top-1 right-1 px-1 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white dark:ring-stone-900">
+                    {activeOrder ? '!' : customerOrders.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Profile Button on Desktop */}
+              <button
+                onClick={() => setCurrentTab('perfil')}
+                className="hidden md:flex p-2 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer"
+                title="Meu Perfil"
+              >
+                <User className="w-5 h-5" />
+              </button>
+
+              {/* Cart Shortcut in Header */}
+              <button
+                onClick={() => setShowCartModal(true)}
+                className="p-2 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition relative cursor-pointer"
+                title="Sacola de Compras"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                {cart.length > 0 && (
+                  <span className="absolute top-1 right-1 px-1 min-w-[16px] h-4 bg-[#FF8A00] text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white dark:ring-stone-900">
+                    {cart.reduce((a, c) => a + c.quantidade, 0)}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Badge Aberto / Fechado posicionado exatamente ABAIXO dos ícones (sino/sacola) */}
+            <div className="flex items-center justify-end pr-1">
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-2xs ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-2xs ${
                   storeStatus.isOpen
                     ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
                     : 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
                 }`}
               >
                 <span
-                  className={`w-2 h-2 rounded-full ${
+                  className={`w-1.5 h-1.5 rounded-full ${
                     storeStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
                   }`}
                 />
                 <span>{storeStatus.isOpen ? 'Aberto' : 'Fechado'}</span>
               </span>
             </div>
-
-            <button
-              onClick={() => setDarkMode(!isDarkMode)}
-              className="p-2 rounded-xl text-stone-700 dark:text-amber-400 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer"
-              title={isDarkMode ? 'Mudar para Tema Claro' : 'Mudar para Tema Escuro'}
-            >
-              {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-600" />}
-            </button>
-
-            <button
-              onClick={() => {
-                if (customerOrders.length > 0) setCurrentTab('pedidos');
-                else if (cart.length > 0) setShowCartModal(true);
-                else alert('Nenhuma notificação nova no momento.');
-              }}
-              className="p-2 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition relative cursor-pointer"
-              title="Notificações e Pedidos Ativos"
-            >
-              <Bell className="w-5 h-5" />
-              {(activeOrder || customerOrders.length > 0) && (
-                <span className="absolute top-1 right-1 px-1 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white dark:ring-stone-900">
-                  {activeOrder ? '!' : customerOrders.length}
-                </span>
-              )}
-            </button>
-
-            {/* Profile Button on Desktop */}
-            <button
-              onClick={() => setCurrentTab('perfil')}
-              className="hidden md:flex p-2 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer"
-              title="Meu Perfil"
-            >
-              <User className="w-5 h-5" />
-            </button>
-
-            {/* Cart Shortcut in Header */}
-            <button
-              onClick={() => setShowCartModal(true)}
-              className="p-2 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition relative cursor-pointer"
-              title="Sacola de Compras"
-            >
-              <ShoppingBag className="w-5 h-5" />
-              {cart.length > 0 && (
-                <span className="absolute top-1 right-1 px-1 min-w-[16px] h-4 bg-[#FF8A00] text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white dark:ring-stone-900">
-                  {cart.reduce((a, c) => a + c.quantidade, 0)}
-                </span>
-              )}
-            </button>
           </div>
         </div>
       </header>
