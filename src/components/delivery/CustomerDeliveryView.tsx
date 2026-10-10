@@ -35,6 +35,7 @@ import { Product, OrderItem, Loja } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { getStoreOpenStatus } from '../../utils/storeHours';
 import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
+import { isProductPromotionActive, getProductEffectivePrice, formatPromotionRemaining } from '../../utils/promotionUtils';
 
 const CUSTOMER_PROFILE_KEY = 'atendeja_customer_profile_v1';
 const CUSTOMER_ORDERS_KEY = 'atendeja_customer_orders_v1';
@@ -258,9 +259,10 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   const filteredProducts = useMemo(() => {
     return storeProducts.filter((p) => {
       if (!p.ativo) return false;
+      const hasPromo = isProductPromotionActive(p);
       const matchesCategory =
         activeCategory === 'todos' ||
-        (activeCategory === 'promocoes' ? (p.em_promocao || p.destaque) : p.categoria_id === activeCategory);
+        (activeCategory === 'promocoes' ? (hasPromo || p.destaque) : p.categoria_id === activeCategory);
       const matchesSearch =
         searchQuery.trim() === '' ||
         p.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -271,12 +273,12 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   // Featured Products ("Mais Pedidos" ou Destaques)
   const featuredProducts = useMemo(() => {
-    return storeProducts.filter((p) => (p.em_promocao || p.destaque) && p.ativo).slice(0, 6);
+    return storeProducts.filter((p) => (isProductPromotionActive(p) || p.destaque) && p.ativo).slice(0, 6);
   }, [storeProducts]);
 
   // Banner Offers Carousel (produtos em promoção ou destaque da loja)
   const bannerOffers = useMemo(() => {
-    const list = storeProducts.filter((p) => (p.em_promocao || p.destaque) && p.ativo);
+    const list = storeProducts.filter((p) => (isProductPromotionActive(p) || p.destaque) && p.ativo);
     if (list.length > 0) return list.slice(0, 5);
     return storeProducts.filter((p) => p.ativo).slice(0, 5);
   }, [storeProducts]);
@@ -353,9 +355,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     }
 
     const extrasTotal = selectedItemAddons.reduce((acc, curr) => acc + curr.preco, 0);
-    const precoBase = (selectedBurgerOrItem.em_promocao && selectedBurgerOrItem.preco_promocional)
-      ? selectedBurgerOrItem.preco_promocional
-      : selectedBurgerOrItem.preco;
+    const precoBase = getProductEffectivePrice(selectedBurgerOrItem);
     const precoUnitarioTotal = precoBase + extrasTotal;
     const precoTotal = precoUnitarioTotal * itemModalQtd;
 
@@ -400,9 +400,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       return;
     }
 
-    const precoEfetivo = (product.em_promocao && product.preco_promocional)
-      ? product.preco_promocional
-      : product.preco;
+    const precoEfetivo = getProductEffectivePrice(product);
 
     setCart((prev) => {
       const existingIdx = prev.findIndex(
@@ -968,7 +966,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     </p>
 
                     <div className="flex items-baseline gap-1.5 sm:gap-2 pt-0.5">
-                      {specialOfferProduct?.em_promocao && specialOfferProduct?.preco_promocional ? (
+                      {specialOfferProduct && isProductPromotionActive(specialOfferProduct) && specialOfferProduct.preco_promocional ? (
                         <>
                           <span className="text-lg sm:text-2xl md:text-3xl font-black font-mono text-[#FF8A00] drop-shadow-xs">
                             {formatCurrency(specialOfferProduct.preco_promocional)}
@@ -979,6 +977,11 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                           <span className="px-1.5 py-0.5 rounded bg-amber-500 text-stone-950 font-black text-[9px] uppercase tracking-wider">
                             OFERTA
                           </span>
+                          {formatPromotionRemaining(specialOfferProduct) && (
+                            <span className="text-[10px] text-amber-300 font-bold ml-1">
+                              ⏱️ {formatPromotionRemaining(specialOfferProduct)}
+                            </span>
+                          )}
                         </>
                       ) : (
                         <>
@@ -1129,7 +1132,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                           <div className="mt-2 text-left">
                             <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate flex items-center gap-1">
                               <span className="truncate">{prod.nome}</span>
-                              {prod.em_promocao ? (
+                              {isProductPromotionActive(prod) ? (
                                 <span className="shrink-0 px-1 py-0.2 rounded bg-red-500 text-white font-black text-[8px] uppercase">
                                   PROMO
                                 </span>
@@ -1138,7 +1141,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                               ) : null}
                             </h4>
                             <div className="mt-0.5">
-                              {prod.em_promocao && prod.preco_promocional ? (
+                              {isProductPromotionActive(prod) && prod.preco_promocional ? (
                                 <div className="flex items-baseline gap-1">
                                   <span className="text-[#FF8A00] font-black text-xs sm:text-sm font-mono">
                                     {formatCurrency(prod.preco_promocional)}
@@ -1179,6 +1182,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                     {storeProducts.map((prod) => {
                       const isFav = favorites.includes(prod.id);
+                      const isPromo = isProductPromotionActive(prod);
                       return (
                         <div
                           key={`inicio-prod-${prod.id}`}
@@ -1211,7 +1215,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                               <div className="flex items-start justify-between gap-1">
                                 <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate flex items-center gap-1">
                                   <span className="truncate">{prod.nome}</span>
-                                  {prod.em_promocao ? (
+                                  {isPromo ? (
                                     <span className="shrink-0 px-1 py-0.2 rounded bg-red-500 text-white font-black text-[8px] uppercase">
                                       PROMO
                                     </span>
@@ -1233,10 +1237,15 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                               <p className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-2 mt-0.5 leading-snug">
                                 {prod.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
                               </p>
+                              {isPromo && formatPromotionRemaining(prod) && (
+                                <span className="inline-block mt-0.5 text-[9px] font-bold text-amber-500 font-mono">
+                                  ⏱️ {formatPromotionRemaining(prod)}
+                                </span>
+                              )}
                             </div>
 
                             <div className="flex items-center justify-between pt-1.5">
-                              {prod.em_promocao && prod.preco_promocional ? (
+                              {isPromo && prod.preco_promocional ? (
                                 <div className="flex items-baseline gap-1">
                                   <span className="text-[#FF8A00] font-black text-sm sm:text-base font-mono">
                                     {formatCurrency(prod.preco_promocional)}
@@ -1370,7 +1379,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                               <div className="flex items-start justify-between gap-1">
                                 <h4 className="font-black text-sm text-stone-900 dark:text-white leading-tight line-clamp-1 flex items-center gap-1">
                                   <span className="truncate">{prod.nome}</span>
-                                  {prod.em_promocao ? (
+                                  {isProductPromotionActive(prod) ? (
                                     <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-500 text-white font-black text-[9px] uppercase">
                                       PROMO
                                     </span>
@@ -1392,10 +1401,15 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                               <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 mt-1 leading-snug">
                                 {prod.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
                               </p>
+                              {isProductPromotionActive(prod) && formatPromotionRemaining(prod) && (
+                                <span className="inline-block mt-0.5 text-[10px] font-bold text-amber-500 font-mono">
+                                  ⏱️ {formatPromotionRemaining(prod)}
+                                </span>
+                              )}
                             </div>
 
                             <div className="flex items-center justify-between pt-2">
-                              {prod.em_promocao && prod.preco_promocional ? (
+                              {isProductPromotionActive(prod) && prod.preco_promocional ? (
                                 <div className="flex items-baseline gap-1.5">
                                   <span className="text-[#FF8A00] font-black text-base sm:text-lg font-mono">
                                     {formatCurrency(prod.preco_promocional)}
@@ -2188,7 +2202,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                 <X className="w-4 h-4" />
               </button>
               <div className="absolute bottom-2 left-3 bg-stone-900/85 text-amber-400 font-mono font-black text-sm px-3 py-1 rounded-xl backdrop-blur-xs flex items-center gap-1.5">
-                {selectedBurgerOrItem.em_promocao && selectedBurgerOrItem.preco_promocional ? (
+                {isProductPromotionActive(selectedBurgerOrItem) && selectedBurgerOrItem.preco_promocional ? (
                   <>
                     <span>Base: {formatCurrency(selectedBurgerOrItem.preco_promocional)}</span>
                     <span className="text-xs line-through text-stone-400 font-normal">{formatCurrency(selectedBurgerOrItem.preco)}</span>
@@ -2304,9 +2318,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                 <span>Adicionar à Sacola</span>
                 <span className="font-mono">
                   {formatCurrency(
-                    (((selectedBurgerOrItem.em_promocao && selectedBurgerOrItem.preco_promocional)
-                      ? selectedBurgerOrItem.preco_promocional
-                      : selectedBurgerOrItem.preco) + selectedItemAddons.reduce((a, c) => a + c.preco, 0)) * itemModalQtd
+                    (getProductEffectivePrice(selectedBurgerOrItem) + selectedItemAddons.reduce((a, c) => a + c.preco, 0)) * itemModalQtd
                   )}
                 </span>
               </button>

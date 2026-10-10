@@ -147,13 +147,23 @@ export const PizzaCustomizerModal: React.FC<PizzaCustomizerModalProps> = ({
 
   // Base price calculation: highest price of selected flavors, scaled by size multiplier
   const calculateUnitPrice = () => {
-    let basePrice = baseProduct.preco;
+    const getEffective = (p?: Product) => {
+      if (!p) return baseProduct.preco;
+      if (p.em_promocao && p.preco_promocional && p.preco_promocional > 0) {
+        if (!p.promocao_fim || new Date(p.promocao_fim).getTime() > Date.now()) {
+          return p.preco_promocional;
+        }
+      }
+      return p.preco;
+    };
+
+    let basePrice = getEffective(baseProduct);
     if (isMeioAMeio) {
-      const price1 = product1?.preco || baseProduct.preco;
-      const price2 = product2?.preco || baseProduct.preco;
+      const price1 = getEffective(product1);
+      const price2 = getEffective(product2);
       basePrice = Math.max(price1, price2);
     } else {
-      basePrice = product1?.preco || baseProduct.preco;
+      basePrice = getEffective(product1);
     }
 
     const sizeMultiplier = (permitirTamanhos && selectedSize) ? selectedSize.multiplicador : 1.0;

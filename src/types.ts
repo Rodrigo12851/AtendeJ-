@@ -139,6 +139,10 @@ export interface Product {
   destaque?: boolean;
   em_promocao?: boolean;
   preco_promocional?: number;
+  promocao_tipo?: 'horas' | 'dias' | 'indeterminada';
+  promocao_duracao_valor?: number;
+  promocao_inicio?: string;
+  promocao_fim?: string;
   imprime_cozinha?: boolean;
   sabores_disponiveis?: string[];
   permitirTamanhos?: boolean;

@@ -33,12 +33,16 @@ import {
   KeyRound,
   ChefHat,
   CircleDollarSign,
+  Flame,
+  Tag,
+  Timer,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, Table, User, Category } from '../../types';
 import { formatCurrency, formatDateTime, formatTime } from '../../utils/formatters';
 import { compressImageFile } from '../../utils/imageCompressor';
 import { hashPassword } from '../../utils/security';
+import { isProductPromotionActive, formatPromotionRemaining } from '../../utils/promotionUtils';
 import { GraficosVendasPanel } from './GraficosVendasPanel';
 
 export const AdminView: React.FC = () => {
@@ -121,6 +125,12 @@ export const AdminView: React.FC = () => {
   const [prodBordasSel, setProdBordasSel] = useState<string[]>([]);
   const [prodMassasSel, setProdMassasSel] = useState<string[]>([]);
   const [prodAdicionaisSel, setProdAdicionaisSel] = useState<string[]>([]);
+
+  // Quick Promo Modal State (Botão Rápido de Promoção direto na tabela)
+  const [quickPromoProduct, setQuickPromoProduct] = useState<Product | null>(null);
+  const [quickPromoPreco, setQuickPromoPreco] = useState('');
+  const [quickPromoTipo, setQuickPromoTipo] = useState<'horas' | 'dias' | 'indeterminada'>('horas');
+  const [quickPromoValor, setQuickPromoValor] = useState('4'); // 4 horas por padrão
 
   // New Table Form State
   const [tableNumero, setTableNumero] = useState(tables.length + 1);
@@ -404,6 +414,70 @@ export const AdminView: React.FC = () => {
     setProdEmPromocao(false);
     setProdPrecoPromocional('');
     setShowAddProductModal(false);
+  };
+
+  // Quick Promo Actions
+  const handleOpenQuickPromo = (prod: Product) => {
+    setQuickPromoProduct(prod);
+    setQuickPromoPreco(prod.preco_promocional ? prod.preco_promocional.toString() : '');
+    setQuickPromoTipo(prod.promocao_tipo || 'horas');
+    setQuickPromoValor(prod.promocao_duracao_valor ? prod.promocao_duracao_valor.toString() : '4');
+  };
+
+  const handleSaveQuickPromo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickPromoProduct) return;
+
+    const promoPrice = parseFloat(quickPromoPreco.replace(',', '.'));
+    if (isNaN(promoPrice) || promoPrice <= 0) {
+      alert('Informe um valor promocional válido com desconto.');
+      return;
+    }
+
+    if (promoPrice >= quickPromoProduct.preco) {
+      if (!window.confirm('Atenção: O preço promocional informado é igual ou maior que o preço normal. Deseja continuar?')) {
+        return;
+      }
+    }
+
+    const agora = new Date();
+    const duracaoNum = parseInt(quickPromoValor, 10) || 1;
+    let fimIso: string | undefined = undefined;
+
+    if (quickPromoTipo === 'horas') {
+      const fim = new Date(agora.getTime() + duracaoNum * 60 * 60 * 1000);
+      fimIso = fim.toISOString();
+    } else if (quickPromoTipo === 'dias') {
+      const fim = new Date(agora.getTime() + duracaoNum * 24 * 60 * 60 * 1000);
+      fimIso = fim.toISOString();
+    }
+
+    updateProduct({
+      ...quickPromoProduct,
+      em_promocao: true,
+      preco_promocional: promoPrice,
+      promocao_tipo: quickPromoTipo,
+      promocao_duracao_valor: duracaoNum,
+      promocao_inicio: agora.toISOString(),
+      promocao_fim: fimIso,
+    });
+
+    setQuickPromoProduct(null);
+  };
+
+  const handleRemoveQuickPromo = (prod: Product) => {
+    if (window.confirm(`Deseja desativar a promoção de "${prod.nome}"?`)) {
+      updateProduct({
+        ...prod,
+        em_promocao: false,
+        preco_promocional: undefined,
+        promocao_fim: undefined,
+        promocao_inicio: undefined,
+      });
+      if (quickPromoProduct?.id === prod.id) {
+        setQuickPromoProduct(null);
+      }
+    }
   };
 
   // Handle Save Customization Option (Size, Crust, Dough, Addon)
@@ -958,12 +1032,41 @@ export const AdminView: React.FC = () => {
                           )}
                         </td>
                         <td className="p-3.5">
-                          {p.em_promocao ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-500 text-white shadow-xs">
-                              Ativa 🔥
-                            </span>
+                          {isProductPromotionActive(p) && p.preco_promocional ? (
+                            <div className="space-y-1">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenQuickPromo(p)}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-500 hover:bg-amber-600 active:scale-95 text-white shadow-xs flex items-center gap-1 cursor-pointer transition"
+                                title="Editar ou desativar promoção rápida"
+                              >
+                                <Flame className="w-3 h-3 animate-pulse text-amber-200" />
+                                <span>{formatCurrency(p.preco_promocional)}</span>
+                              </button>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-stone-500 font-mono block">
+                                  {formatPromotionRemaining(p) || 'Ativa'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveQuickPromo(p)}
+                                  className="text-[9px] text-red-500 hover:underline font-bold"
+                                  title="Encerrar promoção agora"
+                                >
+                                  (encerrar)
+                                </button>
+                              </div>
+                            </div>
                           ) : (
-                            <span className="text-[11px] text-stone-400 font-medium">—</span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenQuickPromo(p)}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-stone-100 hover:bg-amber-500 hover:text-white text-stone-600 transition flex items-center gap-1 cursor-pointer border border-stone-200 hover:border-amber-500 group"
+                              title="Criar promoção rápida com desconto e tempo"
+                            >
+                              <Tag className="w-3 h-3 text-stone-400 group-hover:text-white" />
+                              <span>+ Promoção</span>
+                            </button>
                           )}
                         </td>
                         <td className="p-3.5">
@@ -2615,6 +2718,203 @@ export const AdminView: React.FC = () => {
                   className="px-5 py-2 text-xs font-bold bg-red-700 hover:bg-red-800 text-white rounded-xl shadow-xs transition cursor-pointer"
                 >
                   Salvar Opção
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL DE PROMOÇÃO RÁPIDA ================= */}
+      {quickPromoProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-5 border border-stone-200 animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center text-xl shrink-0 border border-amber-500/30">
+                  <Flame className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                    Promoção Rápida
+                  </span>
+                  <h3 className="text-base font-black text-stone-900 leading-tight mt-0.5">
+                    {quickPromoProduct.nome}
+                  </h3>
+                  <span className="text-xs text-stone-400">
+                    Preço normal: <strong className="text-stone-700 font-mono">{formatCurrency(quickPromoProduct.preco)}</strong>
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickPromoProduct(null)}
+                className="p-1.5 rounded-xl hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickPromo} className="space-y-4">
+              {/* Campo: Preço com Desconto */}
+              <div>
+                <label className="block text-xs font-bold text-stone-800 mb-1">
+                  💰 Preço com Desconto Promocional (R$):
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-stone-400 text-xs">
+                    R$
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={quickPromoPreco}
+                    onChange={(e) => setQuickPromoPreco(e.target.value)}
+                    placeholder="Ex: 39,90"
+                    className="w-full pl-9 pr-4 py-3 bg-stone-50 border-2 border-stone-200 rounded-2xl text-base font-black font-mono text-stone-900 focus:outline-hidden focus:border-amber-500 focus:bg-white transition"
+                  />
+                </div>
+                {quickPromoPreco && !isNaN(parseFloat(quickPromoPreco.replace(',', '.'))) && (
+                  <div className="mt-1.5 flex items-center justify-between text-xs px-1">
+                    <span className="text-stone-500">
+                      Economia do cliente:{' '}
+                      <strong className="text-emerald-700 font-mono">
+                        {formatCurrency(Math.max(0, quickPromoProduct.preco - parseFloat(quickPromoPreco.replace(',', '.'))))}
+                      </strong>
+                    </span>
+                    {parseFloat(quickPromoPreco.replace(',', '.')) < quickPromoProduct.preco && (
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-md text-[10px]">
+                        {Math.round((1 - parseFloat(quickPromoPreco.replace(',', '.')) / quickPromoProduct.preco) * 100)}% OFF
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Seletor de Duração: Horas vs Dias vs Indeterminada */}
+              <div className="space-y-2 pt-1 border-t border-stone-100">
+                <label className="block text-xs font-bold text-stone-800">
+                  ⏱️ Tempo de Duração da Promoção:
+                </label>
+
+                {/* Botões de Tipo */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setQuickPromoTipo('horas'); if (quickPromoTipo !== 'horas') setQuickPromoValor('4'); }}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      quickPromoTipo === 'horas'
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Por Horas</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setQuickPromoTipo('dias'); if (quickPromoTipo !== 'dias') setQuickPromoValor('1'); }}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      quickPromoTipo === 'dias'
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Por Dias</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setQuickPromoTipo('indeterminada')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                      quickPromoTipo === 'indeterminada'
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    <span>Até pausar</span>
+                  </button>
+                </div>
+
+                {/* Input de Quantidade conforme o tipo */}
+                {quickPromoTipo === 'horas' && (
+                  <div className="p-3 bg-amber-50/60 rounded-2xl border border-amber-200/70 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-amber-900">Quantas horas dura?</span>
+                      <span className="font-mono font-bold text-amber-900">{quickPromoValor} horas</span>
+                    </div>
+                    {/* Atalhos rápidos de horas */}
+                    <div className="flex items-center gap-1.5">
+                      {[1, 2, 4, 6, 8, 12].map((h) => (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => setQuickPromoValor(h.toString())}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-bold font-mono transition cursor-pointer ${
+                            quickPromoValor === h.toString()
+                              ? 'bg-amber-500 text-white shadow-xs'
+                              : 'bg-white text-stone-700 hover:bg-amber-100 border border-stone-200'
+                          }`}
+                        >
+                          {h}h
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {quickPromoTipo === 'dias' && (
+                  <div className="p-3 bg-amber-50/60 rounded-2xl border border-amber-200/70 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-amber-900">Quantos dias dura?</span>
+                      <span className="font-mono font-bold text-amber-900">{quickPromoValor} {quickPromoValor === '1' ? 'dia' : 'dias'}</span>
+                    </div>
+                    {/* Atalhos rápidos de dias */}
+                    <div className="flex items-center gap-1.5">
+                      {[1, 2, 3, 5, 7].map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setQuickPromoValor(d.toString())}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-bold font-mono transition cursor-pointer ${
+                            quickPromoValor === d.toString()
+                              ? 'bg-amber-500 text-white shadow-xs'
+                              : 'bg-white text-stone-700 hover:bg-amber-100 border border-stone-200'
+                          }`}
+                        >
+                          {d}d
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {quickPromoTipo === 'indeterminada' && (
+                  <p className="text-[11px] text-stone-500 p-2.5 bg-stone-50 rounded-xl border border-stone-200">
+                    A promoção ficará ativa por tempo indeterminado até você clicar no botão de encerrar na tabela.
+                  </p>
+                )}
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="pt-2 flex items-center gap-2 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setQuickPromoProduct(null)}
+                  className="flex-1 py-3 px-4 rounded-xl text-xs font-bold bg-stone-100 hover:bg-stone-200 text-stone-700 transition cursor-pointer text-center"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 px-4 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 active:scale-95 text-stone-950 transition cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+                >
+                  <Flame className="w-4 h-4 fill-stone-950 text-stone-950" />
+                  <span>Ativar Promoção</span>
                 </button>
               </div>
             </form>
