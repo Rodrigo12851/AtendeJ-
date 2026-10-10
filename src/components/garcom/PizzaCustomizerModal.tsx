@@ -108,6 +108,7 @@ export const PizzaCustomizerModal: React.FC<PizzaCustomizerModalProps> = ({
   }, [store?.allProducts, store?.products, baseProduct.loja_id]);
 
   const defaultFlavor1 = baseProduct.nome.replace(/^Pizza\s+/i, '');
+  const [selectedSize, setSelectedSize] = useState(sizes[2] || sizes[0]); // Default Grande or first
   const [isMeioAMeio, setIsMeioAMeio] = useState(false);
   const [flavor1, setFlavor1] = useState(defaultFlavor1);
   const [flavor2, setFlavor2] = useState(() => {
