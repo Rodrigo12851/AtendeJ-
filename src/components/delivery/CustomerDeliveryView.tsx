@@ -1053,46 +1053,37 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   </div>
                 )}
 
-                {/* 3. Seção "Mais pedidos" / Categoria Ativa (com contador de itens à direita) */}
+                {/* 3. Seção "Mais pedidos" */}
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between pb-1">
                     <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-white tracking-tight">
-                      {activeCategory === 'todos'
-                        ? 'Mais pedidos'
-                        : availableCategories.find((c) => c.id === activeCategory)?.nome || 'Mais pedidos'}
+                      Mais pedidos
                     </h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
-                        {(activeCategory === 'todos' ? (featuredProducts.length || storeProducts.length) : filteredProducts.length)}{' '}
-                        {(activeCategory === 'todos' ? (featuredProducts.length || storeProducts.length) : filteredProducts.length) === 1 ? 'item' : 'itens'}
-                      </span>
-                      <button
-                        onClick={() => {
-                          setActiveCategory('todos');
-                          setCurrentTab('cardapio');
-                        }}
-                        className="text-xs font-bold text-[#FF8A00] hover:underline flex items-center gap-0.5 cursor-pointer ml-1"
-                      >
-                        <span>Ver todos</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => {
+                        setActiveCategory('todos');
+                        setCurrentTab('cardapio');
+                      }}
+                      className="text-xs font-bold text-[#FF8A00] hover:underline flex items-center gap-0.5 cursor-pointer ml-1"
+                    >
+                      <span>Ver todos</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
-                  {/* Clean Product Cards Grid (1 col mobile, 2 col tablet, 3 col desktop - Expansivo!) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {(featuredProducts.length > 0 ? featuredProducts : storeProducts.slice(0, 6)).map((prod) => {
-                      const isFav = favorites.includes(prod.id);
+                  {/* Mais pedidos: Cards verticais com foto no topo, exatamente como na Imagem 1 (Mobile) e Imagem 2 (PC/Tablet) */}
+                  <div className="flex sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 overflow-x-auto pb-2 scrollbar-none">
+                    {(featuredProducts.length > 0 ? featuredProducts : storeProducts.slice(0, 5)).map((prod) => {
                       return (
                         <div
-                          key={prod.id}
+                          key={`featured-${prod.id}`}
                           onClick={() => handleAddRegularProduct(prod)}
-                          className={`rounded-2xl p-3 sm:p-3.5 border shadow-xs hover:shadow-md transition-all flex gap-3 cursor-pointer group ${
-                            isDarkMode ? 'bg-[#1E1E28] border-stone-800/80' : 'bg-white border-stone-100'
+                          className={`rounded-2xl p-2.5 sm:p-3 border shadow-xs hover:shadow-md transition-all cursor-pointer group shrink-0 w-[125px] sm:w-auto flex flex-col justify-between ${
+                            isDarkMode ? 'bg-[#1E1E28] border-stone-800' : 'bg-white border-stone-100'
                           }`}
                         >
-                          {/* Square Left Image */}
-                          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800">
+                          {/* Foto quadrada arredondada */}
+                          <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800">
                             <img
                               src={prod.imagem || DEFAULT_FOOD_IMG}
                               alt={prod.nome}
@@ -1103,8 +1094,68 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                               }}
                             />
                             {prod.isPizza && (
-                              <span className="absolute bottom-1 left-1 bg-[#FF8A00] text-white font-black text-[9px] px-1.5 py-0.5 rounded-md uppercase">
+                              <span className="absolute bottom-1 left-1 bg-[#FF8A00] text-white font-black text-[8px] px-1 py-0.5 rounded uppercase">
                                 🍕 Meio a Meio
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Nome e Preço */}
+                          <div className="mt-2 text-left">
+                            <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate">
+                              {prod.nome} {prod.destaque ? '🔥' : ''}
+                            </h4>
+                            <span className="text-[#FF8A00] font-black text-xs sm:text-sm font-mono mt-0.5 block">
+                              {formatCurrency(prod.preco)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4. Seção "Todos os Lanches" / Produtos Gerais (1 Coluna no celular como na Imagem 1, Grid expansivo no PC/Tablet como na Imagem 2) */}
+                <div className="space-y-3 pt-3">
+                  <div className="flex items-center justify-between pb-1">
+                    <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-white tracking-tight">
+                      {targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger'))
+                        ? 'Todos os Lanches'
+                        : targetLoja.nome.toLowerCase().includes('pizza') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('pizza'))
+                        ? 'Todas as Pizzas'
+                        : 'Nosso Cardápio'}
+                    </h3>
+                    <span className="text-xs font-bold text-stone-400">
+                      {storeProducts.length} {storeProducts.length === 1 ? 'item' : 'itens'}
+                    </span>
+                  </div>
+
+                  {/* Grid Responsivo: 1 coluna no mobile (como imagem 1), 2 no tablet, 3 ou 4 no desktop (como imagem 2) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+                    {storeProducts.map((prod) => {
+                      const isFav = favorites.includes(prod.id);
+                      return (
+                        <div
+                          key={`inicio-prod-${prod.id}`}
+                          onClick={() => handleAddRegularProduct(prod)}
+                          className={`rounded-2xl p-3 border shadow-xs hover:shadow-md transition-all flex gap-3 cursor-pointer group ${
+                            isDarkMode ? 'bg-[#1E1E28] border-stone-800' : 'bg-white border-stone-100'
+                          }`}
+                        >
+                          {/* Square Left Image */}
+                          <div className="relative w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800">
+                            <img
+                              src={prod.imagem || DEFAULT_FOOD_IMG}
+                              alt={prod.nome}
+                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
+                              }}
+                            />
+                            {prod.isPizza && (
+                              <span className="absolute bottom-1 left-1 bg-[#FF8A00] text-white font-black text-[8px] px-1 py-0.5 rounded uppercase">
+                                🍕 1/2
                               </span>
                             )}
                           </div>
@@ -1113,8 +1164,8 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                           <div className="flex-1 min-w-0 flex flex-col justify-between">
                             <div>
                               <div className="flex items-start justify-between gap-1">
-                                <h4 className="font-black text-sm text-stone-900 dark:text-white leading-tight line-clamp-1">
-                                  {prod.nome}
+                                <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate">
+                                  {prod.nome} {prod.destaque ? '🔥' : ''}
                                 </h4>
                                 <button
                                   type="button"
@@ -1122,18 +1173,18 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                                     e.stopPropagation();
                                     toggleFavorite(prod.id);
                                   }}
-                                  className="p-1 text-stone-400 hover:text-red-500 transition shrink-0 cursor-pointer"
+                                  className="p-1 text-stone-300 hover:text-red-500 transition shrink-0 cursor-pointer"
                                 >
-                                  <Heart className={`w-4 h-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
+                                  <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
                                 </button>
                               </div>
-                              <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 mt-1 leading-snug">
+                              <p className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-2 mt-0.5 leading-snug">
                                 {prod.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
                               </p>
                             </div>
 
-                            <div className="flex items-center justify-between pt-2">
-                              <span className="text-[#FF8A00] font-black text-base sm:text-lg font-mono">
+                            <div className="flex items-center justify-between pt-1.5">
+                              <span className="text-[#FF8A00] font-black text-sm sm:text-base font-mono">
                                 {formatCurrency(prod.preco)}
                               </span>
 
@@ -1144,14 +1195,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                                   handleAddRegularProduct(prod);
                                 }}
                                 disabled={!storeStatus.isOpen}
-                                className={`w-8 h-8 rounded-xl font-bold flex items-center justify-center transition shadow-xs active:scale-90 ${
+                                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg font-bold flex items-center justify-center transition shadow-xs active:scale-90 ${
                                   !storeStatus.isOpen
                                     ? 'bg-stone-200 dark:bg-stone-700 text-stone-400 cursor-not-allowed'
                                     : 'bg-[#FF8A00] hover:bg-[#E07A00] text-white cursor-pointer'
                                 }`}
                                 title="Adicionar ao pedido"
                               >
-                                <Plus className="w-5 h-5" />
+                                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                               </button>
                             </div>
                           </div>
