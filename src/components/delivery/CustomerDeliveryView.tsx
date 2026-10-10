@@ -258,7 +258,9 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   const filteredProducts = useMemo(() => {
     return storeProducts.filter((p) => {
       if (!p.ativo) return false;
-      const matchesCategory = activeCategory === 'todos' || p.categoria_id === activeCategory;
+      const matchesCategory =
+        activeCategory === 'todos' ||
+        (activeCategory === 'promocoes' ? (p.em_promocao || p.destaque) : p.categoria_id === activeCategory);
       const matchesSearch =
         searchQuery.trim() === '' ||
         p.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -267,14 +269,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     });
   }, [storeProducts, activeCategory, searchQuery]);
 
-  // Featured Products ("Mais Pedidos")
+  // Featured Products ("Mais Pedidos" ou Destaques)
   const featuredProducts = useMemo(() => {
-    return storeProducts.filter((p) => p.destaque && p.ativo).slice(0, 4);
+    return storeProducts.filter((p) => (p.em_promocao || p.destaque) && p.ativo).slice(0, 6);
   }, [storeProducts]);
 
-  // Banner Offers Carousel (produtos em destaque ou primeiros produtos da loja)
+  // Banner Offers Carousel (produtos em promoção ou destaque da loja)
   const bannerOffers = useMemo(() => {
-    const list = storeProducts.filter((p) => p.destaque && p.ativo);
+    const list = storeProducts.filter((p) => (p.em_promocao || p.destaque) && p.ativo);
     if (list.length > 0) return list.slice(0, 5);
     return storeProducts.filter((p) => p.ativo).slice(0, 5);
   }, [storeProducts]);
@@ -351,7 +353,10 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     }
 
     const extrasTotal = selectedItemAddons.reduce((acc, curr) => acc + curr.preco, 0);
-    const precoUnitarioTotal = selectedBurgerOrItem.preco + extrasTotal;
+    const precoBase = (selectedBurgerOrItem.em_promocao && selectedBurgerOrItem.preco_promocional)
+      ? selectedBurgerOrItem.preco_promocional
+      : selectedBurgerOrItem.preco;
+    const precoUnitarioTotal = precoBase + extrasTotal;
     const precoTotal = precoUnitarioTotal * itemModalQtd;
 
     const newItem: OrderItem = {
@@ -395,6 +400,10 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       return;
     }
 
+    const precoEfetivo = (product.em_promocao && product.preco_promocional)
+      ? product.preco_promocional
+      : product.preco;
+
     setCart((prev) => {
       const existingIdx = prev.findIndex(
         (item) => item.produto_id === product.id && (!item.adicionais || item.adicionais.length === 0) && !item.observacao
@@ -417,8 +426,8 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
           produto_id: product.id,
           nome: product.nome,
           quantidade: 1,
-          preco_unitario: product.preco,
-          preco_total: product.preco,
+          preco_unitario: precoEfetivo,
+          preco_total: precoEfetivo,
           status: 'ativo',
         },
       ];
@@ -959,12 +968,28 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     </p>
 
                     <div className="flex items-baseline gap-1.5 sm:gap-2 pt-0.5">
-                      <span className="text-lg sm:text-2xl md:text-3xl font-black font-mono text-[#FF8A00] drop-shadow-xs">
-                        {formatCurrency(specialOfferProduct ? specialOfferProduct.preco : 31.90)}
-                      </span>
-                      <span className="text-[10px] sm:text-xs line-through text-white/50 font-mono">
-                        {formatCurrency(specialOfferProduct ? specialOfferProduct.preco * 1.15 : 34.90)}
-                      </span>
+                      {specialOfferProduct?.em_promocao && specialOfferProduct?.preco_promocional ? (
+                        <>
+                          <span className="text-lg sm:text-2xl md:text-3xl font-black font-mono text-[#FF8A00] drop-shadow-xs">
+                            {formatCurrency(specialOfferProduct.preco_promocional)}
+                          </span>
+                          <span className="text-[10px] sm:text-xs line-through text-white/60 font-mono">
+                            {formatCurrency(specialOfferProduct.preco)}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500 text-stone-950 font-black text-[9px] uppercase tracking-wider">
+                            OFERTA
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-lg sm:text-2xl md:text-3xl font-black font-mono text-[#FF8A00] drop-shadow-xs">
+                            {formatCurrency(specialOfferProduct ? specialOfferProduct.preco : 31.90)}
+                          </span>
+                          <span className="text-[10px] sm:text-xs line-through text-white/50 font-mono">
+                            {formatCurrency(specialOfferProduct ? specialOfferProduct.preco * 1.15 : 34.90)}
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     <div className="pt-1 sm:pt-2">
@@ -1102,12 +1127,32 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
                           {/* Nome e Preço */}
                           <div className="mt-2 text-left">
-                            <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate">
-                              {prod.nome} {prod.destaque ? '🔥' : ''}
+                            <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate flex items-center gap-1">
+                              <span className="truncate">{prod.nome}</span>
+                              {prod.em_promocao ? (
+                                <span className="shrink-0 px-1 py-0.2 rounded bg-red-500 text-white font-black text-[8px] uppercase">
+                                  PROMO
+                                </span>
+                              ) : prod.destaque ? (
+                                <span className="shrink-0">🔥</span>
+                              ) : null}
                             </h4>
-                            <span className="text-[#FF8A00] font-black text-xs sm:text-sm font-mono mt-0.5 block">
-                              {formatCurrency(prod.preco)}
-                            </span>
+                            <div className="mt-0.5">
+                              {prod.em_promocao && prod.preco_promocional ? (
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-[#FF8A00] font-black text-xs sm:text-sm font-mono">
+                                    {formatCurrency(prod.preco_promocional)}
+                                  </span>
+                                  <span className="text-[9px] line-through text-stone-400 font-mono">
+                                    {formatCurrency(prod.preco)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[#FF8A00] font-black text-xs sm:text-sm font-mono block">
+                                  {formatCurrency(prod.preco)}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -1164,8 +1209,15 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                           <div className="flex-1 min-w-0 flex flex-col justify-between">
                             <div>
                               <div className="flex items-start justify-between gap-1">
-                                <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate">
-                                  {prod.nome} {prod.destaque ? '🔥' : ''}
+                                <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate flex items-center gap-1">
+                                  <span className="truncate">{prod.nome}</span>
+                                  {prod.em_promocao ? (
+                                    <span className="shrink-0 px-1 py-0.2 rounded bg-red-500 text-white font-black text-[8px] uppercase">
+                                      PROMO
+                                    </span>
+                                  ) : prod.destaque ? (
+                                    <span className="shrink-0">🔥</span>
+                                  ) : null}
                                 </h4>
                                 <button
                                   type="button"
@@ -1184,9 +1236,20 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                             </div>
 
                             <div className="flex items-center justify-between pt-1.5">
-                              <span className="text-[#FF8A00] font-black text-sm sm:text-base font-mono">
-                                {formatCurrency(prod.preco)}
-                              </span>
+                              {prod.em_promocao && prod.preco_promocional ? (
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-[#FF8A00] font-black text-sm sm:text-base font-mono">
+                                    {formatCurrency(prod.preco_promocional)}
+                                  </span>
+                                  <span className="text-[10px] line-through text-stone-400 font-mono">
+                                    {formatCurrency(prod.preco)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[#FF8A00] font-black text-sm sm:text-base font-mono">
+                                  {formatCurrency(prod.preco)}
+                                </span>
+                              )}
 
                               <button
                                 type="button"
@@ -1305,8 +1368,15 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                           <div className="flex-1 min-w-0 flex flex-col justify-between">
                             <div>
                               <div className="flex items-start justify-between gap-1">
-                                <h4 className="font-black text-sm text-stone-900 dark:text-white leading-tight line-clamp-1">
-                                  {prod.nome}
+                                <h4 className="font-black text-sm text-stone-900 dark:text-white leading-tight line-clamp-1 flex items-center gap-1">
+                                  <span className="truncate">{prod.nome}</span>
+                                  {prod.em_promocao ? (
+                                    <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-500 text-white font-black text-[9px] uppercase">
+                                      PROMO
+                                    </span>
+                                  ) : prod.destaque ? (
+                                    <span className="shrink-0">🔥</span>
+                                  ) : null}
                                 </h4>
                                 <button
                                   type="button"
@@ -1325,9 +1395,20 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                             </div>
 
                             <div className="flex items-center justify-between pt-2">
-                              <span className="text-[#FF8A00] font-black text-base sm:text-lg font-mono">
-                                {formatCurrency(prod.preco)}
-                              </span>
+                              {prod.em_promocao && prod.preco_promocional ? (
+                                <div className="flex items-baseline gap-1.5">
+                                  <span className="text-[#FF8A00] font-black text-base sm:text-lg font-mono">
+                                    {formatCurrency(prod.preco_promocional)}
+                                  </span>
+                                  <span className="text-xs line-through text-stone-400 font-mono">
+                                    {formatCurrency(prod.preco)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[#FF8A00] font-black text-base sm:text-lg font-mono">
+                                  {formatCurrency(prod.preco)}
+                                </span>
+                              )}
 
                               <button
                                 type="button"
@@ -2106,8 +2187,16 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
               >
                 <X className="w-4 h-4" />
               </button>
-              <div className="absolute bottom-2 left-3 bg-stone-900/85 text-amber-400 font-mono font-black text-sm px-3 py-1 rounded-xl backdrop-blur-xs">
-                Base: {formatCurrency(selectedBurgerOrItem.preco)}
+              <div className="absolute bottom-2 left-3 bg-stone-900/85 text-amber-400 font-mono font-black text-sm px-3 py-1 rounded-xl backdrop-blur-xs flex items-center gap-1.5">
+                {selectedBurgerOrItem.em_promocao && selectedBurgerOrItem.preco_promocional ? (
+                  <>
+                    <span>Base: {formatCurrency(selectedBurgerOrItem.preco_promocional)}</span>
+                    <span className="text-xs line-through text-stone-400 font-normal">{formatCurrency(selectedBurgerOrItem.preco)}</span>
+                    <span className="px-1 py-0.2 rounded bg-red-500 text-white text-[8px] font-sans uppercase">Promo</span>
+                  </>
+                ) : (
+                  <span>Base: {formatCurrency(selectedBurgerOrItem.preco)}</span>
+                )}
               </div>
             </div>
 
@@ -2215,7 +2304,9 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                 <span>Adicionar à Sacola</span>
                 <span className="font-mono">
                   {formatCurrency(
-                    (selectedBurgerOrItem.preco + selectedItemAddons.reduce((a, c) => a + c.preco, 0)) * itemModalQtd
+                    (((selectedBurgerOrItem.em_promocao && selectedBurgerOrItem.preco_promocional)
+                      ? selectedBurgerOrItem.preco_promocional
+                      : selectedBurgerOrItem.preco) + selectedItemAddons.reduce((a, c) => a + c.preco, 0)) * itemModalQtd
                   )}
                 </span>
               </button>

@@ -137,6 +137,8 @@ export interface Product {
   tempo_preparo_minutos?: number;
   isPizza?: boolean;
   destaque?: boolean;
+  em_promocao?: boolean;
+  preco_promocional?: number;
   imprime_cozinha?: boolean;
   sabores_disponiveis?: string[];
   permitirTamanhos?: boolean;

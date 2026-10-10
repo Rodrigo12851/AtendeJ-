@@ -109,6 +109,9 @@ export const AdminView: React.FC = () => {
   const [prodDesc, setProdDesc] = useState('');
   const [prodImagem, setProdImagem] = useState('');
   const [prodIsPizza, setProdIsPizza] = useState(false);
+  const [prodDestaque, setProdDestaque] = useState(false);
+  const [prodEmPromocao, setProdEmPromocao] = useState(false);
+  const [prodPrecoPromocional, setProdPrecoPromocional] = useState('');
   const [prodImprimeCozinha, setProdImprimeCozinha] = useState(true);
   const [prodPermitirTamanhos, setProdPermitirTamanhos] = useState(true);
   const [prodPermitirBordas, setProdPermitirBordas] = useState(true);
@@ -135,6 +138,24 @@ export const AdminView: React.FC = () => {
     return users.filter((u) => u.loja_id === lojaId && u.perfil !== 'super_admin');
   }, [users, currentLoja, currentLojaId]);
 
+  // Helper para extrair hora inicial e final de strings como "18:00 às 23:30"
+  const parseStoreHours = (horarioStr?: string) => {
+    const str = (horarioStr || '18:00 às 23:30').trim();
+    const timeRegex = /(\d{1,2})(?:[:hH](\d{2})|h|H)?/g;
+    const matches = [...str.matchAll(timeRegex)].filter((m) => m[0] && m[1]);
+    let abert = '18:00';
+    let fech = '23:30';
+    if (matches.length >= 2) {
+      const h1 = matches[0][1].padStart(2, '0');
+      const m1 = (matches[0][2] || '00').padStart(2, '0');
+      const h2 = matches[1][1].padStart(2, '0');
+      const m2 = (matches[1][2] || '00').padStart(2, '0');
+      abert = `${h1}:${m1}`;
+      fech = `${h2}:${m2}`;
+    }
+    return { abert, fech };
+  };
+
   // Store Settings Form State
   const [lojaMarca, setLojaMarca] = useState(currentLoja?.marca || currentLoja?.nome || '');
   const [lojaNome, setLojaNome] = useState(currentLoja?.nome || '');
@@ -143,6 +164,9 @@ export const AdminView: React.FC = () => {
   const [lojaEndereco, setLojaEndereco] = useState(currentLoja?.endereco || '');
   const [lojaTelefone, setLojaTelefone] = useState(currentLoja?.telefone || '');
   const [lojaTempo, setLojaTempo] = useState(currentLoja?.tempo_estimado_entrega || '30 - 45 min');
+  const initialHours = parseStoreHours(currentLoja?.horario_funcionamento);
+  const [lojaHoraAbertura, setLojaHoraAbertura] = useState(initialHours.abert);
+  const [lojaHoraFechamento, setLojaHoraFechamento] = useState(initialHours.fech);
   const [lojaHorario, setLojaHorario] = useState(currentLoja?.horario_funcionamento || '18:00 às 23:30');
   const [lojaFechadoManualmente, setLojaFechadoManualmente] = useState(currentLoja?.fechado_manualmente || false);
   const [lojaSaved, setLojaSaved] = useState(false);
@@ -204,7 +228,10 @@ export const AdminView: React.FC = () => {
       setLojaEndereco(currentLoja.endereco || '');
       setLojaTelefone(currentLoja.telefone || '');
       setLojaTempo(currentLoja.tempo_estimado_entrega || '30 - 45 min');
-      setLojaHorario(currentLoja.horario_funcionamento || '18:00 às 23:30');
+      const parsed = parseStoreHours(currentLoja.horario_funcionamento);
+      setLojaHoraAbertura(parsed.abert);
+      setLojaHoraFechamento(parsed.fech);
+      setLojaHorario(currentLoja.horario_funcionamento || `${parsed.abert} às ${parsed.fech}`);
       setLojaFechadoManualmente(currentLoja.fechado_manualmente || false);
     }
   }, [currentLoja?.id, currentLoja?.horario_funcionamento, currentLoja?.fechado_manualmente]);
@@ -213,6 +240,7 @@ export const AdminView: React.FC = () => {
     e.preventDefault();
     if (!currentLoja) return;
     const taxaNum = parseFloat(lojaTaxa.replace(',', '.')) || 0;
+    const finalHorario = `${lojaHoraAbertura} às ${lojaHoraFechamento}`;
     updateLoja({
       ...currentLoja,
       marca: lojaMarca.trim() || currentLoja.nome,
@@ -222,9 +250,10 @@ export const AdminView: React.FC = () => {
       endereco: lojaEndereco.trim(),
       telefone: lojaTelefone.trim(),
       tempo_estimado_entrega: lojaTempo.trim(),
-      horario_funcionamento: lojaHorario.trim(),
+      horario_funcionamento: finalHorario,
       fechado_manualmente: lojaFechadoManualmente,
     });
+    setLojaHorario(finalHorario);
     setLojaSaved(true);
     setTimeout(() => setLojaSaved(false), 3000);
   };
@@ -317,6 +346,8 @@ export const AdminView: React.FC = () => {
     const defaultImg = 'https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600';
     const finalImage = prodImagem.trim() || defaultImg;
 
+    const promoPriceNum = prodPrecoPromocional.trim() ? parseFloat(prodPrecoPromocional.replace(',', '.')) : undefined;
+
     if (editingProduct) {
       updateProduct({
         ...editingProduct,
@@ -326,6 +357,9 @@ export const AdminView: React.FC = () => {
         descricao: prodDesc,
         imagem: finalImage,
         isPizza: prodIsPizza,
+        destaque: prodDestaque,
+        em_promocao: prodEmPromocao,
+        preco_promocional: prodEmPromocao && !isNaN(promoPriceNum as number) ? promoPriceNum : undefined,
         imprime_cozinha: prodImprimeCozinha,
         permitirTamanhos: prodPermitirTamanhos,
         permitirBordas: prodPermitirBordas,
@@ -346,6 +380,9 @@ export const AdminView: React.FC = () => {
         descricao: prodDesc,
         imagem: finalImage,
         ativo: true,
+        destaque: prodDestaque,
+        em_promocao: prodEmPromocao,
+        preco_promocional: prodEmPromocao && !isNaN(promoPriceNum as number) ? promoPriceNum : undefined,
         imprime_cozinha: prodImprimeCozinha,
         isPizza: prodIsPizza,
         permitirTamanhos: prodPermitirTamanhos,
@@ -363,6 +400,9 @@ export const AdminView: React.FC = () => {
     setProdPreco('');
     setProdDesc('');
     setProdImagem('');
+    setProdDestaque(false);
+    setProdEmPromocao(false);
+    setProdPrecoPromocional('');
     setShowAddProductModal(false);
   };
 
@@ -838,6 +878,9 @@ export const AdminView: React.FC = () => {
                   setProdDesc('');
                   setProdImagem('');
                   setProdIsPizza(true);
+                  setProdDestaque(false);
+                  setProdEmPromocao(false);
+                  setProdPrecoPromocional('');
                   setProdImprimeCozinha(true);
                   setProdPermitirTamanhos(true);
                   setProdPermitirBordas(true);
@@ -867,6 +910,7 @@ export const AdminView: React.FC = () => {
                       <th className="p-3.5">Produto</th>
                       <th className="p-3.5">Categoria</th>
                       <th className="p-3.5">Preço</th>
+                      <th className="p-3.5">Promoção</th>
                       <th className="p-3.5">Impressão</th>
                       <th className="p-3.5">Status</th>
                       <th className="p-3.5 text-right">Ações</th>
@@ -888,7 +932,14 @@ export const AdminView: React.FC = () => {
                           </div>
                         </td>
                         <td className="p-3.5">
-                          <span className="font-semibold text-stone-900 dark:text-slate-100 block">{p.nome}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-stone-900 dark:text-slate-100 block">{p.nome}</span>
+                            {p.destaque && (
+                              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-100 text-amber-800" title="Destaque nos Mais Pedidos e Banner">
+                                🔥 Destaque
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs text-stone-500 line-clamp-1">
                             {p.descricao}
                           </span>
@@ -897,7 +948,23 @@ export const AdminView: React.FC = () => {
                           {p.categoria_id}
                         </td>
                         <td className="p-3.5 font-bold text-stone-900 dark:text-slate-100 font-mono">
-                          {formatCurrency(p.preco)}
+                          {p.em_promocao && p.preco_promocional ? (
+                            <div>
+                              <span className="text-emerald-700 block">{formatCurrency(p.preco_promocional)}</span>
+                              <span className="text-[10px] text-stone-400 line-through font-normal">{formatCurrency(p.preco)}</span>
+                            </div>
+                          ) : (
+                            formatCurrency(p.preco)
+                          )}
+                        </td>
+                        <td className="p-3.5">
+                          {p.em_promocao ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-500 text-white shadow-xs">
+                              Ativa 🔥
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-stone-400 font-medium">—</span>
+                          )}
                         </td>
                         <td className="p-3.5">
                           <span
@@ -929,6 +996,9 @@ export const AdminView: React.FC = () => {
                               setProdDesc(p.descricao);
                               setProdImagem(p.imagem || '');
                               setProdIsPizza(!!p.isPizza);
+                              setProdDestaque(!!p.destaque);
+                              setProdEmPromocao(!!p.em_promocao);
+                              setProdPrecoPromocional(p.preco_promocional ? p.preco_promocional.toString() : '');
                               setProdImprimeCozinha(p.imprime_cozinha);
                               setProdPermitirTamanhos(p.permitirTamanhos !== false);
                               setProdPermitirBordas(p.permitirBordas !== false);
@@ -1767,17 +1837,45 @@ export const AdminView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Horário de Funcionamento:</label>
-                  <input
-                    type="text"
-                    value={lojaHorario}
-                    onChange={(e) => setLojaHorario(e.target.value)}
-                    placeholder="18:00 às 23:30"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
-                  />
-                  <p className="text-[10px] text-stone-500 mt-1">
-                    Ex: 18:00 às 23:30. Fora desse intervalo o cardápio avisa que a loja está fechada e bloqueia pedidos.
-                  </p>
+                  <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                    Horário de Funcionamento (Abertura e Fechamento):
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] text-stone-500 font-bold uppercase block mb-1">
+                        ⏰ Início (Abre):
+                      </span>
+                      <input
+                        type="time"
+                        required
+                        value={lojaHoraAbertura}
+                        onChange={(e) => {
+                          setLojaHoraAbertura(e.target.value);
+                          setLojaHorario(`${e.target.value} às ${lojaHoraFechamento}`);
+                        }}
+                        className="w-full px-3 py-2 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 font-mono focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-stone-500 font-bold uppercase block mb-1">
+                        🌙 Fim (Fecha):
+                      </span>
+                      <input
+                        type="time"
+                        required
+                        value={lojaHoraFechamento}
+                        onChange={(e) => {
+                          setLojaHoraFechamento(e.target.value);
+                          setLojaHorario(`${lojaHoraAbertura} às ${e.target.value}`);
+                        }}
+                        className="w-full px-3 py-2 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 font-mono focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-stone-500 mt-1.5 bg-stone-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg">
+                    <span>Intervalo ativo:</span>
+                    <strong className="font-mono text-stone-900 dark:text-slate-100 font-bold">{lojaHoraAbertura} às {lojaHoraFechamento}</strong>
+                  </div>
                 </div>
               </div>
 
@@ -2193,6 +2291,62 @@ export const AdminView: React.FC = () => {
                   )}
                 </div>
               </div>
+
+                {/* Seção de Promoção e Destaque no Cardápio */}
+                <div className="p-3 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800/50 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">
+                    <span>🔥 Promoção & Destaques no Cardápio</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className="flex items-center gap-2 text-xs text-stone-800 dark:text-slate-200 cursor-pointer p-2 bg-white dark:bg-slate-800 rounded-lg border border-amber-100 dark:border-amber-900/50">
+                      <input
+                        type="checkbox"
+                        checked={prodDestaque}
+                        onChange={(e) => setProdDestaque(e.target.checked)}
+                        className="accent-amber-600 w-4 h-4 cursor-pointer"
+                      />
+                      <div>
+                        <span className="font-bold block">Produto em Destaque</span>
+                        <span className="text-[10px] text-stone-500 block">Aparece nos "Mais Pedidos"</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2 text-xs text-stone-800 dark:text-slate-200 cursor-pointer p-2 bg-white dark:bg-slate-800 rounded-lg border border-amber-100 dark:border-amber-900/50">
+                      <input
+                        type="checkbox"
+                        checked={prodEmPromocao}
+                        onChange={(e) => {
+                          setProdEmPromocao(e.target.checked);
+                          if (!e.target.checked) setProdPrecoPromocional('');
+                        }}
+                        className="accent-amber-600 w-4 h-4 cursor-pointer"
+                      />
+                      <div>
+                        <span className="font-bold block">Ativar Promoção</span>
+                        <span className="text-[10px] text-stone-500 block">Exibe no banner carrossel</span>
+                      </div>
+                    </label>
+                  </div>
+
+                  {prodEmPromocao && (
+                    <div className="pt-1.5 border-t border-amber-200/60 dark:border-amber-800/40">
+                      <label className="block text-xs font-semibold text-amber-900 dark:text-amber-300 mb-1">
+                        Preço Promocional Especial (R$):
+                      </label>
+                      <input
+                        type="text"
+                        value={prodPrecoPromocional}
+                        onChange={(e) => setProdPrecoPromocional(e.target.value)}
+                        placeholder="Ex: 27,90 (Deixe em branco para usar o preço normal)"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-xl text-xs font-bold font-mono text-stone-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                      />
+                      <p className="text-[10px] text-amber-800 dark:text-amber-400 mt-1">
+                        No cardápio, o preço original aparecerá riscado e o preço promocional receberá o selo de oferta!
+                      </p>
+                    </div>
+                  )}
+                </div>
 
                 <label className="flex items-center gap-2 text-xs text-stone-700 dark:text-slate-300 cursor-pointer pt-1">
                   <input
