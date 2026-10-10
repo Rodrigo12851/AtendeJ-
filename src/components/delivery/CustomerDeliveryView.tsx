@@ -661,29 +661,31 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       <header className={`sticky top-0 z-30 px-3 sm:px-6 py-3 border-b shadow-xs transition-colors ${isDarkMode ? 'bg-[#16161D] border-stone-800' : 'bg-[#F5F6F8] border-stone-200'}`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
           {/* Left: Hamburger Menu Button & Brand */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
             <button
               onClick={() => setShowStoreInfoDrawer(true)}
-              className="p-2 -ml-1 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer shrink-0"
+              className="p-1.5 sm:p-2 -ml-1 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer shrink-0"
               title="Informações do Estabelecimento"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
 
-              <div className="text-left min-w-0">
-                <h1 className="text-sm sm:text-base font-black tracking-tight text-stone-900 dark:text-white uppercase truncate flex items-center gap-1.5">
-                  <span>{targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger')) ? '🍔' : '🍽️'}</span>
-                  <span>{targetLoja.marca || targetLoja.nome}</span>
-                </h1>
-                <div className="text-[11px] sm:text-xs text-stone-600 dark:text-stone-300 truncate flex items-center gap-1.5 mt-0.5">
-                  <span className="font-semibold text-stone-700 dark:text-stone-200">{targetLoja.marca ? targetLoja.nome : 'Hamburgueria Artesanal'}</span>
-                  <span className="text-stone-400 dark:text-stone-600">•</span>
-                  <span className="font-bold text-stone-600 dark:text-stone-300 normal-case tracking-normal">
-                    {storeStatus.horarioFormatado}
-                  </span>
-                </div>
+            <div className="text-left min-w-0 flex-1">
+              <h1 className="text-xs sm:text-base font-black tracking-tight text-stone-900 dark:text-white uppercase truncate flex items-center gap-1">
+                <span className="shrink-0">{targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger')) ? '🍔' : '🍽️'}</span>
+                <span className="truncate">{targetLoja.marca || targetLoja.nome}</span>
+              </h1>
+              <div className="text-[10px] sm:text-xs text-stone-500 dark:text-stone-400 flex items-center gap-1 sm:gap-1.5 mt-0.5 whitespace-nowrap overflow-hidden">
+                <span className="truncate max-w-[80px] sm:max-w-none font-medium">
+                  {targetLoja.marca ? targetLoja.nome : 'Hamburgueria'}
+                </span>
+                <span className="text-stone-300 dark:text-stone-600 shrink-0">•</span>
+                <span className="font-semibold text-stone-700 dark:text-stone-300 shrink-0">
+                  {storeStatus.horarioFormatado}
+                </span>
               </div>
             </div>
+          </div>
 
           {/* Center: Desktop Navigation Tabs (Exatamente como na Imagem 2) */}
           <nav className="hidden md:flex items-center gap-1.5 lg:gap-2">
