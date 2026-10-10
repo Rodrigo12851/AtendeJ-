@@ -100,6 +100,16 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     };
   }, [lojas, lojaSlug]);
 
+  // Relógio em tempo real: atualiza a cada 15 segundos para refletir abertura/fechamento instantâneo
+  const [currentClockTime, setCurrentClockTime] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentClockTime(new Date());
+    }, 15000); // 15 segundos
+    return () => clearInterval(timer);
+  }, []);
+
   // Store status and operating hours (calculated accurately in real-time)
   const storeStatus = useMemo(() => {
     if (!targetLoja) {
@@ -107,12 +117,13 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
         isOpen: false,
         statusLabel: 'Fechada',
         statusClass: 'text-red-500',
+        badgeBg: 'bg-red-500/15 text-red-600',
         horarioFormatado: '',
         mensagem: 'Estabelecimento fechado',
       };
     }
-    return getStoreOpenStatus(targetLoja);
-  }, [targetLoja]);
+    return getStoreOpenStatus(targetLoja, currentClockTime);
+  }, [targetLoja, currentClockTime]);
 
   // Set document title to brand name
   React.useEffect(() => {
@@ -305,13 +316,8 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       list.push({ id: 'promocoes', label: 'Promoções', icon: '🔥' });
     }
 
-    // Se houver mais de uma categoria ou produtos cadastrados, inclui opção geral de Cardápio
-    if (storeProducts.length > 0 && !list.some((c) => c.id === 'todos')) {
-      list.push({ id: 'todos', label: 'Cardápio', icon: '📋' });
-    }
-
     return list;
-  }, [availableCategories, specialOfferProduct, storeProducts]);
+  }, [availableCategories, specialOfferProduct]);
 
   const handleOpenItemCustomizer = (product: Product) => {
     if (!storeStatus.isOpen) {
@@ -665,12 +671,31 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
             </button>
 
             <div className="text-left min-w-0">
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-stone-900 dark:text-white uppercase truncate flex items-center gap-1.5">
-                <span>{targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger')) ? '🍔' : '🍽️'}</span>
-                <span>{targetLoja.marca || targetLoja.nome}</span>
-              </h1>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 truncate">
-                {targetLoja.marca ? targetLoja.nome : 'Hamburgueria Artesanal'}
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm sm:text-base font-black tracking-tight text-stone-900 dark:text-white uppercase truncate flex items-center gap-1.5">
+                  <span>{targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger')) ? '🍔' : '🍽️'}</span>
+                  <span>{targetLoja.marca || targetLoja.nome}</span>
+                </h1>
+                {/* Badge Aberto / Fechado em Destaque */}
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    storeStatus.isOpen
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                      : 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      storeStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
+                    }`}
+                  />
+                  <span>{storeStatus.isOpen ? 'Aberto' : 'Fechado'}</span>
+                </span>
+              </div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 truncate flex items-center gap-1.5">
+                <span>{targetLoja.marca ? targetLoja.nome : 'Hamburgueria Artesanal'}</span>
+                <span>•</span>
+                <span className="font-mono text-stone-400 dark:text-stone-500">{storeStatus.horarioFormatado}</span>
               </p>
             </div>
           </div>
@@ -808,13 +833,26 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
           )}
         </div>
 
-        {/* Banner de Loja Fechada */}
-        {!storeStatus.isOpen && (
-          <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-800 dark:text-red-200 shadow-xs flex items-center gap-3">
+        {/* Status de Atendimento: Aberto / Fechado em Tempo Real */}
+        {storeStatus.isOpen ? (
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 shadow-xs flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <div className="text-xs">
+                <span className="font-bold text-emerald-700 dark:text-emerald-300">Loja Aberta agora: </span>
+                <span className="text-emerald-800 dark:text-emerald-200">Estamos aceitando pedidos normalmente! Horário: {storeStatus.horarioFormatado}</span>
+              </div>
+            </div>
+            <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider shrink-0">
+              ● Online
+            </span>
+          </div>
+        ) : (
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-800 dark:text-red-200 shadow-xs flex items-center gap-3 animate-in fade-in">
             <Clock className="w-5 h-5 text-red-500 shrink-0" />
             <div className="text-xs">
-              <span className="font-bold">Loja Fechada no momento: </span>
-              <span>{storeStatus.horarioFormatado}. Você pode montar seu carrinho para pedir assim que abrirmos!</span>
+              <span className="font-bold text-red-700 dark:text-red-300">Loja Fechada no momento: </span>
+              <span>Nosso horário de funcionamento é <strong>{storeStatus.horarioFormatado}</strong>. Novos pedidos não estão sendo aceitos agora.</span>
             </div>
           </div>
         )}

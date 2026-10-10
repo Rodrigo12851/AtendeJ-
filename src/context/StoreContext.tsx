@@ -39,6 +39,7 @@ import { playKitchenBell, playReadyDing, playCashChime } from '../utils/audio';
 import { generateComandaNumber } from '../utils/formatters';
 import { sanitizeUserForSession } from '../utils/security';
 import { getClientDeviceInfo, evaluateLoginRisk } from '../utils/deviceDetection';
+import { getStoreOpenStatus } from '../utils/storeHours';
 import {
   db,
   FIRESTORE_COLLECTIONS,
@@ -1907,6 +1908,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (targetLoja && (!targetLoja.ativa || targetLoja.status_assinatura === 'suspenso')) {
       throw new Error(`O estabelecimento "${targetLoja.nome}" está temporariamente suspenso e não aceita pedidos no momento.`);
     }
+
+    // Validação em tempo real do horário de funcionamento
+    const statusAtual = getStoreOpenStatus(targetLoja);
+    if (!statusAtual.isOpen) {
+      throw new Error(`O estabelecimento "${targetLoja?.nome || 'Loja'}" está fechado no momento (${statusAtual.horarioFormatado}). Novos pedidos não são aceitos agora.`);
+    }
+
     const isRetirada = clienteInfo.tipoPedido === 'retirada';
     const finalTaxaEntrega = isRetirada ? 0 : (targetLoja.taxa_entrega || 0);
 
