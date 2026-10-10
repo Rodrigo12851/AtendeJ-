@@ -670,18 +670,20 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
               <Menu className="w-6 h-6" />
             </button>
 
-            <div className="text-left min-w-0">
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-stone-900 dark:text-white uppercase truncate flex items-center gap-1.5">
-                <span>{targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger')) ? '🍔' : '🍽️'}</span>
-                <span>{targetLoja.marca || targetLoja.nome}</span>
-              </h1>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 truncate flex items-center gap-1.5">
-                <span>{targetLoja.marca ? targetLoja.nome : 'Hamburgueria Artesanal'}</span>
-                <span>•</span>
-                <span className="font-mono text-stone-400 dark:text-stone-500">{storeStatus.horarioFormatado}</span>
-              </p>
+              <div className="text-left min-w-0">
+                <h1 className="text-sm sm:text-base font-black tracking-tight text-stone-900 dark:text-white uppercase truncate flex items-center gap-1.5">
+                  <span>{targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger')) ? '🍔' : '🍽️'}</span>
+                  <span>{targetLoja.marca || targetLoja.nome}</span>
+                </h1>
+                <div className="text-[11px] sm:text-xs text-stone-600 dark:text-stone-300 truncate flex items-center gap-1.5 mt-0.5">
+                  <span className="font-semibold text-stone-700 dark:text-stone-200">{targetLoja.marca ? targetLoja.nome : 'Hamburgueria Artesanal'}</span>
+                  <span className="text-stone-400 dark:text-stone-600">•</span>
+                  <span className="font-bold text-stone-600 dark:text-stone-300 normal-case tracking-normal">
+                    {storeStatus.horarioFormatado}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
 
           {/* Center: Desktop Navigation Tabs (Exatamente como na Imagem 2) */}
           <nav className="hidden md:flex items-center gap-1.5 lg:gap-2">
