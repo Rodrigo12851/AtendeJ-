@@ -378,15 +378,15 @@
     }
 
     .cat-circle-btn {
-      width: 58px;
-      height: 58px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       background: #FF8A00;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
-      box-shadow: 0 6px 14px rgba(255, 138, 0, 0.28);
+      font-size: 20px;
+      box-shadow: 0 4px 10px rgba(255, 138, 0, 0.25);
       transition: transform 0.15s, box-shadow 0.15s;
     }
 
@@ -395,15 +395,54 @@
     }
 
     .cat-circle-item.ativo .cat-circle-btn {
-      ring: 3px solid #FF8A00;
       transform: scale(1.05);
     }
 
     .cat-circle-label {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       color: var(--text-main);
       white-space: nowrap;
+      max-width: 72px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @media (min-width: 768px) {
+      body {
+        max-width: 1280px;
+        margin: 0 auto;
+      }
+      .cat-circle-btn {
+        width: 58px;
+        height: 58px;
+        font-size: 26px;
+      }
+      .cat-circle-label {
+        font-size: 12px;
+        max-width: 100px;
+      }
+      .categories-grid-circle {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 24px;
+      }
+      .products-list-wrapper {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 16px;
+      }
+      .hero-banner {
+        padding: 30px 40px;
+      }
+      .banner-img-side {
+        width: 180px;
+        height: 180px;
+      }
+      .bottom-nav-container {
+        display: none;
+      }
     }
 
     /* 6. CABEÇALHOS DE SEÇÕES (MAIS PEDIDOS / TODOS OS LANCHES) */
