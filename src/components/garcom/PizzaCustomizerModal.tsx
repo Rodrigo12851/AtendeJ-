@@ -84,15 +84,57 @@ export const PizzaCustomizerModal: React.FC<PizzaCustomizerModalProps> = ({
     (c) => c.id === 'borda_sem' || c.nome.toLowerCase().includes('sem borda')
   ) || crusts[0];
 
-  const [selectedSize, setSelectedSize] = useState(sizes[2] || sizes[0]); // Default Grande or first
+  // Lista de sabores reais da loja a partir do cardápio cadastrado
+  const availablePizzaProducts = useMemo(() => {
+    const prods = (store?.allProducts || store?.products || []).filter((p) => {
+      const isThisStore = !baseProduct.loja_id || !p.loja_id || p.loja_id === baseProduct.loja_id;
+      const isPizzaProd = p.isPizza || p.categoria_id === 'pizzas' || p.categoria_id?.includes('pizza');
+      const isAvailable = p.ativo !== false && p.disponivel !== false;
+      return isThisStore && isPizzaProd && isAvailable;
+    });
+
+    if (prods.length > 0) return prods;
+
+    // Fallback caso não haja produtos carregados ainda
+    return PIZZA_FLAVORS.map((f, idx) => ({
+      id: `fallback_flavor_${idx}`,
+      nome: f.nome.startsWith('Pizza ') ? f.nome : `Pizza ${f.nome}`,
+      descricao: f.descricao,
+      preco: 55.0,
+      imagem: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80',
+      categoria_id: 'pizzas',
+      isPizza: true,
+    } as Product));
+  }, [store?.allProducts, store?.products, baseProduct.loja_id]);
+
+  const defaultFlavor1 = baseProduct.nome.replace(/^Pizza\s+/i, '');
   const [isMeioAMeio, setIsMeioAMeio] = useState(false);
-  const [flavor1, setFlavor1] = useState(baseProduct.nome.replace('Pizza ', ''));
-  const [flavor2, setFlavor2] = useState(PIZZA_FLAVORS[1]?.nome || 'Frango com Catupiry');
+  const [flavor1, setFlavor1] = useState(defaultFlavor1);
+  const [flavor2, setFlavor2] = useState(() => {
+    const secondPizza = availablePizzaProducts.find(
+      (p) => p.nome.replace(/^Pizza\s+/i, '') !== defaultFlavor1
+    );
+    return secondPizza ? secondPizza.nome.replace(/^Pizza\s+/i, '') : (PIZZA_FLAVORS[1]?.nome || 'Frango com Catupiry');
+  });
+  const [selectingFlavorSlot, setSelectingFlavorSlot] = useState<1 | 2 | null>(null);
+
   const [selectedCrust, setSelectedCrust] = useState(defaultCrust);
   const [selectedDough, setSelectedDough] = useState(doughs[0]?.nome || 'Tradicional');
   const [selectedAddons, setSelectedAddons] = useState<PizzaExtraOption[]>([]);
   const [observation, setObservation] = useState('');
   const [quantity, setQuantity] = useState(1);
+
+  // Helper para buscar produto por nome de sabor
+  const getProductForFlavor = (flavorName: string) => {
+    return availablePizzaProducts.find((p) => {
+      const cleanProdName = p.nome.replace(/^Pizza\s+/i, '').toLowerCase();
+      const cleanFlavor = flavorName.replace(/^Pizza\s+/i, '').toLowerCase();
+      return cleanProdName === cleanFlavor || p.nome.toLowerCase() === flavorName.toLowerCase();
+    });
+  };
+
+  const product1 = getProductForFlavor(flavor1) || baseProduct;
+  const product2 = getProductForFlavor(flavor2);
 
   const toggleAddon = (addon: PizzaExtraOption) => {
     if (selectedAddons.some((a) => a.nome === addon.nome)) {
@@ -106,10 +148,11 @@ export const PizzaCustomizerModal: React.FC<PizzaCustomizerModalProps> = ({
   const calculateUnitPrice = () => {
     let basePrice = baseProduct.preco;
     if (isMeioAMeio) {
-      if (flavor1 === 'Pepperoni' || flavor2 === 'Pepperoni') basePrice = 68.0;
-      else if (flavor1 === '4 Queijos' || flavor2 === '4 Queijos') basePrice = 64.0;
-      else if (flavor1 === 'Frango com Catupiry' || flavor2 === 'Frango com Catupiry') basePrice = 62.0;
-      else basePrice = Math.max(55.0, baseProduct.preco);
+      const price1 = product1?.preco || baseProduct.preco;
+      const price2 = product2?.preco || baseProduct.preco;
+      basePrice = Math.max(price1, price2);
+    } else {
+      basePrice = product1?.preco || baseProduct.preco;
     }
 
     const sizeMultiplier = (permitirTamanhos && selectedSize) ? selectedSize.multiplicador : 1.0;
@@ -125,11 +168,13 @@ export const PizzaCustomizerModal: React.FC<PizzaCustomizerModalProps> = ({
 
   const handleAdd = () => {
     playAddPop();
-    const sabores = isMeioAMeio ? [flavor1, flavor2] : [flavor1];
+    const cleanFlavor1 = flavor1.replace(/^Pizza\s+/i, '');
+    const cleanFlavor2 = flavor2.replace(/^Pizza\s+/i, '');
+    const sabores = isMeioAMeio ? [cleanFlavor1, cleanFlavor2] : [cleanFlavor1];
     const sizeName = (permitirTamanhos && selectedSize) ? selectedSize.nome.split(' ')[0] : '';
     const itemName = isMeioAMeio
-      ? `Pizza ${sizeName} Meio a Meio`.trim()
-      : (sizeName ? `${baseProduct.nome} (${sizeName})` : baseProduct.nome);
+      ? `Pizza ${sizeName ? `${sizeName} ` : ''}Meio a Meio (${cleanFlavor1} / ${cleanFlavor2})`.trim()
+      : (sizeName ? `${product1?.nome || baseProduct.nome} (${sizeName})` : (product1?.nome || baseProduct.nome));
 
     const orderItem: OrderItem = {
       id: `item_temp_${Date.now()}`,
@@ -158,7 +203,7 @@ export const PizzaCustomizerModal: React.FC<PizzaCustomizerModalProps> = ({
           <div>
             <div className="w-10 h-1 bg-white/30 rounded-full mb-1.5 sm:hidden" />
             <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-amber-200 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" /> Personalizar Produto
+              <Sparkles className="w-3.5 h-3.5" /> Personalizar Pizza
             </span>
             <h2 className="text-lg sm:text-xl font-bold tracking-tight">{baseProduct.nome}</h2>
           </div>
@@ -201,77 +246,287 @@ export const PizzaCustomizerModal: React.FC<PizzaCustomizerModalProps> = ({
             </div>
           )}
 
-          {/* Sabores / Meio a Meio (For pizzas) */}
+          {/* Sabores / Meio a Meio (Para pizzas) */}
           {baseProduct.isPizza && (
             <div className="pt-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-stone-500">
                   {permitirTamanhos ? '2. Sabores da Pizza' : 'Sabores da Pizza'}
                 </label>
-                {permitirTamanhos && selectedSize?.maxSabores > 1 && (
+                <span className="text-[11px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                  {isMeioAMeio ? '2 Sabores (1/2 cada)' : '1 Sabor Inteiro'}
+                </span>
+              </div>
+
+              {/* Seletor Claro e Intuitivo: 1 Sabor Inteiro vs Meio a Meio */}
+              {permitirTamanhos && selectedSize?.maxSabores > 1 && (
+                <div className="p-1.5 bg-stone-100 rounded-2xl grid grid-cols-2 gap-1.5 border border-stone-200 mb-3.5">
                   <button
                     type="button"
-                    onClick={() => setIsMeioAMeio(!isMeioAMeio)}
-                    className={`text-xs px-3 py-1 rounded-full font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    onClick={() => {
+                      setIsMeioAMeio(false);
+                      setSelectingFlavorSlot(null);
+                    }}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      !isMeioAMeio
+                        ? 'bg-white text-red-700 shadow-sm border border-stone-200/80 font-extrabold'
+                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+                    }`}
+                  >
+                    <span>🍕 1 Sabor Inteiro</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMeioAMeio(true);
+                      setSelectingFlavorSlot(null);
+                    }}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                       isMeioAMeio
-                        ? 'bg-amber-500 text-white shadow-xs'
-                        : 'bg-stone-100 hover:bg-stone-200 text-stone-700 dark:text-slate-300'
+                        ? 'bg-amber-500 text-white shadow-sm font-extrabold'
+                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
                     }`}
                   >
                     <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    Pizza Meio a Meio
+                    <span>🌓 Meio a Meio (2 Sabores)</span>
                   </button>
-                )}
-              </div>
+                </div>
+              )}
 
+              {/* MODO MEIO A MEIO COM FOTOS E NOMES CONFORME O CARDÁPIO */}
               {isMeioAMeio ? (
-                <div className="space-y-3 bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200">
-                  <div>
-                    <span className="text-xs font-bold text-amber-900 block mb-1">
-                      1º Sabor (1/2):
-                    </span>
-                    <select
-                      value={flavor1}
-                      onChange={(e) => setFlavor1(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-sm font-semibold text-stone-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
-                    >
-                      {PIZZA_FLAVORS.map((f) => (
-                        <option key={f.nome} value={f.nome}>
-                          {f.nome}
-                        </option>
-                      ))}
-                    </select>
+                <div className="space-y-3 bg-amber-50/70 p-3.5 rounded-2xl border border-amber-300">
+                  <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+                    <span>Selecione as 2 metades da sua pizza:</span>
+                    <span className="text-[10px] text-amber-700 font-medium">Toque em Alterar para trocar o sabor</span>
                   </div>
-                  <div>
-                    <span className="text-xs font-bold text-amber-900 block mb-1">
-                      2º Sabor (1/2):
-                    </span>
-                    <select
-                      value={flavor2}
-                      onChange={(e) => setFlavor2(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-sm font-semibold text-stone-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+
+                  {/* Metade 1 */}
+                  <div className="p-2.5 bg-white rounded-xl border border-amber-200 shadow-xs flex items-center gap-3">
+                    <img
+                      src={product1?.imagem || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80'}
+                      alt={flavor1}
+                      className="w-14 h-14 rounded-lg object-cover border border-amber-100 shrink-0"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80';
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-black rounded-md">
+                          1ª Metade (50%)
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-stone-900 truncate mt-0.5">
+                        {product1?.nome || flavor1}
+                      </h4>
+                      <p className="text-[11px] text-stone-500 truncate">
+                        {product1?.descricao || 'Molho de tomate especial e ingredientes selecionados'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectingFlavorSlot(selectingFlavorSlot === 1 ? null : 1)}
+                      className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shrink-0 transition cursor-pointer"
                     >
-                      {PIZZA_FLAVORS.map((f) => (
-                        <option key={f.nome} value={f.nome}>
-                          {f.nome}
-                        </option>
-                      ))}
-                    </select>
+                      {selectingFlavorSlot === 1 ? 'Fechar' : 'Trocar'}
+                    </button>
                   </div>
+
+                  {/* Seletor aberto da Metade 1 */}
+                  {selectingFlavorSlot === 1 && (
+                    <div className="p-2.5 bg-amber-100/60 rounded-xl border border-amber-300 max-h-56 overflow-y-auto space-y-1.5 animate-in fade-in duration-150">
+                      <div className="text-[11px] font-bold text-amber-900 mb-1">
+                        Escolha o sabor da 1ª metade:
+                      </div>
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {availablePizzaProducts.map((p) => {
+                          const pFlavorName = p.nome.replace(/^Pizza\s+/i, '');
+                          const isCurSelected = flavor1.toLowerCase() === pFlavorName.toLowerCase();
+                          return (
+                            <button
+                              key={`p1_${p.id}`}
+                              type="button"
+                              onClick={() => {
+                                setFlavor1(pFlavorName);
+                                setSelectingFlavorSlot(null);
+                              }}
+                              className={`p-1.5 rounded-lg border text-left flex items-center gap-2 transition cursor-pointer ${
+                                isCurSelected
+                                  ? 'bg-amber-500 text-white border-amber-600 font-bold'
+                                  : 'bg-white hover:bg-amber-50 text-stone-800 border-amber-200'
+                              }`}
+                            >
+                              <img
+                                src={p.imagem || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80'}
+                                alt={p.nome}
+                                className="w-9 h-9 rounded-md object-cover shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold truncate">{p.nome}</div>
+                                <div className={`text-[10px] truncate ${isCurSelected ? 'text-amber-100' : 'text-stone-500'}`}>
+                                  {p.descricao}
+                                </div>
+                              </div>
+                              <span className={`text-xs font-mono font-bold shrink-0 ${isCurSelected ? 'text-white' : 'text-amber-700'}`}>
+                                {formatCurrency(p.preco)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Metade 2 */}
+                  <div className="p-2.5 bg-white rounded-xl border border-amber-200 shadow-xs flex items-center gap-3">
+                    <img
+                      src={product2?.imagem || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80'}
+                      alt={flavor2}
+                      className="w-14 h-14 rounded-lg object-cover border border-amber-100 shrink-0"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80';
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-black rounded-md">
+                          2ª Metade (50%)
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-stone-900 truncate mt-0.5">
+                        {product2?.nome || flavor2}
+                      </h4>
+                      <p className="text-[11px] text-stone-500 truncate">
+                        {product2?.descricao || 'Molho de tomate especial e ingredientes selecionados'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectingFlavorSlot(selectingFlavorSlot === 2 ? null : 2)}
+                      className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shrink-0 transition cursor-pointer"
+                    >
+                      {selectingFlavorSlot === 2 ? 'Fechar' : 'Trocar'}
+                    </button>
+                  </div>
+
+                  {/* Seletor aberto da Metade 2 */}
+                  {selectingFlavorSlot === 2 && (
+                    <div className="p-2.5 bg-amber-100/60 rounded-xl border border-amber-300 max-h-56 overflow-y-auto space-y-1.5 animate-in fade-in duration-150">
+                      <div className="text-[11px] font-bold text-amber-900 mb-1">
+                        Escolha o sabor da 2ª metade:
+                      </div>
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {availablePizzaProducts.map((p) => {
+                          const pFlavorName = p.nome.replace(/^Pizza\s+/i, '');
+                          const isCurSelected = flavor2.toLowerCase() === pFlavorName.toLowerCase();
+                          return (
+                            <button
+                              key={`p2_${p.id}`}
+                              type="button"
+                              onClick={() => {
+                                setFlavor2(pFlavorName);
+                                setSelectingFlavorSlot(null);
+                              }}
+                              className={`p-1.5 rounded-lg border text-left flex items-center gap-2 transition cursor-pointer ${
+                                isCurSelected
+                                  ? 'bg-amber-500 text-white border-amber-600 font-bold'
+                                  : 'bg-white hover:bg-amber-50 text-stone-800 border-amber-200'
+                              }`}
+                            >
+                              <img
+                                src={p.imagem || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80'}
+                                alt={p.nome}
+                                className="w-9 h-9 rounded-md object-cover shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold truncate">{p.nome}</div>
+                                <div className={`text-[10px] truncate ${isCurSelected ? 'text-amber-100' : 'text-stone-500'}`}>
+                                  {p.descricao}
+                                </div>
+                              </div>
+                              <span className={`text-xs font-mono font-bold shrink-0 ${isCurSelected ? 'text-white' : 'text-amber-700'}`}>
+                                {formatCurrency(p.preco)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div>
-                  <select
-                    value={flavor1}
-                    onChange={(e) => setFlavor1(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-semibold text-stone-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-red-500"
+                /* MODO SABOR ÚNICO */
+                <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200 flex items-center gap-3">
+                  <img
+                    src={product1?.imagem || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80'}
+                    alt={product1?.nome || flavor1}
+                    className="w-14 h-14 rounded-lg object-cover border border-stone-200 shrink-0"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80';
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">Sabor Escolhido:</span>
+                    <h4 className="text-sm font-bold text-stone-900 truncate">
+                      {product1?.nome || flavor1}
+                    </h4>
+                    <p className="text-[11px] text-stone-500 truncate">
+                      {product1?.descricao || 'Molho de tomate especial e ingredientes selecionados'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectingFlavorSlot(selectingFlavorSlot === 1 ? null : 1)}
+                    className="px-2.5 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-800 rounded-lg text-xs font-bold shrink-0 transition cursor-pointer"
                   >
-                    {PIZZA_FLAVORS.map((f) => (
-                      <option key={f.nome} value={f.nome}>
-                        {f.nome} — {f.descricao}
-                      </option>
-                    ))}
-                  </select>
+                    {selectingFlavorSlot === 1 ? 'Fechar' : 'Trocar'}
+                  </button>
+                </div>
+              )}
+
+              {/* Seletor aberto de Sabor Único caso clique em trocar */}
+              {!isMeioAMeio && selectingFlavorSlot === 1 && (
+                <div className="mt-2 p-2.5 bg-stone-100 rounded-xl border border-stone-200 max-h-56 overflow-y-auto space-y-1.5 animate-in fade-in duration-150">
+                  <div className="text-[11px] font-bold text-stone-700 mb-1">
+                    Selecione outro sabor de pizza:
+                  </div>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {availablePizzaProducts.map((p) => {
+                      const pFlavorName = p.nome.replace(/^Pizza\s+/i, '');
+                      const isCurSelected = flavor1.toLowerCase() === pFlavorName.toLowerCase();
+                      return (
+                        <button
+                          key={`single_${p.id}`}
+                          type="button"
+                          onClick={() => {
+                            setFlavor1(pFlavorName);
+                            setSelectingFlavorSlot(null);
+                          }}
+                          className={`p-1.5 rounded-lg border text-left flex items-center gap-2 transition cursor-pointer ${
+                            isCurSelected
+                              ? 'bg-red-600 text-white border-red-700 font-bold'
+                              : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200'
+                          }`}
+                        >
+                          <img
+                            src={p.imagem || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80'}
+                            alt={p.nome}
+                            className="w-9 h-9 rounded-md object-cover shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold truncate">{p.nome}</div>
+                            <div className={`text-[10px] truncate ${isCurSelected ? 'text-red-100' : 'text-stone-500'}`}>
+                              {p.descricao}
+                            </div>
+                          </div>
+                          <span className={`text-xs font-mono font-bold shrink-0 ${isCurSelected ? 'text-white' : 'text-stone-700'}`}>
+                            {formatCurrency(p.preco)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
