@@ -862,14 +862,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
             {/* ======================================================== */}
             {currentTab === 'inicio' && !searchQuery && (
               <div className="space-y-6 animate-in fade-in duration-200">
-                {/* 1. Hero Banner / Super Combo (Expansivo no PC com gradiente roxo, setas < > e contador) */}
-                <div className="relative rounded-3xl overflow-hidden shadow-xl bg-gradient-to-r from-[#4A044E] via-[#58085C] to-[#2E0233] text-white p-5 sm:p-7 lg:p-8 border border-purple-900/40 flex flex-col md:flex-row items-center justify-between min-h-[190px] gap-6">
+                {/* 1. Hero Banner / Super Combo (Compacto e horizontal lado a lado no celular, espaçoso no PC) */}
+                <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg bg-gradient-to-r from-[#4A044E] via-[#58085C] to-[#2E0233] text-white p-3.5 sm:p-6 lg:p-8 border border-purple-900/40 flex flex-row items-center justify-between gap-2.5 sm:gap-6">
                   {/* Left Carousel Arrow */}
                   {bannerOffers.length > 1 && (
                     <button
                       type="button"
                       onClick={() => setBannerIndex((prev) => (prev > 0 ? prev - 1 : bannerOffers.length - 1))}
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-xs text-white flex items-center justify-center font-bold text-sm z-20 cursor-pointer transition shadow-md"
+                      className="absolute left-1.5 sm:left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-xs text-white flex items-center justify-center font-bold text-xs sm:text-sm z-20 cursor-pointer transition shadow-md"
                       title="Oferta anterior"
                     >
                       ‹
@@ -881,7 +881,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     <button
                       type="button"
                       onClick={() => setBannerIndex((prev) => (prev + 1) % bannerOffers.length)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-xs text-white flex items-center justify-center font-bold text-sm z-20 cursor-pointer transition shadow-md"
+                      className="absolute right-1.5 sm:right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-xs text-white flex items-center justify-center font-bold text-xs sm:text-sm z-20 cursor-pointer transition shadow-md"
                       title="Próxima oferta"
                     >
                       ›
@@ -889,37 +889,37 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   )}
 
                   {/* Banner Left Content */}
-                  <div className="space-y-2 z-10 w-full md:max-w-xl pl-2 sm:pl-4">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/20 text-white font-black text-[10px] uppercase tracking-wider backdrop-blur-xs">
+                  <div className="space-y-1 sm:space-y-2 z-10 flex-1 min-w-0 pl-5 sm:pl-8">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 rounded-full bg-white/20 text-white font-black text-[9px] sm:text-[10px] uppercase tracking-wider backdrop-blur-xs truncate max-w-[130px] sm:max-w-none">
                         {targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger'))
                           ? 'BURGER ARTESANAL'
                           : 'OFERTA ESPECIAL'}
                       </span>
                       {bannerOffers.length > 0 && (
-                        <span className="text-[11px] font-bold text-white/70 font-mono tracking-widest">
+                        <span className="text-[10px] sm:text-[11px] font-bold text-white/70 font-mono tracking-wider shrink-0">
                           {(bannerIndex % bannerOffers.length) + 1}/{bannerOffers.length}
                         </span>
                       )}
                     </div>
 
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight uppercase leading-tight text-white drop-shadow-xs">
+                    <h2 className="text-base sm:text-2xl md:text-3xl font-black tracking-tight uppercase leading-tight text-white drop-shadow-xs truncate">
                       {specialOfferProduct ? specialOfferProduct.nome : 'DOUBLE CHEDDAR'}
                     </h2>
-                    <p className="text-xs sm:text-sm text-pink-200/90 font-medium uppercase line-clamp-2">
+                    <p className="text-[11px] sm:text-sm text-pink-200/90 font-medium uppercase line-clamp-1 sm:line-clamp-2">
                       {specialOfferProduct ? specialOfferProduct.descricao : '2 CARNES + CHEDDAR MELT'}
                     </p>
 
-                    <div className="flex items-baseline gap-2 pt-1">
-                      <span className="text-2xl sm:text-3xl font-black font-mono text-[#FF8A00] drop-shadow-xs">
+                    <div className="flex items-baseline gap-1.5 sm:gap-2 pt-0.5">
+                      <span className="text-lg sm:text-2xl md:text-3xl font-black font-mono text-[#FF8A00] drop-shadow-xs">
                         {formatCurrency(specialOfferProduct ? specialOfferProduct.preco : 31.90)}
                       </span>
-                      <span className="text-xs sm:text-sm line-through text-white/50 font-mono">
+                      <span className="text-[10px] sm:text-xs line-through text-white/50 font-mono">
                         {formatCurrency(specialOfferProduct ? specialOfferProduct.preco * 1.15 : 34.90)}
                       </span>
                     </div>
 
-                    <div className="pt-2">
+                    <div className="pt-1 sm:pt-2">
                       <button
                         onClick={() => {
                           if (specialOfferProduct) handleAddRegularProduct(specialOfferProduct);
@@ -928,19 +928,19 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                             setCurrentTab('cardapio');
                           }
                         }}
-                        className="px-5 py-2.5 rounded-xl bg-[#1A1A1E] hover:bg-black active:scale-95 text-white font-black text-xs uppercase tracking-wider transition shadow-md cursor-pointer inline-flex items-center gap-1.5"
+                        className="px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-[#1A1A1E] hover:bg-black active:scale-95 text-white font-black text-[10px] sm:text-xs uppercase tracking-wider transition shadow-md cursor-pointer inline-flex items-center gap-1 sm:gap-1.5"
                       >
                         <span>VER MAIS</span>
-                        <ChevronRight className="w-4 h-4" />
+                        <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Banner Image */}
-                  <div className="w-32 h-32 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-2xl overflow-hidden shadow-2xl shrink-0 border-2 border-white/20 bg-stone-900 pr-0 mr-2 sm:mr-4">
+                  {/* Banner Image (Lado a lado, compacto no mobile) */}
+                  <div className="w-24 h-24 sm:w-40 sm:h-40 md:w-52 md:h-52 rounded-xl sm:rounded-2xl overflow-hidden shadow-md shrink-0 border border-white/20 bg-stone-900 pr-0 mr-5 sm:mr-8">
                     <img
                       src={specialOfferProduct?.imagem || DEFAULT_FOOD_IMG}
-                      alt="Super Combo"
+                      alt="Oferta"
                       className="w-full h-full object-cover hover:scale-105 transition duration-300"
                       onError={(e) => {
                         const target = e.currentTarget;
@@ -950,15 +950,15 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   </div>
 
                   {/* Carousel Dots */}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+                  <div className="absolute bottom-1.5 sm:bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 sm:gap-1.5">
                     {bannerOffers.map((_, idx) => (
                       <button
                         key={idx}
                         onClick={() => setBannerIndex(idx)}
                         className={`transition-all rounded-full cursor-pointer ${
                           idx === (bannerIndex % bannerOffers.length)
-                            ? 'w-5 h-1.5 bg-[#FF8A00]'
-                            : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/70'
+                            ? 'w-4 sm:w-5 h-1 sm:h-1.5 bg-[#FF8A00]'
+                            : 'w-1 sm:w-1.5 h-1 sm:h-1.5 bg-white/40 hover:bg-white/70'
                         }`}
                       />
                     ))}
