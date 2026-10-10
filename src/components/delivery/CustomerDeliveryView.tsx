@@ -671,27 +671,10 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
             </button>
 
             <div className="text-left min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-black tracking-tight text-stone-900 dark:text-white uppercase truncate flex items-center gap-1.5">
-                  <span>{targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger')) ? '🍔' : '🍽️'}</span>
-                  <span>{targetLoja.marca || targetLoja.nome}</span>
-                </h1>
-                {/* Badge Aberto / Fechado em Destaque */}
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    storeStatus.isOpen
-                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                      : 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      storeStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
-                    }`}
-                  />
-                  <span>{storeStatus.isOpen ? 'Aberto' : 'Fechado'}</span>
-                </span>
-              </div>
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-stone-900 dark:text-white uppercase truncate flex items-center gap-1.5">
+                <span>{targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger')) ? '🍔' : '🍽️'}</span>
+                <span>{targetLoja.marca || targetLoja.nome}</span>
+              </h1>
               <p className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 truncate flex items-center gap-1.5">
                 <span>{targetLoja.marca ? targetLoja.nome : 'Hamburgueria Artesanal'}</span>
                 <span>•</span>
@@ -754,8 +737,26 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
             </button>
           </nav>
 
-          {/* Right: Theme Toggle, Bell, Profile & Cart */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Right: Store Status Badge, Theme Toggle, Bell, Profile & Cart */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            {/* Badge Aberto / Fechado posicionado exatamente à direita conforme solicitação */}
+            <div className="flex flex-col items-end justify-center mr-1">
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-2xs ${
+                  storeStatus.isOpen
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                    : 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30'
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    storeStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
+                  }`}
+                />
+                <span>{storeStatus.isOpen ? 'Aberto' : 'Fechado'}</span>
+              </span>
+            </div>
+
             <button
               onClick={() => setDarkMode(!isDarkMode)}
               className="p-2 rounded-xl text-stone-700 dark:text-amber-400 hover:bg-stone-200 dark:hover:bg-stone-800 transition cursor-pointer"
@@ -833,21 +834,8 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
           )}
         </div>
 
-        {/* Status de Atendimento: Aberto / Fechado em Tempo Real */}
-        {storeStatus.isOpen ? (
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 shadow-xs flex items-center justify-between gap-3 animate-in fade-in">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <div className="text-xs">
-                <span className="font-bold text-emerald-700 dark:text-emerald-300">Loja Aberta agora: </span>
-                <span className="text-emerald-800 dark:text-emerald-200">Estamos aceitando pedidos normalmente! Horário: {storeStatus.horarioFormatado}</span>
-              </div>
-            </div>
-            <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider shrink-0">
-              ● Online
-            </span>
-          </div>
-        ) : (
+        {/* Banner de Loja Fechada (Exibido apenas quando a loja estiver fechada) */}
+        {!storeStatus.isOpen && (
           <div className="p-3.5 sm:p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-800 dark:text-red-200 shadow-xs flex items-center gap-3 animate-in fade-in">
             <Clock className="w-5 h-5 text-red-500 shrink-0" />
             <div className="text-xs">
@@ -1150,59 +1138,6 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     })}
                   </div>
                 </div>
-
-                {/* 4. Caixa Informativa / Destaques do App (Conforme Imagem de Referência) */}
-                <div className={`rounded-3xl p-6 sm:p-7 border shadow-xs transition-colors ${isDarkMode ? 'bg-[#1E1E28] border-stone-800' : 'bg-white border-stone-100'}`}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
-                        ⭐
-                      </div>
-                      <div>
-                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Cardápio Completo</h4>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
-                          Fotos de alta qualidade e descrições detalhadas de cada item
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
-                        🔍
-                      </div>
-                      <div>
-                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Pesquisa Rápida</h4>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
-                          Encontre por nome, ingrediente ou categoria num instante
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
-                        🛒
-                      </div>
-                      <div>
-                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Sacola Intuitiva</h4>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
-                          Adicione adicionais, observações e cupons sem complicação
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
-                        ⏱️
-                      </div>
-                      <div>
-                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Acompanhamento ao Vivo</h4>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
-                          Veja o status do seu pedido desde a cozinha até a entrega
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -1344,59 +1279,6 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     })}
                   </div>
                 )}
-
-                {/* Caixa Informativa / Destaques do App também na aba Cardápio */}
-                <div className={`rounded-3xl p-6 sm:p-7 border shadow-xs transition-colors mt-6 ${isDarkMode ? 'bg-[#1E1E28] border-stone-800' : 'bg-white border-stone-100'}`}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
-                        ⭐
-                      </div>
-                      <div>
-                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Cardápio Completo</h4>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
-                          Fotos de alta qualidade e descrições detalhadas de cada item
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
-                        🔍
-                      </div>
-                      <div>
-                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Pesquisa Rápida</h4>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
-                          Encontre por nome, ingrediente ou categoria num instante
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
-                        🛒
-                      </div>
-                      <div>
-                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Sacola Intuitiva</h4>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
-                          Adicione adicionais, observações e cupons sem complicação
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg shrink-0">
-                        ⏱️
-                      </div>
-                      <div>
-                        <h4 className="font-black text-xs sm:text-sm text-stone-900 dark:text-white">Acompanhamento ao Vivo</h4>
-                        <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 leading-snug">
-                          Veja o status do seu pedido desde a cozinha até a entrega
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
