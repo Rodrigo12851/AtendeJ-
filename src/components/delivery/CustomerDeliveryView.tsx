@@ -29,9 +29,14 @@ import {
   Utensils,
   FileText,
   User,
+  Check,
+  ArrowLeft,
+  ExternalLink,
+  MessageCircle,
+  Bike,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
-import { Product, OrderItem, Loja } from '../../types';
+import { Product, OrderItem, Loja, Order, OrderStatus } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { getStoreOpenStatus } from '../../utils/storeHours';
 import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
@@ -198,7 +203,8 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   const [formaPagamento, setFormaPagamento] = useState('pix');
   const [trocoPara, setTrocoPara] = useState('');
   const [observacaoGeral, setObservacaoGeral] = useState('');
-  const [submittedOrderNumber, setSubmittedOrderNumber] = useState<number | null>(null);
+  const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
+  const [trackingOrderId, setTrackingOrderId] = useState<number | null>(null);
   const [showOrderHistoryModal, setShowOrderHistoryModal] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [customerOrderIds, setCustomerOrderIds] = useState<number[]>(() => {
@@ -227,6 +233,133 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       console.warn('Erro ao carregar perfil salvo:', e);
     }
   }, []);
+
+  // Abre diretamente o rastreador se a URL contiver ?pedido=1046
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const pedParam = params.get('pedido') || params.get('order');
+      if (pedParam) {
+        const parsedId = parseInt(pedParam, 10);
+        if (!isNaN(parsedId)) {
+          setTrackingOrderId(parsedId);
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao ler parâmetro de pedido:', e);
+    }
+  }, []);
+
+  // Pedido em monitoramento ao vivo (atualiza em tempo real pelo Firestore)
+  const liveTrackingOrder = useMemo(() => {
+    if (!trackingOrderId) return null;
+    const pool = allOrders && allOrders.length > 0 ? allOrders : orders;
+    return (
+      pool.find((o) => o.id === trackingOrderId) ||
+      (submittedOrder && submittedOrder.id === trackingOrderId ? submittedOrder : null)
+    );
+  }, [trackingOrderId, orders, allOrders, submittedOrder]);
+
+  // Substantivo do segmento (hamburgueria vs pizzaria)
+  const storeCategoryNoun = useMemo(() => {
+    const name = (((targetLoja?.nome || '') + ' ' + (targetLoja?.marca || ''))).toLowerCase();
+    if (name.includes('burger') || name.includes('hamburg') || name.includes('smash')) {
+      return 'hamburgueria';
+    }
+    if (name.includes('pizza')) {
+      return 'pizzaria';
+    }
+    return 'estabelecimento';
+  }, [targetLoja]);
+
+  // Horários das etapas do pedido ao vivo
+  const getStepTime = (stepNum: 1 | 2 | 3 | 4, ord: Order) => {
+    if (stepNum === 1) {
+      if (!ord.criado_em) return '';
+      const d = new Date(ord.criado_em);
+      return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+    if (stepNum === 2) {
+      if (ord.tempo_preparo_inicio) {
+        const d = new Date(ord.tempo_preparo_inicio);
+        return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      }
+      if (['em_preparo', 'pronto', 'a_caminho', 'entregue'].includes(ord.status)) {
+        const d = new Date(ord.criado_em);
+        return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      }
+      return '';
+    }
+    if (stepNum === 3) {
+      if (ord.pronto_em || ord.a_caminho_em) {
+        const d = new Date(ord.pronto_em || ord.a_caminho_em || '');
+        return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      }
+      return '';
+    }
+    if (stepNum === 4) {
+      if (ord.entregue_em) {
+        const d = new Date(ord.entregue_em);
+        return isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      }
+      return '';
+    }
+    return '';
+  };
+
+  // Gerador de Mensagem do Pedido para o WhatsApp (Conforme Imagem 2)
+  const handleOpenWhatsAppOrder = (order: Order) => {
+    if (!targetLoja) return;
+    const cleanPhone = (targetLoja.telefone || '').replace(/\D/g, '');
+    const phoneToUse = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+
+    const itensTexto = order.itens
+      .map((it) => {
+        let txt = `• ${it.quantidade}x ${it.nome} - ${formatCurrency(it.preco_total)}`;
+        if (it.adicionais && it.adicionais.length > 0) {
+          txt += `\n   + ${it.adicionais.map((a) => a.nome).join(', ')}`;
+        }
+        if (it.sabores && it.sabores.length > 0) {
+          txt += `\n   Sabores: ${it.sabores.join(' / ')}`;
+        }
+        if (it.observacao) {
+          txt += `\n   Obs: ${it.observacao}`;
+        }
+        return txt;
+      })
+      .join('\n');
+
+    const orderTotal =
+      order.itens.reduce((acc, it) => acc + it.preco_total, 0) + (order.taxa_entrega || 0);
+    const modalidade = order.tipo_pedido === 'retirada' ? 'Retirada na Loja' : 'Entrega (Delivery)';
+
+    const msg =
+      `*NOVO PEDIDO #${order.id}* 🚀\n` +
+      `*Estabelecimento:* ${targetLoja.marca || targetLoja.nome}\n\n` +
+      `*Cliente:* ${order.cliente_nome || clienteNome}\n` +
+      `*Telefone:* ${order.cliente_telefone || clienteTelefone}\n` +
+      `*Modalidade:* ${modalidade}\n` +
+      (order.tipo_pedido !== 'retirada'
+        ? `*Endereço:* ${order.cliente_endereco || clienteEndereco}\n`
+        : '') +
+      `*Forma de Pagamento:* ${(order.forma_pagamento || formaPagamento).toUpperCase()}\n\n` +
+      `*ITENS DO PEDIDO:*\n${itensTexto}\n\n` +
+      (order.taxa_entrega ? `*Taxa de Entrega:* ${formatCurrency(order.taxa_entrega)}\n` : '') +
+      `*VALOR TOTAL:* ${formatCurrency(orderTotal)}\n\n` +
+      `_Enviado pelo Cardápio Digital_`;
+
+    window.open(`https://wa.me/${phoneToUse}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  // Ajuda sobre o Pedido via WhatsApp (Conforme Imagem 1)
+  const handleOpenWhatsAppHelp = (order: Order) => {
+    if (!targetLoja) return;
+    const cleanPhone = (targetLoja.telefone || '').replace(/\D/g, '');
+    const phoneToUse = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+
+    const msg = `Olá! Gostaria de ajuda e informações sobre o meu *Pedido #${order.id}* no ${targetLoja.marca || targetLoja.nome}.`;
+    window.open(`https://wa.me/${phoneToUse}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
 
   // Customer order history (matched by saved order IDs or customer phone number)
   const customerOrders = useMemo(() => {
@@ -622,7 +755,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       console.warn('Erro ao salvar no localStorage:', err);
     }
 
-    setSubmittedOrderNumber(newOrder.id);
+    setSubmittedOrder(newOrder);
     setCart([]);
     setShowCartModal(false);
   };
@@ -981,44 +1114,30 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
           </div>
         )}
 
-        {/* Order Submitted Success View */}
-        {submittedOrderNumber !== null ? (
-          <div className={`p-8 rounded-3xl border shadow-xl text-center space-y-4 max-w-md mx-auto my-6 animate-in zoom-in-95 ${cardBgClass}`}>
-            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
-              <CheckCircle2 className="w-10 h-10" />
+        {/* Banner Pedido Ativo / Em Andamento com Atalho para Rastreamento ao Vivo */}
+        {activeOrder && !searchQuery && (
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FF8A00]/10 border border-[#FF8A00]/30 flex items-center justify-between gap-3 shadow-2xs animate-in fade-in">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#FF8A00] animate-ping shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-stone-900 dark:text-white truncate">
+                  Pedido #{activeOrder.id} em andamento
+                </p>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 truncate">
+                  Status: {activeOrder.status === 'em_preparo' ? 'Em Preparo' : activeOrder.status === 'pronto' ? 'Pronto' : activeOrder.status === 'a_caminho' ? 'A Caminho' : 'Recebido'}
+                </p>
+              </div>
             </div>
-            <h2 className="text-xl font-black">Pedido Recebido com Sucesso!</h2>
-            <p className="text-xs text-stone-500">
-              Seu pedido <span className="font-mono font-bold text-[#FF8A00]">#{submittedOrderNumber}</span> foi enviado diretamente para a cozinha da <strong className="text-stone-900 dark:text-white">{targetLoja.marca || targetLoja.nome}</strong>.
-            </p>
-            <div className={`p-4 rounded-2xl text-xs text-left space-y-1 font-medium ${isDarkMode ? 'bg-stone-900' : 'bg-stone-50'}`}>
-              <p>📍 {clienteEndereco}</p>
-              <p>📞 {clienteNome} — {clienteTelefone}</p>
-              <p>💰 Forma: <span className="uppercase font-bold">{formaPagamento}</span></p>
-            </div>
-
-            <div className="pt-2 flex flex-col sm:flex-row gap-2">
-              <button
-                onClick={() => {
-                  setSubmittedOrderNumber(null);
-                  setCurrentTab('pedidos');
-                }}
-                className="flex-1 py-3 px-4 bg-[#FF8A00] hover:bg-[#E07A00] text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <FileText className="w-4 h-4" />
-                <span>Acompanhar Pedido</span>
-              </button>
-
-              <button
-                onClick={() => setSubmittedOrderNumber(null)}
-                className="flex-1 py-3 px-4 bg-stone-200 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold text-xs rounded-xl transition cursor-pointer"
-              >
-                Fazer Outro Pedido
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setTrackingOrderId(activeOrder.id)}
+              className="py-1.5 px-3 bg-[#FF8A00] hover:bg-[#E07A00] text-stone-950 font-black text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 transition active:scale-95"
+            >
+              <Bike className="w-3.5 h-3.5" />
+              <span>Acompanhar ao Vivo</span>
+            </button>
           </div>
-        ) : (
-          <>
+        )}
             {/* ======================================================== */}
             {/* ABA: INÍCIO (EXPANSIVO NO PC CONFORME IMAGEM 2)           */}
             {/* ======================================================== */}
@@ -1679,13 +1798,24 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                               <span className="text-[10px] text-stone-400 font-bold uppercase block">Total ({totalItemsCount} {totalItemsCount === 1 ? 'item' : 'itens'})</span>
                               <span className="font-mono font-black text-sm text-[#FF8A00]">{formatCurrency(orderTotal)}</span>
                             </div>
-                            <button
-                              onClick={() => handleRepeatOrder(ord)}
-                              className="px-3 py-1.5 bg-[#FF8A00] hover:bg-[#E07A00] text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span>Repetir Pedido</span>
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setTrackingOrderId(ord.id)}
+                                className="px-2.5 py-1.5 bg-stone-900 dark:bg-stone-800 hover:bg-stone-700 text-[#FF8A00] border border-stone-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                title="Acompanhar status ao vivo"
+                              >
+                                <Bike className="w-3.5 h-3.5" />
+                                <span>Ao Vivo</span>
+                              </button>
+                              <button
+                                onClick={() => handleRepeatOrder(ord)}
+                                className="px-3 py-1.5 bg-[#FF8A00] hover:bg-[#E07A00] text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Repetir Pedido</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -1844,14 +1974,12 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                 </div>
               </div>
             )}
-          </>
-        )}
       </main>
 
       {/* ======================================================== */}
       {/* BARRA FLUTUANTE DE PEDIDO / SACOLA                       */}
       {/* ======================================================== */}
-      {cart.length > 0 && submittedOrderNumber === null && (
+      {cart.length > 0 && !submittedOrder && !trackingOrderId && (
         <>
           {/* Mobile Bottom Floating Cart (acima do dock) */}
           <div className="md:hidden fixed bottom-20 left-4 right-4 max-w-md mx-auto z-40 animate-in slide-in-from-bottom-3">
@@ -2614,20 +2742,431 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                             </span>
                           </div>
 
-                          <button
-                            onClick={() => handleRepeatOrder(ord)}
-                            className="px-3.5 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-                            title="Adicionar todos os itens deste pedido ao carrinho e finalizar"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span>Repetir Pedido</span>
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowOrderHistoryModal(false);
+                                setTrackingOrderId(ord.id);
+                              }}
+                              className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-[#FF8A00] border border-stone-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                              title="Acompanhar status em tempo real"
+                            >
+                              <Bike className="w-3.5 h-3.5" />
+                              <span>Ao Vivo</span>
+                            </button>
+                            <button
+                              onClick={() => handleRepeatOrder(ord)}
+                              className="px-3.5 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                              title="Adicionar todos os itens deste pedido ao carrinho e finalizar"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Repetir</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 2: PEDIDO REALIZADO COM SUCESSO (IMAGEM 2)           */}
+      {/* ======================================================== */}
+      {submittedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-white text-stone-900 rounded-3xl p-6 sm:p-7 max-w-sm sm:max-w-md w-full shadow-2xl relative my-auto animate-in zoom-in-95 duration-200 border border-stone-100">
+            {/* Top Check Icon */}
+            <div className="w-14 h-14 rounded-2xl bg-[#D1FAE5] text-[#10B981] flex items-center justify-center mx-auto shadow-xs border border-[#A7F3D0]">
+              <Check className="w-8 h-8 stroke-[3]" />
+            </div>
+
+            {/* Title & Subtitle */}
+            <h2 className="text-xl sm:text-2xl font-black text-stone-900 text-center tracking-tight mt-3">
+              Pedido #{submittedOrder.id} Realizado!
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-500 text-center mt-1">
+              Seu pedido já foi salvo e enviado para a nossa cozinha.
+            </p>
+
+            {/* Box 1: ENVIE NO WHATSAPP PARA AGILIZAR */}
+            <div className="bg-[#ECFDF5] border border-[#A7F3D0] rounded-2xl p-4 mt-5 text-left shadow-2xs">
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#065F46] uppercase tracking-wide">
+                <span>📲</span>
+                <span>ENVIE NO WHATSAPP PARA AGILIZAR</span>
+              </div>
+              <p className="text-xs text-[#047857] mt-1.5 leading-relaxed">
+                Para confirmar o recebimento imediato e receber fotos do preparo, envie a comanda diretamente para o nosso WhatsApp:
+              </p>
+
+              <button
+                type="button"
+                onClick={() => handleOpenWhatsAppOrder(submittedOrder)}
+                className="w-full mt-3.5 py-3 px-4 bg-[#00A884] hover:bg-[#008F6F] active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Abrir WhatsApp com o Pedido</span>
+              </button>
+            </div>
+
+            {/* Box 2: Resumo do Pedido */}
+            <div className="bg-stone-50 border border-stone-200/90 rounded-2xl p-4 mt-3 space-y-2 text-xs text-left shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-stone-500 font-medium">Cliente:</span>
+                <span className="font-bold text-stone-900 uppercase truncate max-w-[200px]">
+                  {submittedOrder.cliente_nome || clienteNome}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-stone-500 font-medium">Telefone / WhatsApp:</span>
+                <span className="font-bold font-mono text-stone-900">
+                  {submittedOrder.cliente_telefone || clienteTelefone}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-stone-500 font-medium">Modalidade:</span>
+                <span className="font-bold text-stone-900 flex items-center gap-1">
+                  {submittedOrder.tipo_pedido === 'retirada' ? '🏪 Retirada' : '🛵 Entrega'}
+                </span>
+              </div>
+
+              <div className="border-t border-stone-200/80 my-2" />
+
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-stone-800">Total a pagar:</span>
+                <span className="font-mono font-black text-lg sm:text-xl text-[#FF8A00]">
+                  {formatCurrency(
+                    submittedOrder.itens.reduce((acc, it) => acc + it.preco_total, 0) +
+                      (submittedOrder.taxa_entrega || 0)
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom Action Buttons */}
+            <div className="space-y-2 mt-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setTrackingOrderId(submittedOrder.id);
+                  setSubmittedOrder(null);
+                }}
+                className="w-full py-3.5 px-4 bg-[#FF8A00] hover:bg-[#E07A00] active:scale-98 text-stone-950 font-black text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
+              >
+                <Bike className="w-4 h-4 text-stone-950" />
+                <span>Acompanhar Pedido em Tempo Real</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubmittedOrder(null)}
+                className="w-full py-2.5 px-4 bg-stone-100 hover:bg-stone-200 active:scale-98 text-stone-700 font-bold text-xs rounded-xl transition flex items-center justify-center cursor-pointer"
+              >
+                Voltar ao Cardápio
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 1: ACOMPANHAR PEDIDO AO VIVO (IMAGEM 1)             */}
+      {/* ======================================================== */}
+      {liveTrackingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+          <div className="bg-[#121216] border border-stone-800 text-white rounded-3xl p-4 sm:p-6 max-w-md w-full shadow-2xl relative my-auto max-h-[94vh] overflow-y-auto scrollbar-none animate-in zoom-in-95 duration-200 flex flex-col justify-between">
+            <div className="space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTrackingOrderId(null)}
+                    className="p-1.5 rounded-xl bg-stone-800/80 hover:bg-stone-700 text-stone-300 hover:text-white transition cursor-pointer"
+                    title="Voltar"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                    Pedido #{liveTrackingOrder.id}
+                  </h2>
+                </div>
+
+                <div className="border border-[#FF8A00]/70 bg-[#FF8A00]/10 text-[#FF8A00] text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF8A00] animate-pulse" />
+                  <span>AO VIVO</span>
+                </div>
+              </div>
+
+              {/* Card 1: Tempo Estimado de Entrega */}
+              <div className="bg-[#1A1A22] border border-stone-800/90 rounded-2xl p-4 flex items-center gap-4 shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/20 text-[#FF8A00] flex items-center justify-center shrink-0">
+                  <Clock className="w-6 h-6 text-[#FF8A00]" />
+                </div>
+                <div>
+                  <span className="text-xs text-stone-400 font-medium block">
+                    {liveTrackingOrder.tipo_pedido === 'retirada'
+                      ? 'Tempo estimado para retirada'
+                      : 'Tempo estimado de entrega'}
+                  </span>
+                  <span className="text-2xl font-black text-white tracking-tight">
+                    {targetLoja?.tempo_entrega_minutos || 25} min
+                  </span>
+                </div>
+              </div>
+
+              {/* Card 2: STATUS DO PEDIDO */}
+              <div className="bg-[#1A1A22] border border-stone-800/90 rounded-2xl p-5 shadow-xs space-y-4">
+                <h3 className="text-xs font-black font-mono tracking-wider text-white uppercase">
+                  STATUS DO PEDIDO
+                </h3>
+
+                {liveTrackingOrder.status === 'cancelado' && (
+                  <div className="p-3 bg-red-500/20 border border-red-500/40 rounded-xl text-red-300 text-xs font-bold">
+                    ❌ Este pedido foi cancelado pelo estabelecimento.
+                  </div>
+                )}
+
+                <div className="space-y-0">
+                  {/* Step 1 */}
+                  <div className="flex items-start gap-3 relative">
+                    <div className="flex flex-col items-center">
+                      <div className="w-6 h-6 rounded-full bg-[#FF8A00] text-stone-950 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </div>
+                      <div
+                        className={`w-0.5 h-8 my-1 ${
+                          ['em_preparo', 'pronto', 'a_caminho', 'entregue'].includes(liveTrackingOrder.status)
+                            ? 'bg-[#FF8A00]'
+                            : 'bg-stone-800'
+                        }`}
+                      />
+                    </div>
+                    <div className="flex-1 pb-3 flex items-start justify-between gap-2 min-w-0">
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-white">Pedido recebido</h4>
+                        <p className="text-[11px] text-stone-400 mt-0.5">
+                          Recebido pela {storeCategoryNoun}
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-mono text-stone-500 shrink-0">
+                        {getStepTime(1, liveTrackingOrder)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="flex items-start gap-3 relative">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                          ['pronto', 'a_caminho', 'entregue'].includes(liveTrackingOrder.status)
+                            ? 'bg-[#FF8A00] text-stone-950'
+                            : liveTrackingOrder.status === 'em_preparo'
+                            ? 'border-2 border-[#FF8A00] bg-[#FF8A00]/20 text-[#FF8A00]'
+                            : 'border border-stone-700 bg-stone-900 text-stone-500'
+                        }`}
+                      >
+                        {['pronto', 'a_caminho', 'entregue'].includes(liveTrackingOrder.status) ? (
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        ) : (
+                          <span>2</span>
+                        )}
+                      </div>
+                      <div
+                        className={`w-0.5 h-8 my-1 ${
+                          ['pronto', 'a_caminho', 'entregue'].includes(liveTrackingOrder.status)
+                            ? 'bg-[#FF8A00]'
+                            : 'bg-stone-800'
+                        }`}
+                      />
+                    </div>
+                    <div className="flex-1 pb-3 flex items-start justify-between gap-2 min-w-0">
+                      <div>
+                        <h4
+                          className={`text-xs sm:text-sm font-bold ${
+                            ['em_preparo', 'pronto', 'a_caminho', 'entregue'].includes(liveTrackingOrder.status)
+                              ? 'text-white'
+                              : 'text-stone-400'
+                          }`}
+                        >
+                          Em preparação
+                        </h4>
+                        <p className="text-[11px] text-stone-400 mt-0.5">
+                          {storeCategoryNoun === 'hamburgueria'
+                            ? 'Lanche na chapa sendo montado com carinho'
+                            : storeCategoryNoun === 'pizzaria'
+                            ? 'No forno sendo preparado com carinho'
+                            : 'Pedido sendo montado com carinho'}
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-mono text-stone-500 shrink-0">
+                        {getStepTime(2, liveTrackingOrder)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="flex items-start gap-3 relative">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                          liveTrackingOrder.status === 'entregue'
+                            ? 'bg-[#FF8A00] text-stone-950'
+                            : ['pronto', 'a_caminho'].includes(liveTrackingOrder.status)
+                            ? 'border-2 border-[#FF8A00] bg-[#FF8A00]/20 text-[#FF8A00]'
+                            : 'border border-stone-700 bg-stone-900 text-stone-500'
+                        }`}
+                      >
+                        {liveTrackingOrder.status === 'entregue' ? (
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        ) : (
+                          <span>3</span>
+                        )}
+                      </div>
+                      <div
+                        className={`w-0.5 h-8 my-1 ${
+                          liveTrackingOrder.status === 'entregue' ? 'bg-[#FF8A00]' : 'bg-stone-800'
+                        }`}
+                      />
+                    </div>
+                    <div className="flex-1 pb-3 flex items-start justify-between gap-2 min-w-0">
+                      <div>
+                        <h4
+                          className={`text-xs sm:text-sm font-bold ${
+                            ['pronto', 'a_caminho', 'entregue'].includes(liveTrackingOrder.status)
+                              ? 'text-white'
+                              : 'text-stone-400'
+                          }`}
+                        >
+                          {liveTrackingOrder.tipo_pedido === 'retirada'
+                            ? 'Pronto para retirada'
+                            : 'A caminho / Pronto'}
+                        </h4>
+                        <p className="text-[11px] text-stone-400 mt-0.5">
+                          {liveTrackingOrder.tipo_pedido === 'retirada'
+                            ? 'Pode retirar no balcão'
+                            : 'Entregador a caminho do seu endereço'}
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-mono text-stone-500 shrink-0">
+                        {getStepTime(3, liveTrackingOrder)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="flex items-start gap-3 relative">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                          liveTrackingOrder.status === 'entregue'
+                            ? 'bg-[#FF8A00] text-stone-950'
+                            : 'border border-stone-700 bg-stone-900 text-stone-500'
+                        }`}
+                      >
+                        {liveTrackingOrder.status === 'entregue' ? (
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        ) : (
+                          <span>4</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-1 flex items-start justify-between gap-2 min-w-0">
+                      <div>
+                        <h4
+                          className={`text-xs sm:text-sm font-bold ${
+                            liveTrackingOrder.status === 'entregue' ? 'text-white' : 'text-stone-400'
+                          }`}
+                        >
+                          Entregue
+                        </h4>
+                        <p className="text-[11px] text-stone-400 mt-0.5">
+                          Pedido finalizado com sucesso. Bom apetite!
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-mono text-stone-500 shrink-0">
+                        {getStepTime(4, liveTrackingOrder)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: ITENS DO PEDIDO */}
+              <div className="bg-[#1A1A22] border border-stone-800/90 rounded-2xl p-5 shadow-xs space-y-3">
+                <h3 className="text-xs font-black font-mono tracking-wider text-white uppercase">
+                  ITENS DO PEDIDO ({liveTrackingOrder.itens.reduce((acc, it) => acc + it.quantidade, 0)})
+                </h3>
+
+                <div className="space-y-3">
+                  {liveTrackingOrder.itens.map((it, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-baseline justify-between text-xs sm:text-sm">
+                        <div className="font-bold text-white pr-2">
+                          <span className="text-[#FF8A00] font-black mr-1.5">{it.quantidade}x</span>
+                          <span>{it.nome}</span>
+                        </div>
+                        <span className="font-mono font-bold text-white shrink-0">
+                          {formatCurrency(it.preco_total)}
+                        </span>
+                      </div>
+                      {it.adicionais && it.adicionais.length > 0 && (
+                        <p className="text-[11px] text-stone-400 pl-5">
+                          {it.adicionais.map((a) => `+ ${a.nome}`).join(', ')}
+                        </p>
+                      )}
+                      {it.sabores && it.sabores.length > 0 && (
+                        <p className="text-[11px] text-stone-400 pl-5">
+                          Sabores: {it.sabores.join(' / ')}
+                        </p>
+                      )}
+                      {it.observacao && (
+                        <p className="text-[11px] text-stone-400 italic pl-5">
+                          Obs: {it.observacao}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-stone-800/80 pt-3 flex items-center justify-between">
+                  <span className="text-xs text-stone-400 font-medium">
+                    Total ({liveTrackingOrder.forma_pagamento ? liveTrackingOrder.forma_pagamento.toUpperCase() : 'PIX'})
+                  </span>
+                  <span className="text-lg sm:text-xl font-mono font-black text-[#FF8A00]">
+                    {formatCurrency(
+                      liveTrackingOrder.itens.reduce((acc, it) => acc + it.preco_total, 0) +
+                        (liveTrackingOrder.taxa_entrega || 0)
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="pt-4 flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => handleOpenWhatsAppHelp(liveTrackingOrder)}
+                className="flex-1 py-3.5 px-4 bg-[#00A884] hover:bg-[#008F6F] active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4 fill-white text-[#00A884]" />
+                <span>Precisa de ajuda? WhatsApp</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTrackingOrderId(null)}
+                className="py-3.5 px-6 bg-[#1A1A22] border border-stone-700 hover:bg-stone-800 active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-pointer"
+              >
+                Fechar
+              </button>
             </div>
           </div>
         </div>
