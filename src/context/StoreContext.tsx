@@ -40,6 +40,7 @@ import { generateComandaNumber } from '../utils/formatters';
 import { sanitizeUserForSession } from '../utils/security';
 import { getClientDeviceInfo, evaluateLoginRisk } from '../utils/deviceDetection';
 import { getStoreOpenStatus } from '../utils/storeHours';
+import { sortOrdersNovosFirst } from '../utils/orderSorting';
 import {
   db,
   FIRESTORE_COLLECTIONS,
@@ -373,13 +374,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const saved = localStorage.getItem(STORAGE_KEYS.ORDERS);
       const list: Order[] = saved ? JSON.parse(saved) : INITIAL_ORDERS;
       const hasBurgerOrders = list.some((o) => o.loja_id === 'loja_shopping');
+      let result = list;
       if (!hasBurgerOrders) {
         const burgerSeed = INITIAL_ORDERS.filter((o) => o.loja_id === 'loja_shopping');
-        return [...list, ...burgerSeed];
+        result = [...list, ...burgerSeed];
       }
-      return list;
+      return [...result].sort(sortOrdersNovosFirst);
     } catch {
-      return INITIAL_ORDERS;
+      return [...INITIAL_ORDERS].sort(sortOrdersNovosFirst);
     }
   });
 
@@ -603,7 +605,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const data = event.data.payload;
             if (data.lojas) setLojas(data.lojas);
             if (data.tables) setTables(data.tables);
-            if (data.orders) setOrders(data.orders);
+            if (data.orders) setOrders([...data.orders].sort(sortOrdersNovosFirst));
             if (data.comandas) setComandas(data.comandas);
             if (data.cashRegister) setCashRegister(data.cashRegister);
             if (data.notifications) setNotifications(data.notifications);
@@ -681,7 +683,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       (snapshot) => {
         if (!snapshot.empty) {
           const remoteOrders = snapshot.docs.map((d) => d.data() as Order);
-          setOrders(remoteOrders);
+          setOrders([...remoteOrders].sort(sortOrdersNovosFirst));
         }
       },
       (err) => console.warn('[Firestore Pedidos Error]:', err.message)
@@ -982,7 +984,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         : c
     );
 
-    const updatedOrders = [newOrder, ...orders];
+    const updatedOrders = [newOrder, ...orders].sort(sortOrdersNovosFirst);
 
     const newNotif: SystemNotification = {
       id: `notif_${Date.now()}`,
@@ -1092,11 +1094,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (targetCmd) saveComandaToFirestore(targetCmd);
     }
 
-    setOrders(updatedOrders);
+    const sortedUpdatedOrders = [...updatedOrders].sort(sortOrdersNovosFirst);
+    setOrders(sortedUpdatedOrders);
     setNotifications(updatedNotifs);
-    const targetOrder = updatedOrders.find((o) => o.id === orderId);
+    const targetOrder = sortedUpdatedOrders.find((o) => o.id === orderId);
     if (targetOrder) saveOrderToFirestore(targetOrder);
-    broadcastSync({ orders: updatedOrders, comandas: updatedComandas, notifications: updatedNotifs });
+    broadcastSync({ orders: sortedUpdatedOrders, comandas: updatedComandas, notifications: updatedNotifs });
   };
 
   const cancelOrderItem = (comandaId: string, orderId: number, itemId: string, motivo: string) => {
@@ -1336,9 +1339,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         : o
     );
 
+    const sortedOrders = [...updatedOrders].sort(sortOrdersNovosFirst);
     setComandas(updatedComandas);
     setTables(updatedTables);
-    setOrders(updatedOrders);
+    setOrders(sortedOrders);
 
     const closedCmd = updatedComandas.find((c) => c.id === comandaId);
     if (closedCmd) saveComandaToFirestore(closedCmd);
@@ -1999,7 +2003,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       taxa_entrega: finalTaxaEntrega,
     };
 
-    const updatedOrders = [newOrder, ...orders];
+    const updatedOrders = [newOrder, ...orders].sort(sortOrdersNovosFirst);
     const updatedComandas = [newComanda, ...comandas];
 
     const newNotif: SystemNotification = {

@@ -38,6 +38,7 @@ import {
 import { useStore } from '../../context/StoreContext';
 import { Product, OrderItem, Loja, Order, OrderStatus } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
+import { sortOrdersNovosFirst } from '../../utils/orderSorting';
 import { getStoreOpenStatus } from '../../utils/storeHours';
 import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
 import { isProductPromotionActive, getProductEffectivePrice, formatPromotionRemaining } from '../../utils/promotionUtils';
@@ -403,7 +404,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
         }
         return false;
       })
-      .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
+      .sort(sortOrdersNovosFirst);
   }, [allOrders, orders, customerOrderIds, clienteTelefone, targetLoja]);
 
   // Check if there is an active order in progress

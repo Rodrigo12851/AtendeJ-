@@ -43,6 +43,7 @@ import { ReceiptModal } from '../ReceiptModal';
 import { KitchenTicketModal } from '../KitchenTicketModal';
 import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
 import { playAddPop, playKitchenBell } from '../../utils/audio';
+import { sortOrdersNovosFirst } from '../../utils/orderSorting';
 
 const DEFAULT_FOOD_IMG = 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80';
 
@@ -679,10 +680,10 @@ export const CaixaView: React.FC = () => {
     return o.tipo_pedido === 'mesa' || !!o.mesa_numero;
   };
 
-  // Channel Lists (all orders, including completed for Tab 2 / History)
-  const allDeliveryOrders = useMemo(() => orders.filter(isDeliveryOrder), [orders]);
-  const allRetiradaOrders = useMemo(() => orders.filter(isRetiradaOrder), [orders]);
-  const allMesaOrders = useMemo(() => orders.filter(isMesaOrder), [orders]);
+  // Channel Lists (all orders, including completed for Tab 2 / History) - Novos sempre na frente
+  const allDeliveryOrders = useMemo(() => orders.filter(isDeliveryOrder).sort(sortOrdersNovosFirst), [orders]);
+  const allRetiradaOrders = useMemo(() => orders.filter(isRetiradaOrder).sort(sortOrdersNovosFirst), [orders]);
+  const allMesaOrders = useMemo(() => orders.filter(isMesaOrder).sort(sortOrdersNovosFirst), [orders]);
 
   // Operational active lists (excludes 'entregue' and 'cancelado' from Coluna 1 & Coluna 2)
   const activeDeliveryOrders = useMemo(() => {
@@ -704,67 +705,73 @@ export const CaixaView: React.FC = () => {
   const countNovosMesa = useMemo(() => allMesaOrders.filter((o) => o.status === 'novo').length, [allMesaOrders]);
   const countNovosTotal = countNovosDelivery + countNovosRetirada + countNovosMesa;
 
-  // Filtered Delivery orders (Coluna 1 - Apenas pedidos ativos pendentes)
+  // Filtered Delivery orders (Coluna 1 - Apenas pedidos ativos pendentes, novos na frente)
   const deliveryOrders = useMemo(() => {
-    return activeDeliveryOrders.filter((o) => {
-      if (deliveryFilter === 'novo' && o.status !== 'novo') return false;
-      if (deliveryFilter === 'em_preparo' && o.status !== 'em_preparo') return false;
-      if (deliveryFilter === 'a_caminho' && o.status !== 'a_caminho') return false;
+    return activeDeliveryOrders
+      .filter((o) => {
+        if (deliveryFilter === 'novo' && o.status !== 'novo') return false;
+        if (deliveryFilter === 'em_preparo' && o.status !== 'em_preparo') return false;
+        if (deliveryFilter === 'a_caminho' && o.status !== 'a_caminho') return false;
 
-      if (deliverySearch) {
-        const q = deliverySearch.toLowerCase();
-        const nome = (o.cliente_nome || '').toLowerCase();
-        const fone = (o.cliente_telefone || o.delivery_info?.telefone || '').toLowerCase();
-        const end = (o.cliente_endereco || o.delivery_info?.endereco || '').toLowerCase();
-        const id = o.id.toString();
-        return nome.includes(q) || fone.includes(q) || end.includes(q) || id.includes(q);
-      }
-      return true;
-    });
+        if (deliverySearch) {
+          const q = deliverySearch.toLowerCase();
+          const nome = (o.cliente_nome || '').toLowerCase();
+          const fone = (o.cliente_telefone || o.delivery_info?.telefone || '').toLowerCase();
+          const end = (o.cliente_endereco || o.delivery_info?.endereco || '').toLowerCase();
+          const id = o.id.toString();
+          return nome.includes(q) || fone.includes(q) || end.includes(q) || id.includes(q);
+        }
+        return true;
+      })
+      .sort(sortOrdersNovosFirst);
   }, [activeDeliveryOrders, deliveryFilter, deliverySearch]);
 
-  // Filtered Retirada orders (Coluna 2 - Apenas pedidos ativos pendentes)
+  // Filtered Retirada orders (Coluna 2 - Apenas pedidos ativos pendentes, novos na frente)
   const retiradaOrders = useMemo(() => {
-    return activeRetiradaOrders.filter((o) => {
-      if (retiradaFilter === 'novo' && o.status !== 'novo') return false;
-      if (retiradaFilter === 'em_preparo' && o.status !== 'em_preparo') return false;
-      if (retiradaFilter === 'pronto' && o.status !== 'pronto') return false;
+    return activeRetiradaOrders
+      .filter((o) => {
+        if (retiradaFilter === 'novo' && o.status !== 'novo') return false;
+        if (retiradaFilter === 'em_preparo' && o.status !== 'em_preparo') return false;
+        if (retiradaFilter === 'pronto' && o.status !== 'pronto') return false;
 
-      if (retiradaSearch) {
-        const q = retiradaSearch.toLowerCase();
-        const nome = (o.cliente_nome || '').toLowerCase();
-        const fone = (o.cliente_telefone || o.delivery_info?.telefone || '').toLowerCase();
-        const id = o.id.toString();
-        return nome.includes(q) || fone.includes(q) || id.includes(q);
-      }
-      return true;
-    });
+        if (retiradaSearch) {
+          const q = retiradaSearch.toLowerCase();
+          const nome = (o.cliente_nome || '').toLowerCase();
+          const fone = (o.cliente_telefone || o.delivery_info?.telefone || '').toLowerCase();
+          const id = o.id.toString();
+          return nome.includes(q) || fone.includes(q) || id.includes(q);
+        }
+        return true;
+      })
+      .sort(sortOrdersNovosFirst);
   }, [activeRetiradaOrders, retiradaFilter, retiradaSearch]);
 
-  // Orders filtering and status counts for Caixa Pedidos tab (Tab 2 - Com Histórico de Entregues)
+  // Orders filtering and status counts for Caixa Pedidos tab (Tab 2 - Com Histórico de Entregues, novos sempre na frente)
   const filteredCaixaOrders = useMemo(() => {
-    return orders.filter((order) => {
-      if (pedidosCanalFilter === 'delivery' && !isDeliveryOrder(order)) return false;
-      if (pedidosCanalFilter === 'retirada' && !isRetiradaOrder(order)) return false;
-      if (pedidosCanalFilter === 'mesa' && !isMesaOrder(order)) return false;
+    return orders
+      .filter((order) => {
+        if (pedidosCanalFilter === 'delivery' && !isDeliveryOrder(order)) return false;
+        if (pedidosCanalFilter === 'retirada' && !isRetiradaOrder(order)) return false;
+        if (pedidosCanalFilter === 'mesa' && !isMesaOrder(order)) return false;
 
-      if (pedidosFilterStatus !== 'todos' && order.status !== pedidosFilterStatus) {
-        return false;
-      }
-      if (pedidosSearch) {
-        const query = pedidosSearch.toLowerCase();
-        const matchId = order.id.toString().includes(query);
-        const matchMesa = order.mesa_numero?.toString().includes(query);
-        const matchCliente = order.cliente_nome?.toLowerCase().includes(query);
-        const matchGarcom = order.garcom_nome?.toLowerCase().includes(query);
-        const matchTel = (order.cliente_telefone || (order.delivery_info as any)?.telefone || '')?.includes(query);
-        const matchEndereco = (order.cliente_endereco || (order.delivery_info as any)?.endereco || '')?.toLowerCase().includes(query);
-        if (!matchId && !matchMesa && !matchCliente && !matchGarcom && !matchTel && !matchEndereco) {
+        if (pedidosFilterStatus !== 'todos' && order.status !== pedidosFilterStatus) {
           return false;
         }
-      }
-      return true;
-    });
+        if (pedidosSearch) {
+          const query = pedidosSearch.toLowerCase();
+          const matchId = order.id.toString().includes(query);
+          const matchMesa = order.mesa_numero?.toString().includes(query);
+          const matchCliente = order.cliente_nome?.toLowerCase().includes(query);
+          const matchGarcom = order.garcom_nome?.toLowerCase().includes(query);
+          const matchTel = (order.cliente_telefone || (order.delivery_info as any)?.telefone || '')?.includes(query);
+          const matchEndereco = (order.cliente_endereco || (order.delivery_info as any)?.endereco || '')?.toLowerCase().includes(query);
+          if (!matchId && !matchMesa && !matchCliente && !matchGarcom && !matchTel && !matchEndereco) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort(sortOrdersNovosFirst);
   }, [orders, pedidosCanalFilter, pedidosFilterStatus, pedidosSearch]);
 
   // Separated lists per channel for Tab 2 "Todos"

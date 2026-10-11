@@ -15,6 +15,7 @@ import { useStore } from '../../context/StoreContext';
 import { Order, OrderStatus } from '../../types';
 import { formatTime, getElapsedMinutes } from '../../utils/formatters';
 import { KitchenTicketModal } from '../KitchenTicketModal';
+import { sortOrdersNovosFirst } from '../../utils/orderSorting';
 
 export const CozinhaView: React.FC = () => {
   const { orders, updateOrderStatus, audioEnabled, setAudioEnabled } = useStore();
@@ -32,16 +33,18 @@ export const CozinhaView: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Filter orders
+  // Filter orders - Novos constam sempre na frente dos em preparo/prontos
   const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      if (order.status === 'cancelado') return filterTab === 'todos';
-      if (filterTab === 'ativos') return order.status === 'novo' || order.status === 'em_preparo';
-      if (filterTab === 'novos') return order.status === 'novo';
-      if (filterTab === 'preparo') return order.status === 'em_preparo';
-      if (filterTab === 'prontos') return order.status === 'pronto';
-      return true;
-    });
+    return orders
+      .filter((order) => {
+        if (order.status === 'cancelado') return filterTab === 'todos';
+        if (filterTab === 'ativos') return order.status === 'novo' || order.status === 'em_preparo';
+        if (filterTab === 'novos') return order.status === 'novo';
+        if (filterTab === 'preparo') return order.status === 'em_preparo';
+        if (filterTab === 'prontos') return order.status === 'pronto';
+        return true;
+      })
+      .sort(sortOrdersNovosFirst);
   }, [orders, filterTab]);
 
   // Counts for tabs
