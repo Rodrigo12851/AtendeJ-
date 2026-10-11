@@ -2911,6 +2911,7 @@ export const CaixaView: React.FC = () => {
                 <li>Telefone do cliente com botão para ligar ou abrir WhatsApp</li>
                 <li>Valor total a cobrar e troco exato a devolver</li>
                 <li>Botão "Finalizar Entrega" para atualizar no sistema</li>
+                <li className="font-bold text-emerald-700 dark:text-emerald-400">🛡️ Expira 5 minutos após confirmada a entrega (proteção LGPD)</li>
               </ul>
             </div>
 

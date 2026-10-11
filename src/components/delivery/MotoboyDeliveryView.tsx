@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bike,
   MapPin,
@@ -15,6 +15,8 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
@@ -31,6 +33,16 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
   const [isFinishing, setIsFinishing] = useState(false);
   const [showItens, setShowItens] = useState(true);
   const [justCompleted, setJustCompleted] = useState(false);
+  const [completedAt, setCompletedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  // Interval to update current timestamp every second for accurate countdown
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Find order across current orders or allOrders
   const orderList = allOrders && allOrders.length > 0 ? allOrders : orders;
@@ -68,6 +80,7 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
         closeComanda(order.comanda_id);
       }
       setJustCompleted(true);
+      setCompletedAt(Date.now());
     } catch (err) {
       console.error('Erro ao finalizar entrega:', err);
       alert('Ocorreu um erro ao atualizar o status. Tente novamente.');
@@ -81,6 +94,79 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
   const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
     `Olá ${order?.cliente_nome || 'Cliente'}! Sou o entregador da ${loja?.nome || 'Pizzaria'} com o seu Pedido #${order?.id}.`
   )}`;
+
+  // Expiration calculation: 5 minutes after delivery confirmation
+  const isEntregue = order?.status === 'entregue' || justCompleted;
+  const entregueTimestamp = order?.entregue_em
+    ? new Date(order.entregue_em).getTime()
+    : completedAt || 0;
+
+  const FIVE_MINUTES_MS = 5 * 60 * 1000;
+  const elapsedSinceEntregue = isEntregue && entregueTimestamp > 0 ? now - entregueTimestamp : 0;
+  const isExpired = isEntregue && entregueTimestamp > 0 && elapsedSinceEntregue >= FIVE_MINUTES_MS;
+  const remainingMs = Math.max(0, FIVE_MINUTES_MS - elapsedSinceEntregue);
+  const remainingMinutes = Math.floor(remainingMs / 60000);
+  const remainingSeconds = Math.floor((remainingMs % 60000) / 1000);
+
+  // If link has expired (> 5 minutes after delivery), protect customer data completely
+  if (order && isExpired) {
+    return (
+      <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-center p-4 font-sans selection:bg-purple-600 selection:text-white">
+        <div className="max-w-md w-full bg-stone-900 border border-stone-800 rounded-3xl p-6 text-center space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          {/* Header Shield & Lock Icon */}
+          <div className="relative w-20 h-20 mx-auto">
+            <div className="w-20 h-20 bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-400 rounded-2xl flex items-center justify-center">
+              <ShieldCheck className="w-10 h-10" />
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-purple-600 border-2 border-stone-900 text-white rounded-full flex items-center justify-center shadow-md">
+              <Lock className="w-3.5 h-3.5" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="px-3 py-1 bg-emerald-950/70 text-emerald-300 border border-emerald-500/30 rounded-full text-[10px] font-black uppercase tracking-wider inline-block">
+              ✓ Entrega Concluída • Acesso Expirado
+            </span>
+            <h1 className="text-xl font-black text-white pt-1">
+              Dados do Cliente Protegidos
+            </h1>
+            <p className="text-stone-400 text-xs leading-relaxed max-w-xs mx-auto">
+              Este pedido foi finalizado com sucesso. Por motivos de segurança e privacidade do cliente, as informações de endereço e contato ficam disponíveis por apenas <strong>5 minutos</strong> após a entrega e foram desativadas.
+            </p>
+          </div>
+
+          {/* Resumo do Pedido Entregue */}
+          <div className="p-4 bg-stone-950/80 border border-stone-800/80 rounded-2xl text-left space-y-2.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-stone-500 font-medium">Pedido:</span>
+              <span className="font-mono font-black text-white">#{order.id}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-stone-500 font-medium">Estabelecimento:</span>
+              <span className="font-bold text-stone-200">{loja?.nome || 'Pizzaria'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-stone-500 font-medium">Horário da Entrega:</span>
+              <span className="font-mono text-emerald-400 font-bold">
+                {order.entregue_em ? formatDateTime(order.entregue_em) : 'Finalizado'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-stone-800">
+              <span className="text-stone-500 font-medium">Status no Sistema:</span>
+              <span className="font-bold text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Entregue & Fechado
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-2 text-center text-xs text-stone-500 space-y-1">
+            <p className="font-semibold text-stone-300">🛵 Obrigado pelo seu trabalho na entrega!</p>
+            <p className="text-[11px]">Você já pode fechar esta aba com segurança.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // If order was not found yet
   if (!order) {
@@ -105,8 +191,6 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
       </div>
     );
   }
-
-  const isEntregue = order.status === 'entregue' || justCompleted;
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 font-sans pb-28 selection:bg-purple-600 selection:text-white">
@@ -182,6 +266,32 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
             </div>
           )}
         </div>
+
+        {/* Countdown Banner de Expiração / Proteção de Dados (5 minutos) */}
+        {isEntregue && (
+          <div className="p-3.5 bg-purple-950/40 border border-purple-500/40 rounded-2xl text-purple-200 text-xs flex items-center justify-between gap-3 shadow-md animate-in fade-in duration-200">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="font-extrabold text-white text-xs leading-tight">
+                  Privacidade do Cliente Ativa
+                </p>
+                <p className="text-[11px] text-purple-300/80 leading-tight mt-0.5">
+                  Por segurança, os dados do cliente expiram em:
+                </p>
+              </div>
+            </div>
+
+            <div className="px-2.5 py-1.5 bg-purple-900/60 border border-purple-400/50 rounded-xl font-mono font-black text-amber-300 text-xs shrink-0 flex items-center gap-1.5 shadow-xs">
+              <Clock className="w-3.5 h-3.5 animate-pulse text-amber-400" />
+              <span>
+                {remainingMinutes}:{remainingSeconds.toString().padStart(2, '0')}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Card: Cliente */}
         <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 shadow-sm space-y-3">
