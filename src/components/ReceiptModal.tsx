@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Printer, X, QrCode } from 'lucide-react';
 import { Comanda, Order } from '../types';
-import { formatCurrency, formatDateTime } from '../utils/formatters';
+import { formatCurrency, formatDateTime, formatPhone } from '../utils/formatters';
 import { useStore } from '../context/StoreContext';
 
 interface ReceiptModalProps {
@@ -74,7 +74,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         )}
         <p className="text-[10px]">{currentLoja?.endereco || 'Av. Paulista, 1000 - Bela Vista - SP'}</p>
         {currentLoja?.telefone && (
-          <p className="text-[10px]">Tel: {currentLoja.telefone}</p>
+          <p className="text-[10px]">Tel: {formatPhone(currentLoja.telefone)}</p>
         )}
         <p className="text-[10px]">CNPJ: 12.345.678/0001-90</p>
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Printer, X } from 'lucide-react';
 import { Order } from '../types';
-import { formatTime, formatDateTime, formatCurrency } from '../utils/formatters';
+import { formatTime, formatDateTime, formatCurrency, formatPhone } from '../utils/formatters';
 import { useStore } from '../context/StoreContext';
 
 interface KitchenTicketModalProps {
@@ -56,8 +56,23 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
   const activeItens = order.itens.filter((it) => it.status === 'ativo');
   const isRetirada = order.tipo_pedido === 'retirada';
   const isDelivery = (order.origem === 'delivery' || order.tipo_pedido === 'delivery' || !order.mesa_numero) && !isRetirada;
+  const isMesa = !isRetirada && !isDelivery;
+
   const endereco = order.delivery_info?.endereco || order.cliente_endereco;
   const telefone = order.delivery_info?.telefone || order.cliente_telefone;
+  const telefoneFormatado = formatPhone(telefone);
+
+  const rawPagto = order.forma_pagamento || order.delivery_info?.forma_pagamento || '';
+  const getPaymentLabel = (raw: string) => {
+    const l = raw.toLowerCase();
+    if (l.includes('pix')) return 'PIX';
+    if (l.includes('dinheiro')) return 'DINHEIRO';
+    if (l.includes('debito') || l.includes('débito')) return 'CARTÃO DE DÉBITO';
+    if (l.includes('credito') || l.includes('crédito')) return 'CARTÃO DE CRÉDITO';
+    if (l.includes('pagar_depois') || l.includes('depois')) return 'A PAGAR NO BALCÃO';
+    return raw ? raw.toUpperCase() : 'NÃO INFORMADO';
+  };
+  const paymentMethodLabel = getPaymentLabel(rawPagto);
 
   const orderSubtotal = activeItens.reduce((acc, it) => acc + it.preco_total, 0);
   const orderTotal = orderSubtotal + (order.taxa_entrega || 0);
@@ -70,7 +85,7 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
       }`}
       style={{ fontFamily: "'JetBrains Mono', 'Courier New', Courier, monospace" }}
     >
-      {/* Header */}
+      {/* 1. Header: Logo & Estabelecimento */}
       <div className="text-center pb-2 border-b-2 border-dashed border-black space-y-1">
         {currentLoja?.logo_url && (
           <div className="flex justify-center mb-1">
@@ -81,157 +96,225 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
             />
           </div>
         )}
-        <h2 className="text-base font-black tracking-wider uppercase">{effectiveBrand}</h2>
+        <h2 className="text-base font-black tracking-wider uppercase text-black">{effectiveBrand}</h2>
         {currentLoja?.nome && (
-          <p className="text-[10px] uppercase font-bold text-stone-700">{currentLoja.nome}</p>
+          <p className="text-[10px] uppercase font-bold text-stone-800">{currentLoja.nome}</p>
         )}
-        <div className="font-bold text-xs">
+        <div className="font-bold text-[11px] tracking-wider uppercase">
           *** COMANDA DE PRODUÇÃO ***
         </div>
-        <div className="text-sm font-black pt-0.5">
+
+        {/* Box Destaque do Número do Pedido */}
+        <div className="my-1 py-1 px-3 border-2 border-black inline-block rounded font-black text-base sm:text-lg tracking-wider bg-white">
           PEDIDO #{order.id}
         </div>
 
-        {isRetirada ? (
-          <div className="text-xs font-black border-2 border-black py-0.5 px-2 inline-block my-1 rounded-sm uppercase">
-            🛍️ RETIRADA NO BALCÃO - BUSCAR NA LOJA
-          </div>
-        ) : isDelivery ? (
-          <div className="text-xs font-black border-2 border-black py-0.5 px-2 inline-block my-1 rounded-sm uppercase">
-            🛵 DELIVERY - ENTREGA EM CASA
-          </div>
-        ) : (
-          <div className="text-sm font-black border-2 border-black py-0.5 px-2 inline-block my-1 rounded-sm uppercase">
-            MESA {order.mesa_numero ? order.mesa_numero.toString().padStart(2, '0') : '00'}
-          </div>
-        )}
-
-        {order.cliente_nome && (
-          <div className="font-black text-xs uppercase pt-0.5">
-            CLIENTE: {order.cliente_nome}
-          </div>
-        )}
-
-        {order.garcom_nome && (
-          <div className="text-[11px]">
-            Atendente: {order.garcom_nome}
-          </div>
-        )}
-
-        {/* Delivery Details */}
-        {isDelivery && (endereco || telefone) && (
-          <div className="mt-1.5 p-1.5 border border-black text-left rounded-sm space-y-0.5 text-[11px]">
-            {endereco && (
-              <p className="font-bold">
-                📍 {endereco}
-              </p>
-            )}
-            {telefone && (
-              <p className="font-bold">
-                📞 {telefone}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Retirada Details */}
+        {/* Card Único e Sem Redundância de Canal & Dados do Cliente */}
         {isRetirada && (
-          <div className="mt-1.5 p-1.5 border border-black text-left rounded-sm space-y-0.5 text-[11px]">
-            <p className="font-bold">🛍️ RETIRADA NO BALCÃO (CLIENTE VAI BUSCAR NA LOJA)</p>
-            {telefone && (
-              <p className="font-bold">
-                📞 Contato: {telefone}
-              </p>
+          <div className="mt-1 p-2 border-2 border-black rounded text-left space-y-1 bg-white">
+            <div className="font-black text-xs uppercase flex items-center justify-between border-b border-black pb-1">
+              <span>🛍️ RETIRADA NO BALCÃO</span>
+              <span className="text-[9px] px-1 border border-black rounded-xs font-mono font-bold">BUSCAR NA LOJA</span>
+            </div>
+            {order.cliente_nome && (
+              <div className="font-black text-xs uppercase">
+                CLIENTE: <span className="font-mono">{order.cliente_nome}</span>
+              </div>
+            )}
+            {telefoneFormatado && (
+              <div className="font-bold text-[11px]">
+                📞 CONTATO: <span className="font-mono">{telefoneFormatado}</span>
+              </div>
+            )}
+            {order.garcom_nome && (
+              <div className="text-[10px] text-stone-700">
+                Atendente: {order.garcom_nome}
+              </div>
+            )}
+          </div>
+        )}
+
+        {isDelivery && (
+          <div className="mt-1 p-2 border-2 border-black rounded text-left space-y-1 bg-white">
+            <div className="font-black text-xs uppercase flex items-center justify-between border-b border-black pb-1">
+              <span>🛵 ENTREGA DELIVERY</span>
+              <span className="text-[9px] px-1 border border-black rounded-xs font-mono font-bold">EM DOMICÍLIO</span>
+            </div>
+            {order.cliente_nome && (
+              <div className="font-black text-xs uppercase">
+                CLIENTE: <span className="font-mono">{order.cliente_nome}</span>
+              </div>
+            )}
+            {telefoneFormatado && (
+              <div className="font-bold text-[11px]">
+                📞 CONTATO: <span className="font-mono">{telefoneFormatado}</span>
+              </div>
+            )}
+            {endereco && (
+              <div className="font-black text-[11px] leading-tight pt-0.5">
+                📍 ENDEREÇO: {endereco}
+              </div>
+            )}
+            {order.motoboy_nome && (
+              <div className="text-[10px] font-bold text-stone-700">
+                Entregador: {order.motoboy_nome}
+              </div>
+            )}
+          </div>
+        )}
+
+        {isMesa && (
+          <div className="mt-1 p-2 border-2 border-black rounded text-left space-y-1 bg-white">
+            <div className="font-black text-xs uppercase flex items-center justify-between border-b border-black pb-1">
+              <span>🍽️ SALÃO • MESA {order.mesa_numero ? order.mesa_numero.toString().padStart(2, '0') : '00'}</span>
+              <span className="text-[9px] px-1 border border-black rounded-xs font-mono font-bold">CONSUMO LOCAL</span>
+            </div>
+            {order.cliente_nome && (
+              <div className="font-black text-xs uppercase">
+                CLIENTE: <span className="font-mono">{order.cliente_nome}</span>
+              </div>
+            )}
+            {order.garcom_nome && (
+              <div className="text-[10px] text-stone-700">
+                Garçom: {order.garcom_nome}
+              </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Items Section */}
-      <div className="py-2.5 border-b-2 border-dashed border-black space-y-2.5">
-        <div className="font-black text-[11px] pb-1 border-b border-black flex justify-between">
+      {/* 2. Items Section */}
+      <div className="py-2 border-b-2 border-dashed border-black space-y-2">
+        <div className="font-black text-[11px] pb-1 border-b border-black flex justify-between tracking-wider">
           <span>QTD ITEM</span>
-          <span>SUBTOTAL</span>
+          <span className="font-mono">SUBTOTAL</span>
         </div>
 
         {activeItens.map((item, idx) => (
-          <div key={idx} className="space-y-0.5">
-            <div className="flex justify-between items-start font-black text-xs">
-              <span className="leading-tight">
-                [{item.quantidade}x] {item.nome.toUpperCase()}
-              </span>
-              <span className="shrink-0 ml-1 font-mono">
+          <div key={idx} className="space-y-0.5 pb-1.5 border-b border-dotted border-stone-300 last:border-b-0">
+            <div className="flex justify-between items-start gap-1 font-black text-xs">
+              <div className="flex items-start gap-1 flex-1 min-w-0">
+                <span className="font-mono font-black shrink-0">
+                  [{item.quantidade}x]
+                </span>
+                <span className="leading-tight uppercase font-black break-words">
+                  {item.nome}
+                </span>
+              </div>
+              <span className="shrink-0 font-mono font-bold text-right ml-1">
                 {formatCurrency(item.preco_total)}
               </span>
             </div>
 
+            {/* Sabores da Pizza */}
             {item.sabores && item.sabores.length > 0 && (
-              <div className="pl-3 font-bold text-[11px]">
-                › Sabores: {item.sabores.join(' + ')}
+              <div className="pl-5 font-bold text-[11px] leading-tight text-stone-900">
+                • Sabores: {item.sabores.join(' + ')}
               </div>
             )}
 
+            {/* Tamanho da Pizza */}
+            {item.tamanho && (
+              <div className="pl-5 text-[10px] font-medium text-stone-800">
+                • Tamanho: {item.tamanho}
+              </div>
+            )}
+
+            {/* Borda */}
             {item.borda && item.borda.nome !== 'Sem borda' && (
-              <div className="pl-3 text-[11px] font-medium">
-                › Borda: {item.borda.nome}
+              <div className="pl-5 text-[10px] font-bold text-stone-900">
+                + Borda: {item.borda.nome}
               </div>
             )}
 
+            {/* Massa */}
             {item.massa && (
-              <div className="pl-3 text-[11px]">
-                › Massa: {item.massa}
+              <div className="pl-5 text-[10px] text-stone-700">
+                • Massa: {item.massa}
               </div>
             )}
 
+            {/* Adicionais com destaque claro */}
             {item.adicionais && item.adicionais.length > 0 && (
-              <div className="pl-3 text-[11px]">
-                › Adic: {item.adicionais.map((a) => a.nome).join(', ')}
+              <div className="pl-5 text-[11px] font-bold space-y-0.5 text-black">
+                {item.adicionais.map((adic, aIdx) => (
+                  <div key={aIdx} className="flex items-center gap-1">
+                    <span className="font-black">+</span>
+                    <span>{adic.nome}</span>
+                    {adic.preco > 0 && (
+                      <span className="text-[10px] text-stone-600 font-mono">({formatCurrency(adic.preco)})</span>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
+            {/* Observação do Item (destaque de atenção para a cozinha!) */}
             {item.observacao && (
-              <div className="mt-1 p-1 border border-black rounded-sm font-black text-[11px] bg-white">
-                ** OBS: {item.observacao.toUpperCase()} **
+              <div className="mt-1 ml-5 p-1 border-2 border-black rounded-xs font-black text-[11px] bg-stone-100 leading-tight">
+                ⚠️ OBS: {item.observacao.toUpperCase()}
               </div>
             )}
           </div>
         ))}
 
+        {/* Observação Geral do Pedido */}
         {order.observacao && (
-          <div className="mt-2 p-1.5 border-2 border-black rounded-sm font-black text-xs">
-            *** OBS DO PEDIDO: {order.observacao.toUpperCase()} ***
+          <div className="mt-2 p-1.5 border-2 border-black rounded-xs font-black text-xs bg-stone-50 text-left">
+            <div>⚠️ OBSERVAÇÃO DO PEDIDO:</div>
+            <div className="text-[11px] font-bold uppercase mt-0.5">{order.observacao}</div>
           </div>
         )}
       </div>
 
-      {/* Financial summary (Crucial for delivery) */}
+      {/* 3. Forma de Pagamento */}
+      <div className="py-1.5 border-b-2 border-dashed border-black text-left text-[11px] space-y-0.5">
+        <div className="flex justify-between items-center font-bold">
+          <span className="text-stone-700">PAGAMENTO:</span>
+          <span className="font-mono font-black uppercase">{paymentMethodLabel}</span>
+        </div>
+        {order.troco_para ? (
+          <div className="flex justify-between items-center text-[10px] font-bold text-stone-800">
+            <span>Troco para {formatCurrency(order.troco_para)}:</span>
+            <span className="font-mono font-black">Devolver {formatCurrency(order.troco_para - orderTotal)}</span>
+          </div>
+        ) : null}
+      </div>
+
+      {/* 4. Resumo Financeiro */}
       <div className="py-2 border-b-2 border-dashed border-black space-y-0.5 text-[11px]">
         <div className="flex justify-between">
           <span>Subtotal Itens:</span>
-          <span className="font-mono">{formatCurrency(orderSubtotal)}</span>
+          <span className="font-mono font-bold">{formatCurrency(orderSubtotal)}</span>
         </div>
         {order.taxa_entrega !== undefined && order.taxa_entrega > 0 && (
           <div className="flex justify-between">
             <span>Taxa de Entrega:</span>
-            <span className="font-mono">{formatCurrency(order.taxa_entrega)}</span>
+            <span className="font-mono font-bold">{formatCurrency(order.taxa_entrega)}</span>
           </div>
         )}
-        <div className="flex justify-between font-black text-sm pt-1 border-t border-black">
+        <div className="flex justify-between font-black text-sm pt-1 border-t-2 border-black">
           <span>TOTAL:</span>
           <span className="font-mono">{formatCurrency(orderTotal)}</span>
         </div>
       </div>
 
-      {/* Footer / Timestamps */}
-      <div className="pt-2 text-center space-y-0.5 text-[10px]">
-        <div className="flex justify-between">
+      {/* 5. Rodapé Limpo (sem quebras de caracteres) */}
+      <div className="pt-2 text-center space-y-1 text-[10px]">
+        <div className="flex justify-between text-stone-700 font-medium">
           <span>Data / Hora:</span>
           <span className="font-mono font-bold">
             {formatDateTime(order.criado_em)}
           </span>
         </div>
-        <p className="pt-1 font-bold">================================</p>
-        <p className="text-[9px] uppercase">*** CONTROLE DE COZINHA & DELIVERY ***</p>
+        <div className="border-t border-black pt-1.5 space-y-0.5">
+          <p className="font-black text-[10px] tracking-wider uppercase">
+            *** CONTROLE DE COZINHA & EXPEDIÇÃO ***
+          </p>
+          <p className="text-[9px] text-stone-500 font-mono">
+            AtendeJá • Pedido #{order.id}
+          </p>
+        </div>
       </div>
     </div>
   );
