@@ -1321,7 +1321,7 @@ export const CaixaView: React.FC = () => {
                               <span className={`text-xs font-mono font-bold ${isSelected ? 'text-sky-400' : 'text-stone-500 dark:text-slate-400'}`}>
                                 {cmd.numero}
                               </span>
-                              <span className="font-bold text-xs text-stone-900 dark:text-white">
+                              <span className={`font-bold text-xs ${isSelected ? 'text-white' : 'text-stone-900 dark:text-white'}`}>
                                 Mesa {cmd.mesa_numero.toString().padStart(2, '0')}
                               </span>
                               {isSelected && (
@@ -1336,20 +1336,26 @@ export const CaixaView: React.FC = () => {
                               )}
                             </div>
                             {cmd.cliente_nome && (
-                              <span className="text-[11px] font-bold text-sky-950 dark:text-sky-300 block mt-0.5">
+                              <span className={`text-[11px] font-bold block mt-0.5 ${isSelected ? 'text-sky-300' : 'text-sky-950 dark:text-sky-300'}`}>
                                 👤 Cliente: {cmd.cliente_nome}
                               </span>
                             )}
-                            <span className={`text-[11px] block mt-0.5 ${isSelected ? 'text-stone-300 dark:text-slate-300' : 'text-stone-500 dark:text-slate-400'}`}>
+                            <span className={`text-[11px] block mt-0.5 ${isSelected ? 'text-stone-200 dark:text-slate-200 font-medium' : 'text-stone-600 dark:text-slate-400'}`}>
                               Garçom: {cmd.garcom_nome} • {formatTime(cmd.abertura)}
                             </span>
                           </div>
 
                           <div className="text-right">
-                            <span className={`text-xs font-mono font-bold block ${isWaitingClose && !isSelected ? 'text-amber-600 dark:text-amber-400' : 'text-stone-900 dark:text-white'}`}>
+                            <span className={`text-xs font-mono font-bold block ${
+                              isSelected
+                                ? 'text-white'
+                                : isWaitingClose
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-stone-900 dark:text-white'
+                            }`}>
                               {formatCurrency(cmd.total)}
                             </span>
-                            <span className="text-[10px] font-mono opacity-60 text-stone-500 dark:text-slate-400">
+                            <span className={`text-[10px] font-mono ${isSelected ? 'text-stone-300 font-medium' : 'opacity-60 text-stone-500 dark:text-slate-400'}`}>
                               {cmd.pedidos_ids.length} pedidos
                             </span>
                           </div>
