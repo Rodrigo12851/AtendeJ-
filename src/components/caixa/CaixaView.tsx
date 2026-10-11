@@ -607,21 +607,21 @@ export const CaixaView: React.FC = () => {
         <main className="max-w-[1920px] mx-auto w-full p-2.5 sm:p-3.5 lg:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3.5 flex-1">
           {/* Coluna 1: Delivery (Entrega motoboy no endereço) */}
           <div className="col-span-12 md:col-span-1 xl:col-span-3 space-y-3 flex flex-col">
-            <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-3.5 space-y-3 flex-1 flex flex-col">
+            <div className="bg-emerald-50/60 dark:bg-slate-900 border border-emerald-200/90 dark:border-slate-800 rounded-2xl shadow-xs p-3.5 space-y-3 flex-1 flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-stone-100 dark:border-slate-800">
+              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-emerald-200/70 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                  <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800/60">
                     <Bike className="w-4 h-4" />
                   </span>
                   <div>
                     <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                       🛵 Delivery
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold">
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 font-bold border border-emerald-300/80">
                         {activeDeliveryOrders.length}
                       </span>
                     </h2>
-                    <p className="text-[10px] text-stone-500 dark:text-slate-400">Entrega motoboy no endereço</p>
+                    <p className="text-[10px] text-emerald-900/80 dark:text-slate-400 font-medium">Entrega motoboy no endereço</p>
                   </div>
                 </div>
 
@@ -632,11 +632,11 @@ export const CaixaView: React.FC = () => {
                     className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition flex items-center gap-1 cursor-pointer shadow-xs ${
                       copiedDeliveryLink
                         ? 'bg-emerald-600 text-white border-emerald-600'
-                        : 'bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-700'
+                        : 'bg-white hover:bg-emerald-100/70 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-800 dark:text-slate-300 border-emerald-200 dark:border-slate-700'
                     }`}
                     title="Copiar link do cardápio online com marca e logo da loja para o WhatsApp"
                   >
-                    <Share2 className="w-3 h-3 text-purple-500" />
+                    <Share2 className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
                     <span>{copiedDeliveryLink ? 'Copiado!' : 'Cardápio'}</span>
                   </button>
                   {countNovosDelivery > 0 && (
@@ -654,8 +654,8 @@ export const CaixaView: React.FC = () => {
                   onClick={() => setDeliveryFilter('todos')}
                   className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
                     deliveryFilter === 'todos'
-                      ? 'bg-purple-700 text-white border-purple-700 shadow-2xs'
-                      : 'bg-stone-50 dark:bg-slate-950 text-stone-600 dark:text-slate-400 border-stone-200 dark:border-slate-800 hover:bg-stone-100 dark:hover:bg-slate-900'
+                      ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs'
+                      : 'bg-white dark:bg-slate-950 text-stone-700 dark:text-slate-400 border-emerald-200 dark:border-slate-800 hover:bg-emerald-100/60'
                   }`}
                 >
                   Ativos ({activeDeliveryOrders.length})
@@ -677,8 +677,8 @@ export const CaixaView: React.FC = () => {
                   onClick={() => setDeliveryFilter('em_preparo')}
                   className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
                     deliveryFilter === 'em_preparo'
-                      ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
-                      : 'bg-amber-50 dark:bg-slate-950 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100/70'
+                      ? 'bg-amber-500 text-stone-950 font-black border-amber-600 shadow-2xs'
+                      : 'bg-amber-50 dark:bg-slate-950 text-amber-900 dark:text-amber-400 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100/70'
                   }`}
                 >
                   Preparo
@@ -688,8 +688,8 @@ export const CaixaView: React.FC = () => {
                   onClick={() => setDeliveryFilter('a_caminho')}
                   className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
                     deliveryFilter === 'a_caminho'
-                      ? 'bg-purple-600 text-white border-purple-700 shadow-2xs'
-                      : 'bg-purple-50 dark:bg-slate-950 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-900/50 hover:bg-purple-100/70'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-2xs'
+                      : 'bg-white dark:bg-slate-950 text-emerald-900 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100/60'
                   }`}
                 >
                   A Caminho 🛵
@@ -704,7 +704,7 @@ export const CaixaView: React.FC = () => {
                   value={deliverySearch}
                   onChange={(e) => setDeliverySearch(e.target.value)}
                   placeholder="Buscar cliente, rua, fone..."
-                  className="w-full pl-7.5 pr-2.5 py-1.5 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-purple-400 dark:focus:border-purple-600 transition"
+                  className="w-full pl-7.5 pr-2.5 py-1.5 text-xs bg-white dark:bg-slate-950 border border-emerald-200/90 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-emerald-500 transition"
                 />
               </div>
 
@@ -712,9 +712,9 @@ export const CaixaView: React.FC = () => {
               <div className="space-y-2.5 max-h-[64vh] overflow-y-auto pr-1 flex-1">
                 {deliveryOrders.length === 0 ? (
                   <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs space-y-1.5">
-                    <Bike className="w-8 h-8 mx-auto opacity-40 text-purple-400" />
-                    <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de delivery pendente.</p>
-                    <p className="text-[11px]">Novos pedidos para entrega via motoboy aparecerão aqui automaticamente.</p>
+                    <Bike className="w-8 h-8 mx-auto opacity-50 text-emerald-600 dark:text-emerald-400" />
+                    <p className="font-bold text-stone-800 dark:text-slate-300">Nenhum pedido de delivery pendente.</p>
+                    <p className="text-[11px] text-stone-600 dark:text-slate-400">Novos pedidos para entrega via motoboy aparecerão aqui automaticamente.</p>
                   </div>
                 ) : (
                   deliveryOrders.map((order) => {
@@ -751,7 +751,7 @@ export const CaixaView: React.FC = () => {
                             <span className="font-mono font-bold text-stone-900 dark:text-white">
                               #{order.id}
                             </span>
-                            <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-purple-600 text-white rounded flex items-center gap-1 shadow-2xs">
+                            <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-emerald-600 text-white rounded flex items-center gap-1 shadow-2xs">
                               <Bike className="w-2.5 h-2.5" /> DELIVERY
                             </span>
                           </div>
@@ -774,7 +774,7 @@ export const CaixaView: React.FC = () => {
                               </span>
                             )}
                             {isACaminho && (
-                              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-purple-600 text-white rounded-md flex items-center gap-1">
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-emerald-700 text-white rounded-md flex items-center gap-1">
                                 <Bike className="w-2.5 h-2.5" /> A CAMINHO
                               </span>
                             )}
@@ -783,33 +783,33 @@ export const CaixaView: React.FC = () => {
 
                         {/* Customer / Order Info */}
                         <div className="space-y-0.5 text-[11px] leading-tight">
-                          <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1">
-                            <span className="text-emerald-500">👤</span>
+                          <div className="font-black text-stone-950 dark:text-white flex items-center gap-1">
+                            <span className="text-emerald-700 dark:text-emerald-400">👤</span>
                             <span className="truncate">{order.cliente_nome || 'Cliente'}</span>
                           </div>
                           {telefone && (
-                            <div className="text-stone-500 dark:text-slate-400 flex items-center gap-1">
+                            <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1">
                               <Phone className="w-2.5 h-2.5" />
                               <span>{telefone}</span>
                             </div>
                           )}
                           {endereco && (
-                            <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1">
+                            <div className="text-stone-800 dark:text-slate-300 flex items-start gap-1">
                               <MapPin className="w-2.5 h-2.5 text-red-500 shrink-0 mt-0.5" />
                               <span className="text-[10px] leading-tight font-medium" title={endereco}>{endereco}</span>
                             </div>
                           )}
                           {order.forma_pagamento && (
-                            <div className="text-[10px] text-stone-500 dark:text-slate-400 pt-0.5">
+                            <div className="text-[10px] text-stone-600 dark:text-slate-400 pt-0.5">
                               💰 Pgto: <strong className="uppercase">{order.forma_pagamento}</strong>
                               {order.troco_para ? ` (Troco p/ R$ ${order.troco_para.toFixed(2)})` : ''}
                             </div>
                           )}
-                          <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1">
+                          <div className="text-[10px] text-stone-500 font-mono pt-0.5 flex items-center gap-1">
                             <Clock className="w-2.5 h-2.5" />
                             <span>{formatTime(order.criado_em)}</span>
                             {order.observacao && (
-                              <span className="text-amber-600 truncate ml-1 font-sans">
+                              <span className="text-amber-700 dark:text-amber-400 truncate ml-1 font-sans">
                                 • Obs: {order.observacao}
                               </span>
                             )}
@@ -817,7 +817,7 @@ export const CaixaView: React.FC = () => {
                         </div>
 
                         {/* Items mini list */}
-                        <div className="pt-1.5 border-t border-stone-200/70 dark:border-slate-800/80 space-y-1">
+                        <div className="pt-1.5 border-t border-emerald-200/80 dark:border-slate-800/80 space-y-1">
                           {order.itens
                             .filter((it) => it.status === 'ativo')
                             .map((it, idx) => (
@@ -833,11 +833,11 @@ export const CaixaView: React.FC = () => {
                         </div>
 
                         {/* Total & Action Buttons */}
-                        <div className="pt-1.5 border-t border-stone-200/70 dark:border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
-                          <span className="font-mono font-bold text-xs text-purple-600 dark:text-purple-400">
+                        <div className="pt-1.5 border-t border-emerald-200/80 dark:border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
+                          <span className="font-mono font-bold text-xs text-emerald-800 dark:text-emerald-400">
                             {formatCurrency(orderTotal)}
                             {order.taxa_entrega ? (
-                              <span className="text-[9px] text-stone-400 block font-normal font-sans">
+                              <span className="text-[9px] text-stone-500 dark:text-slate-400 block font-normal font-sans">
                                 (+ {formatCurrency(order.taxa_entrega)} taxa)
                               </span>
                             ) : null}
@@ -850,10 +850,10 @@ export const CaixaView: React.FC = () => {
                                 e.stopPropagation();
                                 setPrintingOrder({ order, autoPrint: false });
                               }}
-                              className="p-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-200 rounded-lg text-xs transition cursor-pointer"
+                              className="p-1.5 bg-white hover:bg-stone-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-200 border border-emerald-200 dark:border-slate-700 rounded-lg text-xs transition cursor-pointer"
                               title="Reimprimir comanda de produção"
                             >
-                              <Printer className="w-3.5 h-3.5 text-purple-500" />
+                              <Printer className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                             </button>
 
                             {isNovo && (
@@ -878,7 +878,7 @@ export const CaixaView: React.FC = () => {
                                   e.stopPropagation();
                                   updateOrderStatus(order.id, 'a_caminho');
                                 }}
-                                className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                                className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
                               >
                                 <Bike className="w-3 h-3" />
                                 <span>Despachar</span>
@@ -892,10 +892,10 @@ export const CaixaView: React.FC = () => {
                                 e.stopPropagation();
                                 handleShareMotoboyLink(order);
                               }}
-                              className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                              className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
                               title="Copiar link do motoboy ou enviar para o WhatsApp dele"
                             >
-                              <Bike className="w-3 h-3 text-purple-200" />
+                              <Bike className="w-3 h-3 text-emerald-200" />
                               <span>Link Motoboy</span>
                             </button>
 
@@ -931,21 +931,21 @@ export const CaixaView: React.FC = () => {
 
           {/* Coluna 2: Retirada no Balcão (Buscar na Loja) */}
           <div className="col-span-12 md:col-span-1 xl:col-span-3 space-y-3 flex flex-col">
-            <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-3.5 space-y-3 flex-1 flex flex-col">
+            <div className="bg-amber-50/60 dark:bg-slate-900 border border-amber-200/90 dark:border-slate-800 rounded-2xl shadow-xs p-3.5 space-y-3 flex-1 flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-stone-100 dark:border-slate-800">
+              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-amber-200/70 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                  <span className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/80">
                     <ShoppingBag className="w-4 h-4" />
                   </span>
                   <div>
                     <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                       🛍️ Retirada (Buscar)
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-bold">
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-300 font-bold border border-amber-300/80">
                         {activeRetiradaOrders.length}
                       </span>
                     </h2>
-                    <p className="text-[10px] text-stone-500 dark:text-slate-400">Pede no site e retira na loja</p>
+                    <p className="text-[10px] text-amber-950/80 dark:text-slate-400 font-medium">Pede no site e retira na loja</p>
                   </div>
                 </div>
 
@@ -964,7 +964,7 @@ export const CaixaView: React.FC = () => {
                   className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
                     retiradaFilter === 'todos'
                       ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                      : 'bg-stone-50 dark:bg-slate-950 text-stone-600 dark:text-slate-400 border-stone-200 dark:border-slate-800 hover:bg-stone-100 dark:hover:bg-slate-900'
+                      : 'bg-white dark:bg-slate-950 text-stone-700 dark:text-slate-400 border-amber-200 dark:border-slate-800 hover:bg-amber-100/60'
                   }`}
                 >
                   Ativos ({activeRetiradaOrders.length})
@@ -986,8 +986,8 @@ export const CaixaView: React.FC = () => {
                   onClick={() => setRetiradaFilter('em_preparo')}
                   className={`px-2 py-0.5 rounded-md border transition cursor-pointer ${
                     retiradaFilter === 'em_preparo'
-                      ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
-                      : 'bg-amber-50 dark:bg-slate-950 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-900/50 hover:bg-amber-100/70'
+                      ? 'bg-amber-500 text-stone-950 font-black border-amber-600 shadow-2xs'
+                      : 'bg-amber-100/70 dark:bg-slate-950 text-amber-900 dark:text-amber-400 border-amber-300 dark:border-amber-900/50 hover:bg-amber-100'
                   }`}
                 >
                   Preparo
@@ -1013,7 +1013,7 @@ export const CaixaView: React.FC = () => {
                   value={retiradaSearch}
                   onChange={(e) => setRetiradaSearch(e.target.value)}
                   placeholder="Buscar cliente, fone, #..."
-                  className="w-full pl-7.5 pr-2.5 py-1.5 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-amber-400 dark:focus:border-amber-600 transition"
+                  className="w-full pl-7.5 pr-2.5 py-1.5 text-xs bg-white dark:bg-slate-950 border border-amber-200/90 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-amber-500 transition"
                 />
               </div>
 
@@ -1021,9 +1021,9 @@ export const CaixaView: React.FC = () => {
               <div className="space-y-2.5 max-h-[64vh] overflow-y-auto pr-1 flex-1">
                 {retiradaOrders.length === 0 ? (
                   <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs space-y-1.5">
-                    <ShoppingBag className="w-8 h-8 mx-auto opacity-40 text-amber-500" />
-                    <p className="font-semibold text-stone-600 dark:text-slate-400">Nenhum pedido de retirada pendente.</p>
-                    <p className="text-[11px]">Pedidos onde o cliente busca no balcão aparecerão aqui.</p>
+                    <ShoppingBag className="w-8 h-8 mx-auto opacity-50 text-amber-600 dark:text-amber-400" />
+                    <p className="font-bold text-stone-800 dark:text-slate-300">Nenhum pedido de retirada pendente.</p>
+                    <p className="text-[11px] text-stone-600 dark:text-slate-400">Pedidos onde o cliente busca no balcão aparecerão aqui.</p>
                   </div>
                 ) : (
                   retiradaOrders.map((order) => {
@@ -1051,7 +1051,7 @@ export const CaixaView: React.FC = () => {
                             ? 'bg-amber-50/40 dark:bg-slate-950 border-2 border-amber-400/90 dark:border-amber-500 hover:bg-amber-50/70'
                             : isPronto
                             ? 'bg-emerald-50/30 dark:bg-slate-950 border-2 border-emerald-500 hover:bg-emerald-50/60'
-                            : 'bg-stone-50/70 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 hover:bg-stone-100'
+                            : 'bg-white/90 dark:bg-slate-950 border border-amber-200/80 dark:border-slate-800 hover:bg-amber-100/40'
                         }`}
                       >
                         {/* Card Header */}
@@ -1092,31 +1092,31 @@ export const CaixaView: React.FC = () => {
 
                         {/* Customer / Order Info */}
                         <div className="space-y-0.5 text-[11px] leading-tight">
-                          <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1">
-                            <span className="text-amber-500">👤</span>
+                          <div className="font-black text-stone-950 dark:text-white flex items-center gap-1">
+                            <span className="text-amber-700 dark:text-amber-400">👤</span>
                             <span className="truncate">{order.cliente_nome || 'Cliente'}</span>
                           </div>
                           {telefone && (
-                            <div className="text-stone-500 dark:text-slate-400 flex items-center gap-1">
+                            <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1">
                               <Phone className="w-2.5 h-2.5" />
                               <span>{telefone}</span>
                             </div>
                           )}
-                          <div className="text-amber-800 dark:text-amber-300 flex items-center gap-1 font-semibold text-[10px] bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
+                          <div className="text-amber-950 dark:text-amber-300 flex items-center gap-1 font-semibold text-[10px] bg-amber-100/70 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200/60">
                             <ShoppingBag className="w-2.5 h-2.5 text-amber-600" />
                             <span>Retirada no balcão da pizzaria</span>
                           </div>
                           {order.forma_pagamento && (
-                            <div className="text-[10px] text-stone-500 dark:text-slate-400 pt-0.5">
+                            <div className="text-[10px] text-stone-600 dark:text-slate-400 pt-0.5">
                               💰 Pgto: <strong className="uppercase">{order.forma_pagamento}</strong>
                               {order.troco_para ? ` (Troco p/ R$ ${order.troco_para.toFixed(2)})` : ''}
                             </div>
                           )}
-                          <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1">
+                          <div className="text-[10px] text-stone-500 font-mono pt-0.5 flex items-center gap-1">
                             <Clock className="w-2.5 h-2.5" />
                             <span>{formatTime(order.criado_em)}</span>
                             {order.observacao && (
-                              <span className="text-amber-600 truncate ml-1 font-sans">
+                              <span className="text-amber-700 dark:text-amber-400 truncate ml-1 font-sans">
                                 • Obs: {order.observacao}
                               </span>
                             )}
@@ -1124,7 +1124,7 @@ export const CaixaView: React.FC = () => {
                         </div>
 
                         {/* Items mini list */}
-                        <div className="pt-1.5 border-t border-stone-200/70 dark:border-slate-800/80 space-y-1">
+                        <div className="pt-1.5 border-t border-amber-200/80 dark:border-slate-800/80 space-y-1">
                           {order.itens
                             .filter((it) => it.status === 'ativo')
                             .map((it, idx) => (
@@ -1140,10 +1140,10 @@ export const CaixaView: React.FC = () => {
                         </div>
 
                         {/* Total & Action Buttons */}
-                        <div className="pt-1.5 border-t border-stone-200/70 dark:border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
-                          <span className="font-mono font-bold text-xs text-amber-600 dark:text-amber-400">
+                        <div className="pt-1.5 border-t border-amber-200/80 dark:border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
+                          <span className="font-mono font-bold text-xs text-amber-800 dark:text-amber-400">
                             {formatCurrency(orderTotal)}
-                            <span className="text-[9px] text-stone-400 block font-normal font-sans">
+                            <span className="text-[9px] text-stone-500 dark:text-slate-400 block font-normal font-sans">
                               (Sem taxa de entrega)
                             </span>
                           </span>
@@ -1155,10 +1155,10 @@ export const CaixaView: React.FC = () => {
                                 e.stopPropagation();
                                 setPrintingOrder({ order, autoPrint: false });
                               }}
-                              className="p-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-200 rounded-lg text-xs transition cursor-pointer"
+                              className="p-1.5 bg-white hover:bg-stone-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-700 dark:text-slate-200 border border-amber-200 dark:border-slate-700 rounded-lg text-xs transition cursor-pointer"
                               title="Reimprimir comanda de produção"
                             >
-                              <Printer className="w-3.5 h-3.5 text-amber-500" />
+                              <Printer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                             </button>
 
                             {isNovo && (
@@ -1219,32 +1219,32 @@ export const CaixaView: React.FC = () => {
 
           {/* Coluna 3: Mesas & Comandas (Salão) + Resumo do Caixa */}
           <div className="col-span-12 md:col-span-1 xl:col-span-3 space-y-3 flex flex-col">
-            <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-3.5 space-y-3 flex-1 flex flex-col">
+            <div className="bg-sky-50/60 dark:bg-slate-900 border border-sky-200/90 dark:border-slate-800 rounded-2xl shadow-xs p-3.5 space-y-3 flex-1 flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between pb-2.5 border-b border-stone-100 dark:border-slate-800">
+              <div className="flex items-center justify-between pb-2.5 border-b border-sky-200/70 dark:border-slate-800">
                 <div className="flex items-center gap-2">
-                  <span className="p-1.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-lg">
+                  <span className="p-1.5 bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 rounded-lg border border-sky-300/80">
                     <UtensilsCrossed className="w-4 h-4" />
                   </span>
                   <div>
                     <h2 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                       🍽️ Mesas & Comandas
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold">
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-950 dark:text-sky-300 font-bold border border-sky-300/80">
                         {openMesaComandas.length}
                       </span>
                     </h2>
-                    <p className="text-[10px] text-stone-500 dark:text-slate-400">Consumo presencial no salão</p>
+                    <p className="text-[10px] text-sky-950/80 dark:text-slate-400 font-medium">Consumo presencial no salão</p>
                   </div>
                 </div>
 
-                <div className="flex bg-stone-100 dark:bg-slate-950 p-0.5 rounded-lg border border-stone-200 dark:border-slate-800 text-[10px] font-semibold">
+                <div className="flex bg-white dark:bg-slate-950 p-0.5 rounded-lg border border-sky-200/90 dark:border-slate-800 text-[10px] font-semibold">
                   <button
                     type="button"
                     onClick={() => setFilterMode('todas')}
                     className={`px-2 py-0.5 rounded transition cursor-pointer ${
                       filterMode === 'todas'
-                        ? 'bg-stone-900 dark:bg-slate-800 text-white shadow-2xs font-bold'
-                        : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
+                        ? 'bg-sky-700 text-white shadow-2xs font-bold'
+                        : 'text-stone-700 dark:text-slate-400 hover:text-stone-950 dark:hover:text-white'
                     }`}
                   >
                     Todas
@@ -1255,7 +1255,7 @@ export const CaixaView: React.FC = () => {
                     className={`px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer ${
                       filterMode === 'fechar'
                         ? 'bg-amber-400 dark:bg-amber-500 text-stone-950 font-bold shadow-2xs'
-                        : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
+                        : 'text-stone-700 dark:text-slate-400 hover:text-stone-950 dark:hover:text-white'
                     }`}
                   >
                     <span>Pedindo Conta</span>
@@ -1271,7 +1271,7 @@ export const CaixaView: React.FC = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Buscar comanda # ou mesa..."
-                  className="w-full pl-7.5 pr-2.5 py-1.5 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-emerald-400 dark:focus:border-slate-700 focus:bg-white dark:focus:bg-slate-900 transition"
+                  className="w-full pl-7.5 pr-2.5 py-1.5 text-xs bg-white dark:bg-slate-950 border border-sky-200/90 dark:border-slate-800 rounded-xl text-stone-900 dark:text-white placeholder:text-stone-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-sky-500 transition"
                 />
               </div>
 
@@ -1310,22 +1310,22 @@ export const CaixaView: React.FC = () => {
                           onClick={() => handleSelectComanda(cmd)}
                           className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between cursor-pointer relative ${
                             isSelected
-                              ? 'bg-stone-900 dark:bg-slate-800 text-white border-2 border-emerald-500 ring-2 ring-emerald-500/40 shadow-lg'
+                              ? 'bg-stone-900 dark:bg-slate-800 text-white border-2 border-sky-500 ring-2 ring-sky-500/40 shadow-lg'
                               : isWaitingClose
                               ? 'bg-amber-50/90 dark:bg-slate-950 text-stone-900 dark:text-white border-2 border-amber-400/80 dark:border-amber-500 hover:bg-amber-100/80 dark:hover:bg-slate-900'
-                              : 'bg-stone-50/80 dark:bg-slate-950 hover:bg-stone-100/80 dark:hover:bg-slate-900 text-stone-900 dark:text-white border border-stone-200 dark:border-slate-800'
+                              : 'bg-white/90 dark:bg-slate-950 hover:bg-sky-100/40 dark:hover:bg-slate-900 text-stone-900 dark:text-white border border-sky-200/80 dark:border-slate-800'
                           }`}
                         >
                           <div>
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className={`text-xs font-mono font-bold ${isSelected ? 'text-emerald-400' : 'text-stone-500 dark:text-slate-400'}`}>
+                              <span className={`text-xs font-mono font-bold ${isSelected ? 'text-sky-400' : 'text-stone-500 dark:text-slate-400'}`}>
                                 {cmd.numero}
                               </span>
                               <span className="font-bold text-xs text-stone-900 dark:text-white">
                                 Mesa {cmd.mesa_numero.toString().padStart(2, '0')}
                               </span>
                               {isSelected && (
-                                <span className="px-1.5 py-0.2 text-[9px] font-black uppercase bg-emerald-500 text-slate-950 rounded-md shadow-xs">
+                                <span className="px-1.5 py-0.2 text-[9px] font-black uppercase bg-sky-500 text-white rounded-md shadow-xs">
                                   ✓ ATIVA
                                 </span>
                               )}
@@ -1336,7 +1336,7 @@ export const CaixaView: React.FC = () => {
                               )}
                             </div>
                             {cmd.cliente_nome && (
-                              <span className="text-[11px] font-semibold text-emerald-500 dark:text-emerald-400 block mt-0.5">
+                              <span className="text-[11px] font-bold text-sky-950 dark:text-sky-300 block mt-0.5">
                                 👤 Cliente: {cmd.cliente_nome}
                               </span>
                             )}
@@ -1360,10 +1360,10 @@ export const CaixaView: React.FC = () => {
               </div>
 
               {/* Resumo do Caixa Widget */}
-              <div className="pt-2 border-t border-stone-200 dark:border-slate-800 space-y-1.5">
+              <div className="pt-2 border-t border-sky-200/80 dark:border-slate-800 space-y-1.5">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-bold uppercase tracking-wider text-stone-700 dark:text-slate-300 text-[10px]">Resumo do Caixa</span>
-                  <span className="text-[10px] text-stone-500 dark:text-slate-400 font-mono">
+                  <span className="font-bold uppercase tracking-wider text-sky-950 dark:text-slate-300 text-[10px]">Resumo do Caixa</span>
+                  <span className="text-[10px] text-stone-600 dark:text-slate-400 font-mono">
                     Abertura: <strong>{formatCurrency(cashRegister.valor_inicial)}</strong>
                   </span>
                 </div>
@@ -1397,18 +1397,18 @@ export const CaixaView: React.FC = () => {
             </div>
           </div>
 
-          {/* Coluna 4: Conferência & Pagamento (Workspace) */}
+          {/* Coluna 4: Conferência & Pagamento (Workspace - Tom Neutro Suave) */}
           <div className="col-span-12 md:col-span-1 xl:col-span-3 space-y-3 flex flex-col">
           {!activeComanda ? (
-            <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-12 text-center text-stone-400 dark:text-slate-400 h-full flex flex-col items-center justify-center space-y-3 min-h-[400px]">
-              <Receipt className="w-12 h-12 text-stone-300 dark:text-slate-600" />
-              <p className="text-sm font-bold text-stone-800 dark:text-slate-200">Selecione uma comanda ao lado</p>
+            <div className="bg-stone-100/70 dark:bg-slate-900 border border-stone-300/80 dark:border-slate-800 rounded-2xl shadow-xs p-12 text-center text-stone-500 dark:text-slate-400 h-full flex flex-col items-center justify-center space-y-3 min-h-[400px]">
+              <Receipt className="w-12 h-12 text-stone-400 dark:text-slate-600" />
+              <p className="text-sm font-bold text-stone-800 dark:text-slate-200">Selecione uma comanda ou pedido</p>
               <p className="text-xs text-stone-500 dark:text-slate-400 max-w-sm">
-                Ao selecionar uma mesa ou comanda, você poderá conferir o consumo, aplicar descontos, dividir a conta entre pessoas ou itens e registrar pagamentos.
+                Ao selecionar uma mesa, retirada ou delivery, você poderá conferir o consumo, aplicar descontos, dividir a conta e registrar pagamentos.
               </p>
             </div>
           ) : (
-            <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-5 space-y-4">
+            <div className="bg-stone-100/70 dark:bg-slate-900 border border-stone-300/80 dark:border-slate-800 rounded-2xl shadow-xs p-5 space-y-4">
               {/* Comanda / Pedido Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-stone-200 dark:border-slate-800">
                 <div>
@@ -1425,7 +1425,7 @@ export const CaixaView: React.FC = () => {
                         </>
                       ) : (
                         <>
-                          <span className="px-2.5 py-1 text-xs font-black uppercase bg-purple-600 text-white rounded-lg flex items-center gap-1 shadow-xs">
+                          <span className="px-2.5 py-1 text-xs font-black uppercase bg-emerald-700 text-white rounded-lg flex items-center gap-1 shadow-xs">
                             <Bike className="w-3.5 h-3.5" /> DELIVERY
                           </span>
                           <span className="text-base font-bold text-stone-900 dark:text-slate-100 font-mono">
@@ -1438,19 +1438,19 @@ export const CaixaView: React.FC = () => {
                         <span className="text-lg font-bold text-stone-900 dark:text-slate-100">
                           Mesa {activeComanda.mesa_numero.toString().padStart(2, '0')}
                         </span>
-                        <span className="text-xs font-mono font-bold bg-stone-100 dark:bg-slate-800 text-stone-700 dark:text-slate-300 border border-stone-200 dark:border-slate-700 px-2 py-0.5 rounded-md">
+                        <span className="text-xs font-mono font-bold bg-white dark:bg-slate-800 text-stone-800 dark:text-slate-300 border border-stone-300 dark:border-slate-700 px-2 py-0.5 rounded-md">
                           {activeComanda.numero}
                         </span>
                       </>
                     )}
                   </div>
 
-                  <div className="text-xs text-stone-500 dark:text-slate-400 mt-1 space-y-0.5">
+                  <div className="text-xs text-stone-600 dark:text-slate-400 mt-1 space-y-0.5">
                     {(activeOrder?.cliente_nome || activeComanda.cliente_nome) && (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold block">
+                      <span className="text-stone-950 dark:text-white font-black block">
                         👤 Cliente: {activeOrder?.cliente_nome || activeComanda.cliente_nome}
                         {(activeOrder?.cliente_telefone || activeOrder?.delivery_info?.telefone) && (
-                          <span className="font-normal text-stone-500 ml-1">
+                          <span className="font-normal text-stone-600 ml-1">
                             ({activeOrder?.cliente_telefone || activeOrder?.delivery_info?.telefone})
                           </span>
                         )}
@@ -2136,20 +2136,20 @@ export const CaixaView: React.FC = () => {
             /* Visualização separada em 3 colunas independentes para Canal: Todos (Delivery, Retirada, Mesas) */
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
               {/* Coluna 1: 🛵 Delivery */}
-              <div className="bg-stone-50/60 dark:bg-slate-900/60 border border-stone-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 flex flex-col">
-                <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-slate-800">
+              <div className="bg-emerald-50/60 dark:bg-slate-900/60 border border-emerald-200/90 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 flex flex-col">
+                <div className="flex items-center justify-between pb-2 border-b border-emerald-200/70 dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                    <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300/80">
                       <Bike className="w-4 h-4" />
                     </span>
                     <div>
                       <h3 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                         🛵 Delivery
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold">
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-300 font-bold border border-emerald-300/80">
                           {pedidosDeliveryList.length}
                         </span>
                       </h3>
-                      <p className="text-[10px] text-stone-500 dark:text-slate-400">Entregas motoboy com histórico</p>
+                      <p className="text-[10px] text-emerald-950/80 dark:text-slate-400 font-medium">Entregas motoboy com histórico</p>
                     </div>
                   </div>
                 </div>
@@ -2178,13 +2178,13 @@ export const CaixaView: React.FC = () => {
                               : isPronto
                               ? 'bg-white dark:bg-slate-900 border-2 border-emerald-500'
                               : isACaminho
-                              ? 'bg-white dark:bg-slate-900 border-2 border-purple-500'
+                              ? 'bg-white dark:bg-slate-900 border-2 border-emerald-600'
                               : 'bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 opacity-90'
                           }`}
                         >
                           <div className="p-3 bg-stone-50 dark:bg-slate-950 border-b border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-purple-600 text-white rounded-md flex items-center gap-1 shadow-xs">
+                              <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1 shadow-xs">
                                 <Bike className="w-3 h-3" /> DELIVERY
                               </span>
                               <span className="text-xs font-mono font-bold text-stone-500 dark:text-slate-400">
@@ -2195,16 +2195,16 @@ export const CaixaView: React.FC = () => {
                               {isNovo && <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">● NOVO</span>}
                               {isPreparo && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-amber-500 text-white rounded-md flex items-center gap-1"><Flame className="w-2.5 h-2.5" /> EM PREPARO</span>}
                               {isPronto && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-emerald-600 text-white rounded-md flex items-center gap-1"><Check className="w-2.5 h-2.5" /> PRONTO</span>}
-                              {isACaminho && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-purple-600 text-white rounded-md flex items-center gap-1"><Bike className="w-2.5 h-2.5" /> A CAMINHO</span>}
+                              {isACaminho && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-emerald-700 text-white rounded-md flex items-center gap-1"><Bike className="w-2.5 h-2.5" /> A CAMINHO</span>}
                               {isEntregue && <span className="px-2 py-0.5 text-[9px] font-bold uppercase bg-stone-700 text-stone-200 rounded-md">✓ ENTREGUE</span>}
                             </div>
                           </div>
                           <div className="p-3.5 space-y-2 flex-1 text-xs">
                             <div className="bg-stone-50/80 dark:bg-slate-950 p-2.5 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1">
-                              {order.cliente_nome && <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1.5"><span className="text-emerald-500">👤</span><span>{order.cliente_nome}</span></div>}
+                              {order.cliente_nome && <div className="font-black text-stone-950 dark:text-white flex items-center gap-1.5"><span className="text-emerald-700 dark:text-emerald-400">👤</span><span>{order.cliente_nome}</span></div>}
                               {(order.delivery_info?.telefone || order.cliente_telefone) && <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1 text-[11px]"><Phone className="w-2.5 h-2.5 text-stone-400" /><span>{order.delivery_info?.telefone || order.cliente_telefone}</span></div>}
-                              {(order.delivery_info?.endereco || order.cliente_endereco) && <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1"><MapPin className="w-2.5 h-2.5 text-red-500 shrink-0 mt-0.5" /><span className="text-[10px] leading-tight font-medium">{order.delivery_info?.endereco || order.cliente_endereco}</span></div>}
-                              <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
+                              {(order.delivery_info?.endereco || order.cliente_endereco) && <div className="text-stone-800 dark:text-slate-300 flex items-start gap-1"><MapPin className="w-2.5 h-2.5 text-red-500 shrink-0 mt-0.5" /><span className="text-[10px] leading-tight font-medium">{order.delivery_info?.endereco || order.cliente_endereco}</span></div>}
+                              <div className="text-[10px] text-stone-500 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
                             </div>
                             <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
                               {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
@@ -2216,18 +2216,18 @@ export const CaixaView: React.FC = () => {
                             </div>
                           </div>
                           <div className="p-3 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap">
-                            <span className="font-mono font-bold text-xs text-purple-600 dark:text-purple-400">{formatCurrency(totalOrder)}</span>
+                            <span className="font-mono font-bold text-xs text-emerald-800 dark:text-emerald-400">{formatCurrency(totalOrder)}</span>
                             <div className="flex items-center gap-1">
-                              <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
+                              <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" /></button>
                               {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Confirmar</button>}
-                              {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'a_caminho')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Despachar</button>}
+                              {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'a_caminho')} className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Despachar</button>}
                               <button
                                 type="button"
                                 onClick={() => handleShareMotoboyLink(order)}
-                                className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs"
+                                className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs"
                                 title="Link do Motoboy"
                               >
-                                <Bike className="w-3 h-3 text-purple-200" />
+                                <Bike className="w-3 h-3 text-emerald-200" />
                                 <span>Link</span>
                               </button>
                               {!isEntregue && (
@@ -2256,20 +2256,20 @@ export const CaixaView: React.FC = () => {
               </div>
 
               {/* Coluna 2: 🛍️ Retirada (Buscar) */}
-              <div className="bg-stone-50/60 dark:bg-slate-900/60 border border-stone-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 flex flex-col">
-                <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-slate-800">
+              <div className="bg-amber-50/60 dark:bg-slate-900/60 border border-amber-200/90 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 flex flex-col">
+                <div className="flex items-center justify-between pb-2 border-b border-amber-200/70 dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                    <span className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/80">
                       <ShoppingBag className="w-4 h-4" />
                     </span>
                     <div>
                       <h3 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                         🛍️ Retirada (Buscar)
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-bold">
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-300 font-bold border border-amber-300/80">
                           {pedidosRetiradaList.length}
                         </span>
                       </h3>
-                      <p className="text-[10px] text-stone-500 dark:text-slate-400">Retiradas no balcão com histórico</p>
+                      <p className="text-[10px] text-amber-950/80 dark:text-slate-400 font-medium">Retiradas no balcão com histórico</p>
                     </div>
                   </div>
                 </div>
@@ -2317,10 +2317,10 @@ export const CaixaView: React.FC = () => {
                           </div>
                           <div className="p-3.5 space-y-2 flex-1 text-xs">
                             <div className="bg-stone-50/80 dark:bg-slate-950 p-2.5 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1">
-                              {order.cliente_nome && <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1.5"><span className="text-amber-500">👤</span><span>{order.cliente_nome}</span></div>}
+                              {order.cliente_nome && <div className="font-black text-stone-950 dark:text-white flex items-center gap-1.5"><span className="text-amber-700 dark:text-amber-400">👤</span><span>{order.cliente_nome}</span></div>}
                               {(order.delivery_info?.telefone || order.cliente_telefone) && <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1 text-[11px]"><Phone className="w-2.5 h-2.5 text-stone-400" /><span>{order.delivery_info?.telefone || order.cliente_telefone}</span></div>}
-                              <div className="text-amber-800 dark:text-amber-300 font-semibold flex items-center gap-1 text-[10px]"><ShoppingBag className="w-2.5 h-2.5 text-amber-600" /><span>Retirada no balcão da loja</span></div>
-                              <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
+                              <div className="text-amber-950 dark:text-amber-300 font-semibold flex items-center gap-1 text-[10px] bg-amber-100/70 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200/60"><ShoppingBag className="w-2.5 h-2.5 text-amber-600" /><span>Retirada no balcão da loja</span></div>
+                              <div className="text-[10px] text-stone-500 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
                             </div>
                             <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
                               {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
@@ -2332,9 +2332,9 @@ export const CaixaView: React.FC = () => {
                             </div>
                           </div>
                           <div className="p-3 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap">
-                            <span className="font-mono font-bold text-xs text-amber-600 dark:text-amber-400">{formatCurrency(totalOrder)}</span>
+                            <span className="font-mono font-bold text-xs text-amber-800 dark:text-amber-400">{formatCurrency(totalOrder)}</span>
                             <div className="flex items-center gap-1">
-                              <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
+                              <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /></button>
                               {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Confirmar</button>}
                               {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'pronto')} className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Pronto</button>}
                               <button type="button" onClick={() => { handleSelectOrder(order); setCaixaActiveTab('comandas'); }} className="px-2 py-1 bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs">
@@ -2351,20 +2351,20 @@ export const CaixaView: React.FC = () => {
               </div>
 
               {/* Coluna 3: 🍽️ Mesas & Salão */}
-              <div className="bg-stone-50/60 dark:bg-slate-900/60 border border-stone-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 flex flex-col">
-                <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-slate-800">
+              <div className="bg-sky-50/60 dark:bg-slate-900/60 border border-sky-200/90 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 flex flex-col">
+                <div className="flex items-center justify-between pb-2 border-b border-sky-200/70 dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                    <span className="p-1.5 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-300/80">
                       <UtensilsCrossed className="w-4 h-4" />
                     </span>
                     <div>
                       <h3 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                         🍽️ Mesas & Salão
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold">
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-950 dark:text-sky-300 font-bold border border-sky-300/80">
                           {pedidosMesaList.length}
                         </span>
                       </h3>
-                      <p className="text-[10px] text-stone-500 dark:text-slate-400">Consumo em mesas com histórico</p>
+                      <p className="text-[10px] text-sky-950/80 dark:text-slate-400 font-medium">Consumo em mesas com histórico</p>
                     </div>
                   </div>
                 </div>
@@ -2412,7 +2412,7 @@ export const CaixaView: React.FC = () => {
                           </div>
                           <div className="p-3.5 space-y-2 flex-1 text-xs">
                             <div className="bg-stone-50/80 dark:bg-slate-950 p-2.5 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1">
-                              {order.cliente_nome && <div className="font-bold text-stone-900 dark:text-white flex items-center gap-1.5"><span className="text-emerald-500">👤</span><span>{order.cliente_nome}</span></div>}
+                              {order.cliente_nome && <div className="font-black text-stone-950 dark:text-white flex items-center gap-1.5"><span className="text-sky-700 dark:text-sky-400">👤</span><span>{order.cliente_nome}</span></div>}
                               {order.garcom_nome && <div className="text-stone-600 dark:text-slate-400 text-[11px]">Atendente: {order.garcom_nome}</div>}
                               <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
                             </div>
