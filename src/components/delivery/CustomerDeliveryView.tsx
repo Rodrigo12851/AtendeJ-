@@ -207,14 +207,26 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   const [trackingOrderId, setTrackingOrderId] = useState<number | null>(null);
   const [showOrderHistoryModal, setShowOrderHistoryModal] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
-  const [customerOrderIds, setCustomerOrderIds] = useState<number[]>(() => {
+
+  // Chave de pedidos isolada estritamente por loja para evitar que pedidos de uma loja apareçam em outra
+  const storeOrdersKey = useMemo(() => {
+    return targetLoja ? `atendeja_customer_orders_${targetLoja.id}_v2` : 'atendeja_customer_orders_default_v2';
+  }, [targetLoja]);
+
+  const [customerOrderIds, setCustomerOrderIds] = useState<number[]>([]);
+
+  useEffect(() => {
     try {
-      const raw = localStorage.getItem(CUSTOMER_ORDERS_KEY);
-      return raw ? JSON.parse(raw) : [];
+      const raw = localStorage.getItem(storeOrdersKey);
+      if (raw) {
+        setCustomerOrderIds(JSON.parse(raw));
+      } else {
+        setCustomerOrderIds([]);
+      }
     } catch {
-      return [];
+      setCustomerOrderIds([]);
     }
-  });
+  }, [storeOrdersKey]);
 
   // Load saved customer profile on mount
   useEffect(() => {
@@ -255,10 +267,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     if (!trackingOrderId) return null;
     const pool = allOrders && allOrders.length > 0 ? allOrders : orders;
     return (
-      pool.find((o) => o.id === trackingOrderId) ||
+      pool.find(
+        (o) =>
+          o.id === trackingOrderId &&
+          (!o.loja_id || !targetLoja || o.loja_id === targetLoja.id)
+      ) ||
       (submittedOrder && submittedOrder.id === trackingOrderId ? submittedOrder : null)
     );
-  }, [trackingOrderId, orders, allOrders, submittedOrder]);
+  }, [trackingOrderId, orders, allOrders, submittedOrder, targetLoja]);
 
   // Substantivo do segmento (hamburgueria vs pizzaria)
   const storeCategoryNoun = useMemo(() => {
@@ -361,24 +377,34 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     window.open(`https://wa.me/${phoneToUse}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
-  // Customer order history (matched by saved order IDs or customer phone number)
+  // Histórico de pedidos do cliente (isolado estritamente para esta loja e para este cliente)
   const customerOrders = useMemo(() => {
+    if (!targetLoja) return [];
     const cleanPhone = clienteTelefone.replace(/\D/g, '');
     const pool = allOrders && allOrders.length > 0 ? allOrders : orders;
 
     return pool
       .filter((o) => {
+        // 1. ISOLAMENTO ESTRITO POR LOJA: O pedido DEVE ser desta loja específica
+        const orderLojaId = o.loja_id || 'loja_centro';
+        if (orderLojaId !== targetLoja.id) return false;
+
+        // 2. Pedidos realizados pelo cliente neste aparelho para esta loja
         if (customerOrderIds.includes(o.id)) return true;
-        if (cleanPhone.length >= 8 && o.cliente_telefone) {
+
+        // 3. Match estrito por telefone completo do cliente (mínimo 10 dígitos com DDD)
+        if (cleanPhone.length >= 10 && o.cliente_telefone) {
           const orderPhone = o.cliente_telefone.replace(/\D/g, '');
-          if (orderPhone && (orderPhone.includes(cleanPhone) || cleanPhone.includes(orderPhone))) {
+          const cleanPhoneCore = cleanPhone.slice(-10);
+          const orderPhoneCore = orderPhone.slice(-10);
+          if (cleanPhoneCore.length === 10 && orderPhoneCore === cleanPhoneCore) {
             return true;
           }
         }
         return false;
       })
       .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
-  }, [allOrders, orders, customerOrderIds, clienteTelefone]);
+  }, [allOrders, orders, customerOrderIds, clienteTelefone, targetLoja]);
 
   // Check if there is an active order in progress
   const activeOrder = useMemo(() => {
@@ -749,7 +775,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       setProfileLoaded(true);
 
       const updatedIds = [newOrder.id, ...customerOrderIds.filter((id) => id !== newOrder.id)].slice(0, 50);
-      localStorage.setItem(CUSTOMER_ORDERS_KEY, JSON.stringify(updatedIds));
+      localStorage.setItem(storeOrdersKey, JSON.stringify(updatedIds));
       setCustomerOrderIds(updatedIds);
     } catch (err) {
       console.warn('Erro ao salvar no localStorage:', err);

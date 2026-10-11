@@ -46,6 +46,22 @@ import { playAddPop, playKitchenBell } from '../../utils/audio';
 
 const DEFAULT_FOOD_IMG = 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80';
 
+const DEFAULT_BURGER_ADDONS = [
+  { id: 'add_bacon', nome: 'Bacon Crocante Extra', preco: 5.0 },
+  { id: 'add_cheddar', nome: 'Cheddar Cremoso Melt', preco: 4.5 },
+  { id: 'add_smash', nome: 'Smash Burger 90g Extra', preco: 8.5 },
+  { id: 'add_cebola', nome: 'Cebola Caramelizada', preco: 3.5 },
+  { id: 'add_maionese', nome: 'Maionese Especial da Casa', preco: 3.0 },
+  { id: 'add_ovo', nome: 'Ovo Frito na Manteiga', preco: 3.0 },
+];
+
+const DEFAULT_PORTION_ADDONS = [
+  { id: 'add_queijo', nome: 'Queijo Parmesão / Ralado Extra', preco: 5.0 },
+  { id: 'add_bacon_cubos', nome: 'Farofa de Bacon Crocante', preco: 6.0 },
+  { id: 'add_cheddar_dose', nome: 'Dose Extra de Cheddar Cremoso', preco: 5.0 },
+  { id: 'add_molho_especial', nome: 'Pote de Molho Especial (Gourmet)', preco: 4.0 },
+];
+
 export const CaixaView: React.FC = () => {
   const {
     tables,
@@ -195,6 +211,10 @@ export const CaixaView: React.FC = () => {
   const [balcaoSearchQuery, setBalcaoSearchQuery] = useState('');
   const [balcaoCart, setBalcaoCart] = useState<OrderItem[]>([]);
   const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
+  const [selectedCustomItem, setSelectedCustomItem] = useState<Product | null>(null);
+  const [selectedCustomItemAddons, setSelectedCustomItemAddons] = useState<{ id: string; nome: string; preco: number }[]>([]);
+  const [customItemModalObs, setCustomItemModalObs] = useState<string>('');
+  const [customItemModalQtd, setCustomItemModalQtd] = useState<number>(1);
   const [isSubmittingBalcaoOrder, setIsSubmittingBalcaoOrder] = useState(false);
   const [balcaoCreatedOrder, setBalcaoCreatedOrder] = useState<Order | null>(null);
   const [balcaoErrorMessage, setBalcaoErrorMessage] = useState<string | null>(null);
@@ -203,6 +223,69 @@ export const CaixaView: React.FC = () => {
     if (prod.isPizza) return true;
     const cat = categories.find((c) => c.id === prod.categoria_id);
     return Boolean(cat?.nome?.toLowerCase().includes('pizza') || prod.nome?.toLowerCase().includes('pizza'));
+  };
+
+  const hasProductAddons = (prod: Product) => {
+    if (isPizzaProduct(prod)) return false;
+    if (prod.permitirAdicionais) return true;
+    const cat = categories.find((c) => c.id === prod.categoria_id);
+    const catName = cat?.nome?.toLowerCase() || '';
+    const prodCat = prod.categoria_id?.toLowerCase() || '';
+    return (
+      prodCat === 'lanches' ||
+      prodCat === 'hamburgueres' ||
+      prodCat === 'porcoes' ||
+      catName.includes('lanche') ||
+      catName.includes('burger') ||
+      catName.includes('hambúrguer') ||
+      catName.includes('porç')
+    );
+  };
+
+  const getAvailableAddonsForProduct = (prod: Product) => {
+    const cat = categories.find((c) => c.id === prod.categoria_id);
+    const catName = cat?.nome?.toLowerCase() || '';
+    const prodCat = prod.categoria_id?.toLowerCase() || '';
+    if (prodCat === 'porcoes' || catName.includes('porç')) {
+      return DEFAULT_PORTION_ADDONS;
+    }
+    return DEFAULT_BURGER_ADDONS;
+  };
+
+  const handleOpenItemCustomizerBalcao = (prod: Product) => {
+    setSelectedCustomItem(prod);
+    setSelectedCustomItemAddons([]);
+    setCustomItemModalObs('');
+    setCustomItemModalQtd(1);
+  };
+
+  const handleConfirmCustomItemBalcao = () => {
+    if (!selectedCustomItem) return;
+    const extrasTotal = selectedCustomItemAddons.reduce((acc, curr) => acc + curr.preco, 0);
+    const precoBase = selectedCustomItem.em_promocao && selectedCustomItem.preco_promocional
+      ? selectedCustomItem.preco_promocional
+      : selectedCustomItem.preco;
+    const precoUnitarioTotal = precoBase + extrasTotal;
+    const precoTotal = precoUnitarioTotal * customItemModalQtd;
+
+    const newItem: OrderItem = {
+      id: `balcao_item_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      produto_id: selectedCustomItem.id,
+      nome: selectedCustomItem.nome,
+      quantidade: customItemModalQtd,
+      preco_unitario: precoUnitarioTotal,
+      preco_total: precoTotal,
+      adicionais: selectedCustomItemAddons.length > 0 ? selectedCustomItemAddons : undefined,
+      observacao: customItemModalObs.trim() || undefined,
+      status: 'ativo',
+    };
+
+    setBalcaoCart((prev) => [...prev, newItem]);
+    setSelectedCustomItem(null);
+    setSelectedCustomItemAddons([]);
+    setCustomItemModalObs('');
+    setCustomItemModalQtd(1);
+    playAddPop();
   };
 
   const balcaoProducts = useMemo(() => {
@@ -2362,6 +2445,7 @@ export const CaixaView: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                   {balcaoProducts.map((prod) => {
                     const isPizza = isPizzaProduct(prod);
+                    const hasAddons = hasProductAddons(prod);
                     const inCartCount = balcaoCart
                       .filter((it) => it.produto_id === prod.id)
                       .reduce((sum, it) => sum + it.quantidade, 0);
@@ -2370,7 +2454,13 @@ export const CaixaView: React.FC = () => {
                     return (
                       <div
                         key={prod.id}
-                        className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col justify-between shadow-2xs hover:shadow-xs transition group"
+                        onClick={() => {
+                          if (isPizza) setCustomizingProduct(prod);
+                          else if (hasAddons) handleOpenItemCustomizerBalcao(prod);
+                        }}
+                        className={`bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col justify-between shadow-2xs hover:shadow-xs transition group ${
+                          isPizza || hasAddons ? 'cursor-pointer hover:border-amber-400 dark:hover:border-amber-500' : ''
+                        }`}
                       >
                         <div className="space-y-2">
                           <div className="relative h-28 w-full rounded-xl overflow-hidden bg-stone-100 dark:bg-slate-950">
@@ -2386,6 +2476,11 @@ export const CaixaView: React.FC = () => {
                             {isPizza && (
                               <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500 text-stone-950 shadow-xs flex items-center gap-1">
                                 🍕 Pizza
+                              </span>
+                            )}
+                            {!isPizza && hasAddons && (
+                              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-black bg-orange-600 text-white shadow-xs flex items-center gap-1">
+                                ✨ Adicionais
                               </span>
                             )}
                             {prod.em_promocao && (
@@ -2425,7 +2520,10 @@ export const CaixaView: React.FC = () => {
                           {isPizza ? (
                             <button
                               type="button"
-                              onClick={() => setCustomizingProduct(prod)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCustomizingProduct(prod);
+                              }}
                               className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
                             >
                               <Sparkles className="w-3.5 h-3.5" />
@@ -2436,10 +2534,30 @@ export const CaixaView: React.FC = () => {
                                 </span>
                               )}
                             </button>
+                          ) : hasAddons ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenItemCustomizerBalcao(prod);
+                              }}
+                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Personalizar</span>
+                              {inCartCount > 0 && (
+                                <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-stone-950 text-white rounded-full">
+                                  {inCartCount}
+                                </span>
+                              )}
+                            </button>
                           ) : (
                             <button
                               type="button"
-                              onClick={() => handleAddSimpleProductToBalcao(prod)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddSimpleProductToBalcao(prod);
+                              }}
                               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
                             >
                               <Plus className="w-3.5 h-3.5" />
@@ -3793,6 +3911,166 @@ export const CaixaView: React.FC = () => {
             playAddPop();
           }}
         />
+      )}
+
+      {/* Modal de Adicionais & Personalização de Burgers, Lanches e Porções no Balcão */}
+      {selectedCustomItem && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/80 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#1A1A22] text-stone-900 dark:text-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-stone-200 dark:border-stone-800 max-w-md w-full overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150">
+            {/* Header com imagem */}
+            <div className="relative h-44 sm:h-48 w-full bg-stone-800 overflow-hidden shrink-0">
+              <img
+                src={selectedCustomItem.imagem || DEFAULT_FOOD_IMG}
+                alt={selectedCustomItem.nome}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setSelectedCustomItem(null)}
+                className="absolute top-3 right-3 p-2 bg-stone-900/80 hover:bg-stone-900 text-white rounded-full backdrop-blur-xs cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="absolute bottom-2 left-3 bg-stone-900/85 text-amber-400 font-mono font-black text-sm px-3 py-1 rounded-xl backdrop-blur-xs flex items-center gap-1.5">
+                {selectedCustomItem.em_promocao && selectedCustomItem.preco_promocional ? (
+                  <>
+                    <span>Base: {formatCurrency(selectedCustomItem.preco_promocional)}</span>
+                    <span className="text-xs line-through text-stone-400 font-normal">{formatCurrency(selectedCustomItem.preco)}</span>
+                    <span className="px-1 py-0.2 rounded bg-red-500 text-white text-[8px] font-sans uppercase">Promo</span>
+                  </>
+                ) : (
+                  <span>Base: {formatCurrency(selectedCustomItem.preco)}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+              <div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-stone-900 dark:text-white">
+                  {selectedCustomItem.nome}
+                </h3>
+                {selectedCustomItem.descricao && (
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
+                    {selectedCustomItem.descricao}
+                  </p>
+                )}
+              </div>
+
+              {/* Lista de Adicionais */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                  <span>Turbine o pedido (Adicionais)</span>
+                  <span className="text-[10px] text-stone-400 lowercase font-normal">opcional</span>
+                </div>
+
+                <div className="space-y-2">
+                  {getAvailableAddonsForProduct(selectedCustomItem).map((addon) => {
+                    const isSelected = selectedCustomItemAddons.some((a) => a.id === addon.id);
+                    return (
+                      <label
+                        key={addon.id}
+                        className={`flex items-center justify-between p-3 rounded-2xl border text-xs cursor-pointer transition select-none ${
+                          isSelected
+                            ? 'bg-amber-500/10 border-amber-500 text-stone-900 dark:text-white font-bold ring-1 ring-amber-500/30'
+                            : 'bg-stone-50 dark:bg-stone-900/70 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:border-stone-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              if (isSelected) {
+                                setSelectedCustomItemAddons((prev) => prev.filter((a) => a.id !== addon.id));
+                              } else {
+                                setSelectedCustomItemAddons((prev) => [...prev, addon]);
+                              }
+                            }}
+                            className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 cursor-pointer accent-amber-500"
+                          />
+                          <span>+ {addon.nome}</span>
+                        </div>
+                        <span className="font-mono font-bold text-amber-500">
+                          +{formatCurrency(addon.preco)}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Observações */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block">
+                  Observações do Item
+                </label>
+                <textarea
+                  value={customItemModalObs}
+                  onChange={(e) => setCustomItemModalObs(e.target.value)}
+                  placeholder="Ex: sem cebola, ponto da carne, sem picles, molho à parte..."
+                  className="w-full p-3 rounded-2xl text-xs bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-slate-800 resize-none h-16 text-stone-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Seletor de Quantidade */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+                <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                  Quantidade:
+                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setCustomItemModalQtd((q) => Math.max(1, q - 1))}
+                    disabled={customItemModalQtd <= 1}
+                    className="w-8 h-8 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-white flex items-center justify-center font-bold text-sm shadow-2xs disabled:opacity-30 cursor-pointer"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono font-bold text-sm text-stone-900 dark:text-white w-6 text-center">
+                    {customItemModalQtd}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCustomItemModalQtd((q) => q + 1)}
+                    className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold text-sm shadow-2xs hover:bg-amber-400 cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer com Botão de Confirmação */}
+            <div className="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/80 space-y-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleConfirmCustomItemBalcao}
+                className="w-full py-3.5 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl font-black text-sm flex items-center justify-between px-5 shadow-lg shadow-amber-500/20 active:scale-98 transition cursor-pointer"
+              >
+                <span>Adicionar ao Pedido</span>
+                <span className="font-mono">
+                  {formatCurrency(
+                    ((selectedCustomItem.em_promocao && selectedCustomItem.preco_promocional ? selectedCustomItem.preco_promocional : selectedCustomItem.preco) +
+                      selectedCustomItemAddons.reduce((a, c) => a + c.preco, 0)) *
+                      customItemModalQtd
+                  )}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedCustomItem(null)}
+                className="w-full py-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xs font-semibold cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
