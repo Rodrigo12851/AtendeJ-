@@ -776,9 +776,17 @@ Gerado em: ${new Date().toLocaleString('pt-BR')}`;
 
             {/* Donut Chart */}
             <div className="w-full h-[220px] relative mt-2">
-              <ResponsiveContainer width="100%" height="100%">
+              {/* Centro do Donut (z-0 para ficar atrás do tooltip flutuante) */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+                <span className="text-[10px] font-mono text-stone-500 dark:text-slate-400 uppercase font-bold">Total Mix</span>
+                <span className="text-xs font-black font-mono text-stone-900 dark:text-white">
+                  {formatCurrency(totalSalesPeriod).split(',')[0]}
+                </span>
+              </div>
+
+              <ResponsiveContainer width="100%" height="100%" className="relative z-10">
                 <PieChart>
-                  <Tooltip content={<CustomPieTooltip />} />
+                  <Tooltip content={<CustomPieTooltip />} wrapperStyle={{ zIndex: 100, pointerEvents: 'none' }} />
                   <Pie
                     data={categorySalesData}
                     cx="50%"
@@ -796,14 +804,6 @@ Gerado em: ${new Date().toLocaleString('pt-BR')}`;
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-
-              {/* Centro do Donut */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[10px] font-mono text-stone-500 dark:text-slate-400 uppercase font-bold">Total Mix</span>
-                <span className="text-xs font-black font-mono text-stone-900 dark:text-white">
-                  {formatCurrency(totalSalesPeriod).split(',')[0]}
-                </span>
-              </div>
             </div>
           </div>
 
@@ -1098,7 +1098,7 @@ const CustomPieTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-[#141414] text-white p-3 border-2 border-[#141414] hd-shadow-md text-xs font-mono min-w-[190px]">
+      <div className="relative z-50 bg-[#141414] text-white p-3 border-2 border-stone-700 shadow-2xl text-xs font-mono min-w-[190px] pointer-events-none">
         <div className="font-black text-amber-400 pb-1 mb-1.5 border-b border-gray-700">
           {data.name}
         </div>

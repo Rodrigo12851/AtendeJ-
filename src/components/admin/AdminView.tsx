@@ -1628,43 +1628,15 @@ export const AdminView: React.FC = () => {
         {/* ================= TAB 6: CONFIGURAÇÕES DA LOJA / TAXA DE ENTREGA ================= */}
         {activeTab === 'configuracoes' && (
           <div className="space-y-6 w-full">
-            {/* Header da Aba & Status da Nuvem em Grid Fluido */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs flex flex-col justify-center">
-                <h2 className="text-sm font-bold text-stone-900 dark:text-slate-100 uppercase flex items-center gap-2">
-                  <Store className="w-4 h-4 text-red-700" />
-                  <span>Configurações da Loja & Identidade Visual</span>
-                </h2>
-                <p className="text-xs text-stone-500 dark:text-slate-400 mt-1">
-                  Defina os dados da sua filial, marca, logotipo, endereço, telefone, horários e as taxas de entrega por bairro.
-                </p>
-              </div>
-
-              {/* Status do Banco de Dados Cloud Firestore */}
-              <div className="lg:col-span-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent p-4 rounded-2xl border border-emerald-500/30 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs shrink-0">
-                    <Cloud className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sm text-stone-900 dark:text-white">Cloud Firestore Ativo</span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Tempo Real
-                      </span>
-                    </div>
-                    <p className="text-xs text-stone-600 dark:text-slate-300 mt-0.5 flex items-center gap-1.5">
-                      <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      Projeto: <code className="font-mono bg-stone-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] text-emerald-700 dark:text-emerald-300">atendeja-83ef5</code>
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right hidden sm:block shrink-0">
-                  <span className="text-[11px] text-stone-500 dark:text-slate-400 block">Status da Nuvem</span>
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Conectado & Pronto</span>
-                </div>
-              </div>
+            {/* Header da Aba */}
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs">
+              <h2 className="text-sm font-bold text-stone-900 dark:text-slate-100 uppercase flex items-center gap-2">
+                <Store className="w-4 h-4 text-red-700" />
+                <span>Configurações da Loja & Identidade Visual</span>
+              </h2>
+              <p className="text-xs text-stone-500 dark:text-slate-400 mt-1">
+                Defina os dados da sua filial, marca, logotipo, endereço, telefone, horários e as taxas de entrega por bairro.
+              </p>
             </div>
 
             {/* Layout Principal em 2 Colunas no Desktop para Ocupar Toda a Tela */}

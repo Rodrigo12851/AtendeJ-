@@ -196,6 +196,7 @@ As principais entidades que compõem o sistema são:
 
 
 
+| **2026-10-11** | IA Assistant | • **Restauração do Modo Compacto no Cardápio de Mesas/Garçom (`CardapioGarcom.tsx`)**:<br>  - Retorno da alternância entre Modo Compacto (`layoutMode === 'compact'`) e Modo Cards (`layoutMode === 'cards'`), com botões seletores no cabeçalho.<br>  - No modo compacto, cada produto ocupa uma linha horizontal limpa com código interno, nome, tag, descrição resumida, preço e botões ágeis `[-] [qtd] [+]` para lançamento veloz de pedidos em smartphones pelos garçons.<br>• **Correção de Bug Visual no Gráfico Donut de Vendas por Categoria (`GraficosVendasPanel.tsx`)**:<br>  - Corrigido conflito de empilhamento onde o texto central `"Total Mix R$ 35.342"` ficava renderizado por cima ou vazava através do tooltip ao passar o mouse nas fatias do donut.<br>  - O texto central foi realocado para antes do `<ResponsiveContainer>` com `z-0 pointer-events-none`, e o `<Tooltip content={<CustomPieTooltip />} />` recebeu `wrapperStyle={{ zIndex: 100 }}` com fundo 100% opaco e borda sólida, garantindo que o tooltip fique sempre no topo e nítido.<br>• **Remoção do Card do Cloud Firestore na Aba Configurações & Taxas (`AdminView.tsx`)**:<br>  - Removido completamente o card informativo *"Cloud Firestore Ativo - Tempo Real - Projeto: atendeja-83ef5 - Status da Nuvem: Conectado & Pronto"* da aba de Configurações da Loja.<br>  - O cartão de "Configurações da Loja & Identidade Visual" agora ocupa 100% da largura (`w-full`) com layout limpo e direto. |
 
 ---
 
