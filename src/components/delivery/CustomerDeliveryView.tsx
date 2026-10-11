@@ -271,10 +271,103 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     });
   }, [storeProducts, activeCategory, searchQuery]);
 
-  // Featured Products ("Mais Pedidos" ou Destaques)
-  const featuredProducts = useMemo(() => {
-    return storeProducts.filter((p) => (isProductPromotionActive(p) || p.destaque) && p.ativo).slice(0, 6);
-  }, [storeProducts]);
+  // 1. Apuração de vendas por produto para esta loja (base do ranking de Mais Pedidos)
+  const productSalesMap = useMemo(() => {
+    const sales = new Map<string, number>();
+    const pool = allOrders && allOrders.length > 0 ? allOrders : orders;
+
+    const storeProductIds = new Set(storeProducts.map((p) => p.id));
+    const storeProductByName = new Map<string, Product>();
+    storeProducts.forEach((p) => {
+      storeProductByName.set(p.nome.toLowerCase().trim(), p);
+    });
+
+    pool.forEach((order) => {
+      if (order.status === 'cancelado') return;
+      if (order.loja_id && targetLoja && order.loja_id !== targetLoja.id) return;
+
+      order.itens?.forEach((item) => {
+        if (item.status === 'cancelado') return;
+        const qtd = item.quantidade || 1;
+
+        // A. Match direto por produto_id
+        if (item.produto_id && storeProductIds.has(item.produto_id)) {
+          sales.set(item.produto_id, (sales.get(item.produto_id) || 0) + qtd);
+          return;
+        }
+
+        // B. Match exato ou parcial por nome
+        if (item.nome) {
+          const itemNomeLower = item.nome.toLowerCase().trim();
+          const directMatch = storeProductByName.get(itemNomeLower);
+          if (directMatch) {
+            sales.set(directMatch.id, (sales.get(directMatch.id) || 0) + qtd);
+            return;
+          }
+
+          const fuzzyMatch = storeProducts.find(
+            (p) =>
+              itemNomeLower.includes(p.nome.toLowerCase().trim()) ||
+              p.nome.toLowerCase().trim().includes(itemNomeLower)
+          );
+          if (fuzzyMatch) {
+            sales.set(fuzzyMatch.id, (sales.get(fuzzyMatch.id) || 0) + qtd);
+            return;
+          }
+        }
+
+        // C. Sabores fracionados de pizza (ex: Meio a Meio)
+        if (item.sabores && item.sabores.length > 0) {
+          item.sabores.forEach((sabor) => {
+            const saborLower = sabor.toLowerCase().trim();
+            const pizzaMatch = storeProducts.find((p) => {
+              const pNomeLower = p.nome.toLowerCase().trim();
+              return (
+                pNomeLower.includes(saborLower) ||
+                saborLower.includes(pNomeLower.replace(/^pizza\s+/i, ''))
+              );
+            });
+            if (pizzaMatch) {
+              sales.set(pizzaMatch.id, (sales.get(pizzaMatch.id) || 0) + qtd);
+            }
+          });
+        }
+      });
+    });
+
+    return sales;
+  }, [allOrders, orders, storeProducts, targetLoja]);
+
+  // Top 3 Mais Vendidos (com base nas maiores saídas/vendas reais da loja)
+  const topSellingProducts = useMemo(() => {
+    if (storeProducts.length === 0) return [];
+    const activeProducts = storeProducts.filter((p) => p.ativo);
+    if (activeProducts.length === 0) return [];
+
+    return [...activeProducts]
+      .sort((a, b) => {
+        const salesA = productSalesMap.get(a.id) || 0;
+        const salesB = productSalesMap.get(b.id) || 0;
+
+        // 1. Mais vendido primeiro (maior volume de saídas)
+        if (salesB !== salesA) {
+          return salesB - salesA;
+        }
+
+        // 2. Desempate: Marcado como destaque manual
+        if (a.destaque && !b.destaque) return -1;
+        if (!a.destaque && b.destaque) return 1;
+
+        // 3. Desempate: Possui promoção ativa
+        const promoA = isProductPromotionActive(a) ? 1 : 0;
+        const promoB = isProductPromotionActive(b) ? 1 : 0;
+        if (promoB !== promoA) return promoB - promoA;
+
+        // 4. Ordem original do cadastro
+        return 0;
+      })
+      .slice(0, 3); // Estritamente o TOP 3 mais vendidos conforme solicitado
+  }, [storeProducts, productSalesMap]);
 
   // Banner Offers Carousel (apenas produtos com PROMOÇÃO ATIVA E VÁLIDA da loja)
   const bannerOffers = useMemo(() => {
@@ -1082,87 +1175,107 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   </div>
                 )}
 
-                {/* 3. Seção "Mais pedidos" */}
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between pb-1">
-                    <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-white tracking-tight">
-                      Mais pedidos
-                    </h3>
-                    <button
-                      onClick={() => {
-                        setActiveCategory('todos');
-                        setCurrentTab('cardapio');
-                      }}
-                      className="text-xs font-bold text-[#FF8A00] hover:underline flex items-center gap-0.5 cursor-pointer ml-1"
-                    >
-                      <span>Ver todos</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                {/* 3. Seção "Mais pedidos" (Top 3 Mais Vendidos) */}
+                {topSellingProducts.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between pb-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-white tracking-tight">
+                          Mais pedidos
+                        </h3>
+                        <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                          Top 3
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setActiveCategory('todos');
+                          setCurrentTab('cardapio');
+                        }}
+                        className="text-xs font-bold text-[#FF8A00] hover:underline flex items-center gap-0.5 cursor-pointer ml-1"
+                      >
+                        <span>Ver todos</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
 
-                  {/* Mais pedidos: Cards verticais com foto no topo, exatamente como na Imagem 1 (Mobile) e Imagem 2 (PC/Tablet) */}
-                  <div className="flex sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 overflow-x-auto pb-2 scrollbar-none">
-                    {(featuredProducts.length > 0 ? featuredProducts : storeProducts.slice(0, 5)).map((prod) => {
-                      return (
-                        <div
-                          key={`featured-${prod.id}`}
-                          onClick={() => handleAddRegularProduct(prod)}
-                          className={`rounded-2xl p-2.5 sm:p-3 border shadow-xs hover:shadow-md transition-all cursor-pointer group shrink-0 w-[125px] sm:w-auto flex flex-col justify-between ${
-                            isDarkMode ? 'bg-[#1E1E28] border-stone-800' : 'bg-white border-stone-100'
-                          }`}
-                        >
-                          {/* Foto quadrada arredondada */}
-                          <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800">
-                            <img
-                              src={prod.imagem || DEFAULT_FOOD_IMG}
-                              alt={prod.nome}
-                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                              onError={(e) => {
-                                const target = e.currentTarget;
-                                if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
-                              }}
-                            />
-                            {prod.isPizza && (
-                              <span className="absolute bottom-1 left-1 bg-[#FF8A00] text-white font-black text-[8px] px-1 py-0.5 rounded uppercase">
-                                🍕 Meio a Meio
+                    {/* Mais pedidos: Exatamente 3 cards lado a lado (Mobile: grid 3 colunas | PC: grid até max-w-3xl) */}
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-full sm:max-w-3xl">
+                      {topSellingProducts.map((prod, idx) => {
+                        return (
+                          <div
+                            key={`top-selling-${prod.id}`}
+                            onClick={() => handleAddRegularProduct(prod)}
+                            className={`rounded-2xl p-2 sm:p-3 border shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between min-w-0 ${
+                              isDarkMode ? 'bg-[#1E1E28] border-stone-800' : 'bg-white border-stone-100'
+                            }`}
+                          >
+                            {/* Foto quadrada arredondada */}
+                            <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800">
+                              <img
+                                src={prod.imagem || DEFAULT_FOOD_IMG}
+                                alt={prod.nome}
+                                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
+                                }}
+                              />
+                              {/* Badge de Ranking Top 1, Top 2, Top 3 */}
+                              <span
+                                className={`absolute top-1 left-1 sm:top-1.5 sm:left-1.5 px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black shadow-xs flex items-center gap-0.5 ${
+                                  idx === 0
+                                    ? 'bg-amber-400 text-stone-950'
+                                    : idx === 1
+                                    ? 'bg-stone-200 text-stone-800'
+                                    : 'bg-amber-700 text-white'
+                                }`}
+                              >
+                                {idx === 0 ? '1º' : idx === 1 ? '2º' : '3º'}
                               </span>
-                            )}
-                          </div>
 
-                          {/* Nome e Preço */}
-                          <div className="mt-2 text-left">
-                            <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate flex items-center gap-1">
-                              <span className="truncate">{prod.nome}</span>
-                              {isProductPromotionActive(prod) ? (
-                                <span className="shrink-0 px-1 py-0.2 rounded bg-red-500 text-white font-black text-[8px] uppercase">
-                                  PROMO
-                                </span>
-                              ) : prod.destaque ? (
-                                <span className="shrink-0">🔥</span>
-                              ) : null}
-                            </h4>
-                            <div className="mt-0.5">
-                              {isProductPromotionActive(prod) && prod.preco_promocional ? (
-                                <div className="flex items-baseline gap-1">
-                                  <span className="text-[#FF8A00] font-black text-xs sm:text-sm font-mono">
-                                    {formatCurrency(prod.preco_promocional)}
-                                  </span>
-                                  <span className="text-[9px] line-through text-stone-400 font-mono">
-                                    {formatCurrency(prod.preco)}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-[#FF8A00] font-black text-xs sm:text-sm font-mono block">
-                                  {formatCurrency(prod.preco)}
+                              {prod.isPizza && (
+                                <span className="absolute bottom-1 left-1 bg-[#FF8A00] text-white font-black text-[7px] sm:text-[8px] px-1 py-0.5 rounded uppercase">
+                                  🍕 Meio a Meio
                                 </span>
                               )}
                             </div>
+
+                            {/* Nome e Preço */}
+                            <div className="mt-2 text-left min-w-0">
+                              <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate flex items-center gap-1">
+                                <span className="truncate">{prod.nome}</span>
+                                {isProductPromotionActive(prod) ? (
+                                  <span className="shrink-0 px-1 py-0.2 rounded bg-red-500 text-white font-black text-[7px] sm:text-[8px] uppercase">
+                                    PROMO
+                                  </span>
+                                ) : (prod.destaque || idx === 0) ? (
+                                  <span className="shrink-0 text-xs">🔥</span>
+                                ) : null}
+                              </h4>
+                              <div className="mt-0.5">
+                                {isProductPromotionActive(prod) && prod.preco_promocional ? (
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-[#FF8A00] font-black text-xs sm:text-sm font-mono">
+                                      {formatCurrency(prod.preco_promocional)}
+                                    </span>
+                                    <span className="text-[9px] line-through text-stone-400 font-mono hidden sm:inline">
+                                      {formatCurrency(prod.preco)}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[#FF8A00] font-black text-xs sm:text-sm font-mono block">
+                                    {formatCurrency(prod.preco)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* 4. Seção "Todos os Lanches" / Produtos Gerais (1 Coluna no celular como na Imagem 1, Grid expansivo no PC/Tablet como na Imagem 2) */}
                 <div className="space-y-3 pt-3">
