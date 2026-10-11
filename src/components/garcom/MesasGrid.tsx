@@ -165,7 +165,7 @@ export const MesasGrid: React.FC<MesasGridProps> = ({
               key={table.id}
               type="button"
               onClick={() => handleTableClick(table)}
-              className={`relative rounded-xl border p-3 text-left transition-all duration-150 flex flex-col justify-between h-40 group cursor-pointer shadow-xs hover:shadow-md active:scale-98 ${
+              className={`relative rounded-xl border p-3 text-left transition-all duration-150 flex flex-col justify-between min-h-[195px] h-full group cursor-pointer shadow-xs hover:shadow-md active:scale-98 ${
                 isFree
                   ? 'bg-white dark:bg-slate-900 border-stone-200/90 dark:border-slate-800 hover:border-emerald-500 hover:bg-emerald-50/20 dark:hover:bg-slate-800/80'
                   : isOccupied
@@ -176,7 +176,7 @@ export const MesasGrid: React.FC<MesasGridProps> = ({
               }`}
             >
               {/* Card Top: Number & Capacity */}
-              <div className="flex items-start justify-between w-full">
+              <div className="flex items-start justify-between w-full shrink-0">
                 <div>
                   <span
                     className={`text-[9px] font-bold uppercase tracking-wider block ${
@@ -207,7 +207,7 @@ export const MesasGrid: React.FC<MesasGridProps> = ({
               </div>
 
               {/* Card Center: Status indicator */}
-              <div className="w-full my-auto py-1">
+              <div className="w-full my-auto py-1 flex-1 flex flex-col justify-center">
                 {isFree && (
                   <div>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold rounded-md">
@@ -271,7 +271,7 @@ export const MesasGrid: React.FC<MesasGridProps> = ({
 
               {/* Card Bottom: Total Parcial or Action */}
               <div
-                className={`w-full pt-2 border-t flex items-center justify-between ${
+                className={`w-full pt-2 mt-auto shrink-0 border-t flex items-center justify-between ${
                   isOccupied ? 'border-stone-800 dark:border-slate-800' : 'border-stone-200 dark:border-slate-800'
                 }`}
               >
