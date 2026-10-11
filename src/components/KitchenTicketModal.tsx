@@ -112,9 +112,8 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
         {/* Card Único e Sem Redundância de Canal & Dados do Cliente */}
         {isRetirada && (
           <div className="mt-1 p-2 border-2 border-black rounded text-left space-y-1 bg-white">
-            <div className="font-black text-xs uppercase flex items-center justify-between border-b border-black pb-1">
-              <span>🛍️ RETIRADA NO BALCÃO</span>
-              <span className="text-[9px] px-1 border border-black rounded-xs font-mono font-bold">BUSCAR NA LOJA</span>
+            <div className="font-black text-xs uppercase text-center border-b border-black pb-1 tracking-wide">
+              🛍️ RETIRADA NO BALCÃO (BUSCAR NA LOJA)
             </div>
             {order.cliente_nome && (
               <div className="font-black text-xs uppercase">
@@ -136,9 +135,8 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
 
         {isDelivery && (
           <div className="mt-1 p-2 border-2 border-black rounded text-left space-y-1 bg-white">
-            <div className="font-black text-xs uppercase flex items-center justify-between border-b border-black pb-1">
-              <span>🛵 ENTREGA DELIVERY</span>
-              <span className="text-[9px] px-1 border border-black rounded-xs font-mono font-bold">EM DOMICÍLIO</span>
+            <div className="font-black text-xs uppercase text-center border-b border-black pb-1 tracking-wide">
+              🛵 ENTREGA DELIVERY (EM DOMICÍLIO)
             </div>
             {order.cliente_nome && (
               <div className="font-black text-xs uppercase">
@@ -165,9 +163,8 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
 
         {isMesa && (
           <div className="mt-1 p-2 border-2 border-black rounded text-left space-y-1 bg-white">
-            <div className="font-black text-xs uppercase flex items-center justify-between border-b border-black pb-1">
-              <span>🍽️ SALÃO • MESA {order.mesa_numero ? order.mesa_numero.toString().padStart(2, '0') : '00'}</span>
-              <span className="text-[9px] px-1 border border-black rounded-xs font-mono font-bold">CONSUMO LOCAL</span>
+            <div className="font-black text-xs uppercase text-center border-b border-black pb-1 tracking-wide">
+              🍽️ SALÃO • MESA {order.mesa_numero ? order.mesa_numero.toString().padStart(2, '0') : '00'} (CONSUMO LOCAL)
             </div>
             {order.cliente_nome && (
               <div className="font-black text-xs uppercase">
@@ -192,12 +189,12 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
 
         {activeItens.map((item, idx) => (
           <div key={idx} className="space-y-0.5 pb-1.5 border-b border-dotted border-stone-300 last:border-b-0">
-            <div className="flex justify-between items-start gap-1 font-black text-xs">
-              <div className="flex items-start gap-1 flex-1 min-w-0">
+            <div className="flex justify-between items-baseline gap-1 font-black text-xs">
+              <div className="flex items-baseline gap-1 flex-1 min-w-0">
                 <span className="font-mono font-black shrink-0">
                   [{item.quantidade}x]
                 </span>
-                <span className="leading-tight uppercase font-black break-words">
+                <span className="leading-tight uppercase font-black">
                   {item.nome}
                 </span>
               </div>
@@ -208,41 +205,42 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
 
             {/* Sabores da Pizza */}
             {item.sabores && item.sabores.length > 0 && (
-              <div className="pl-5 font-bold text-[11px] leading-tight text-stone-900">
+              <div className="pl-4 font-bold text-[11px] leading-tight text-stone-900">
                 • Sabores: {item.sabores.join(' + ')}
               </div>
             )}
 
             {/* Tamanho da Pizza */}
             {item.tamanho && (
-              <div className="pl-5 text-[10px] font-medium text-stone-800">
+              <div className="pl-4 text-[10px] font-medium text-stone-800">
                 • Tamanho: {item.tamanho}
               </div>
             )}
 
             {/* Borda */}
             {item.borda && item.borda.nome !== 'Sem borda' && (
-              <div className="pl-5 text-[10px] font-bold text-stone-900">
+              <div className="pl-4 text-[10px] font-bold text-stone-900">
                 + Borda: {item.borda.nome}
               </div>
             )}
 
             {/* Massa */}
             {item.massa && (
-              <div className="pl-5 text-[10px] text-stone-700">
+              <div className="pl-4 text-[10px] text-stone-700">
                 • Massa: {item.massa}
               </div>
             )}
 
-            {/* Adicionais com destaque claro */}
+            {/* Adicionais com destaque claro sem quebras forçadas */}
             {item.adicionais && item.adicionais.length > 0 && (
-              <div className="pl-5 text-[11px] font-bold space-y-0.5 text-black">
+              <div className="pl-4 text-[11px] font-bold space-y-0.5 text-black">
                 {item.adicionais.map((adic, aIdx) => (
-                  <div key={aIdx} className="flex items-center gap-1">
-                    <span className="font-black">+</span>
-                    <span>{adic.nome}</span>
+                  <div key={aIdx} className="leading-tight">
+                    <span>+ {adic.nome}</span>
                     {adic.preco > 0 && (
-                      <span className="text-[10px] text-stone-600 font-mono">({formatCurrency(adic.preco)})</span>
+                      <span className="text-[10px] text-stone-600 font-mono ml-1 font-normal">
+                        ({formatCurrency(adic.preco)})
+                      </span>
                     )}
                   </div>
                 ))}
@@ -382,10 +380,10 @@ export const KitchenTicketModal: React.FC<KitchenTicketModalProps> = ({
           </div>
 
           {/* Paper Preview Area */}
-          <div className="p-4 sm:p-6 bg-stone-200 dark:bg-slate-950 flex justify-center max-h-[60vh] overflow-y-auto">
+          <div className="p-4 sm:p-6 bg-stone-200 dark:bg-slate-950 flex justify-center max-h-[75vh] overflow-y-auto">
             <div
-              className={`bg-white shadow-md p-4 transition-all duration-200 border border-stone-300 ${
-                paperSize === '58mm' ? 'w-[230px]' : 'w-[310px]'
+              className={`bg-white text-black shadow-lg p-4 transition-all duration-200 border border-stone-300 rounded-xs ${
+                paperSize === '58mm' ? 'w-[250px]' : 'w-[330px]'
               }`}
             >
               {renderTicketContent(false)}

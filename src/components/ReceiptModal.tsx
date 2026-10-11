@@ -290,10 +290,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           </div>
 
           {/* Paper Preview Area */}
-          <div className="p-4 sm:p-6 bg-stone-200 dark:bg-slate-950 flex justify-center max-h-[60vh] overflow-y-auto">
+          <div className="p-4 sm:p-6 bg-stone-200 dark:bg-slate-950 flex justify-center max-h-[75vh] overflow-y-auto">
             <div
-              className={`bg-white shadow-md p-4 transition-all duration-200 border border-stone-300 ${
-                paperSize === '58mm' ? 'w-[230px]' : 'w-[310px]'
+              className={`bg-white text-black shadow-lg p-4 transition-all duration-200 border border-stone-300 rounded-xs ${
+                paperSize === '58mm' ? 'w-[250px]' : 'w-[330px]'
               }`}
             >
               {renderReceiptContent(false)}
