@@ -6,8 +6,6 @@ import {
   Minus,
   Sparkles,
   ArrowLeft,
-  LayoutGrid,
-  List,
   Check,
 } from 'lucide-react';
 import { Product, OrderItem, Category } from '../../types';
@@ -43,7 +41,6 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
   const [activeCategory, setActiveCategory] = useState<string>('pizzas');
   const [searchTerm, setSearchTerm] = useState('');
   const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
-  const [layoutMode, setLayoutMode] = useState<'compact' | 'cards'>('compact');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -173,34 +170,6 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Layout Toggle: Compact (Mobile Best) vs Cards */}
-            <div className="flex items-center bg-stone-800 border border-stone-700 rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => setLayoutMode('compact')}
-                className={`p-1.5 rounded cursor-pointer transition ${
-                  layoutMode === 'compact'
-                    ? 'bg-stone-700 text-white'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
-                title="Modo Compacto (ideal para celular)"
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setLayoutMode('cards')}
-                className={`p-1.5 rounded cursor-pointer transition ${
-                  layoutMode === 'cards'
-                    ? 'bg-stone-700 text-white'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
-                title="Modo Cards Expandido"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
             {/* Cart Button with Counter */}
             <button
               onClick={onOpenCart}
@@ -280,112 +249,8 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
             <p className="text-base font-bold">Nenhum produto encontrado.</p>
             <p className="text-xs mt-1 text-stone-400">Tente pesquisar outro termo ou categoria.</p>
           </div>
-        ) : layoutMode === 'compact' ? (
-          /* ==================================================================== */
-          /* MODO COMPACTO: Ideal para celular (posicionamento rápido e esguio)  */
-          /* ==================================================================== */
-          <div className="space-y-1.5">
-            {filteredProducts.map((product) => {
-              const cartInfo = getCartInfoForProduct(product.id);
-
-              return (
-                <div
-                  key={product.id}
-                  className={`bg-white px-3 py-2 sm:py-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 shadow-2xs hover:border-stone-300 ${
-                    cartInfo.inCart ? 'border-amber-300 bg-amber-50/20' : 'border-stone-200/90'
-                  }`}
-                >
-                  {/* Left: Product Info */}
-                  <div className="min-w-0 flex-1 pr-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-mono text-stone-400 font-medium shrink-0 uppercase">
-                        {product.codigo_interno}
-                      </span>
-                      <h3 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-slate-100 truncate">
-                        {product.nome}
-                      </h3>
-                      {product.destaque && (
-                        <span className="text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded-md uppercase shrink-0">
-                          Top
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-stone-500 truncate leading-tight mt-0.5">
-                      {product.descricao}
-                    </p>
-                  </div>
-
-                  {/* Right: Price + Fast Actions */}
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <div className="text-right">
-                      <span className="text-xs sm:text-sm font-mono font-bold tracking-tight text-stone-900 dark:text-slate-100 whitespace-nowrap">
-                        {formatCurrency(product.preco)}
-                      </span>
-                      {product.isPizza && (
-                        <span className="block text-[9px] text-stone-400 uppercase font-medium">
-                          A partir de
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Action Controls */}
-                    {product.isPizza ? (
-                      <button
-                        type="button"
-                        onClick={() => handleQuickAdd(product)}
-                        className="py-1.5 px-3 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-xs font-bold rounded-lg shadow-2xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Montar</span>
-                        {cartInfo.inCart && (
-                          <span className="bg-amber-700 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
-                            {cartInfo.totalQty}
-                          </span>
-                        )}
-                      </button>
-                    ) : cartInfo.inCart ? (
-                      /* Inline Counter if already in cart */
-                      <div className="flex items-center bg-stone-100 border border-stone-300 rounded-lg p-0.5 shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => handleQuickDecrease(product)}
-                          className="w-7 h-7 bg-white border border-stone-200 text-stone-800 dark:text-slate-200 rounded-md flex items-center justify-center font-bold text-xs hover:bg-stone-50 active:bg-stone-200 transition cursor-pointer"
-                          title="Diminuir"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="w-6 text-center font-mono font-bold text-xs text-stone-900 dark:text-slate-100">
-                          {cartInfo.totalQty}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickAdd(product)}
-                          className="w-7 h-7 bg-red-600 text-white rounded-md flex items-center justify-center font-bold text-xs hover:bg-red-700 active:bg-red-800 transition cursor-pointer"
-                          title="Aumentar"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      /* Quick Add Button */
-                      <button
-                        type="button"
-                        onClick={() => handleQuickAdd(product)}
-                        className="py-1.5 px-3 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-lg shadow-2xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Adicionar</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         ) : (
-          /* ==================================================================== */
-          /* MODO CARDS: Visualização expandida tradicional                       */
-          /* ==================================================================== */
+          /* MODO CARDS DETALHADOS: Visualização expandida rica com foto e ingredientes */
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {filteredProducts.map((product) => {
               const cartInfo = getCartInfoForProduct(product.id);

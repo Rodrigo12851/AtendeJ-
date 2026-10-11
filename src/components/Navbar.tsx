@@ -13,7 +13,6 @@ import {
   Check,
   Sun,
   Moon,
-  Cloud,
   ShieldCheck,
   UtensilsCrossed,
 } from 'lucide-react';
@@ -241,15 +240,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
 
             {/* Desktop User Profile & Actions (Visible on MD+) */}
             <div className="hidden md:flex items-center gap-1.5 sm:gap-2 shrink-0">
-              {/* Cloud Status Indicator */}
-              <div
-                className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-950/50 border border-emerald-500/30 rounded-lg text-[10px] font-bold text-emerald-400"
-                title="Cloud Firestore conectado em tempo real (Projeto: atendeja-83ef5)"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <Cloud className="w-3.5 h-3.5" />
-                <span>Nuvem Ativa</span>
-              </div>
 
               {/* Copy Delivery Link Button */}
               <button
@@ -484,17 +474,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
 
       {/* 2. Mobile Store Information & Utility Toolbar (ROLA JUNTO COM A TELA - NOT STICKY) */}
       <div className="md:hidden bg-stone-900/95 dark:bg-stone-900 border-b border-stone-800 px-3 py-2 space-y-2">
-        {/* Full Action Toolbar from Screenshot: Nuvem Ativa, Delivery, Loja, Tema, Som, Reset, Operador */}
+        {/* Full Action Toolbar: Delivery, Loja, Tema, Som, Reset, Operador */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {/* Cloud Status */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-950/60 border border-emerald-500/40 rounded-lg text-[10px] font-bold text-emerald-400 shrink-0 shadow-2xs"
-            title="Cloud Firestore conectado em tempo real"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <Cloud className="w-3.5 h-3.5" />
-            <span>Nuvem Ativa</span>
-          </div>
 
           {/* Copy Delivery Link */}
           <button

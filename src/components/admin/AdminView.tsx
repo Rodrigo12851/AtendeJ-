@@ -1627,475 +1627,489 @@ export const AdminView: React.FC = () => {
 
         {/* ================= TAB 6: CONFIGURAÇÕES DA LOJA / TAXA DE ENTREGA ================= */}
         {activeTab === 'configuracoes' && (
-          <div className="space-y-5 max-w-3xl">
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs">
-              <h2 className="text-sm font-bold text-stone-900 dark:text-slate-100 uppercase flex items-center gap-2">
-                <Store className="w-4 h-4 text-red-700" />
-                <span>Configurações da Loja & Identidade Visual</span>
-              </h2>
-              <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
-                Defina os dados da sua filial, marca, logotipo, endereço, telefone e a taxa de entrega cobrada dos clientes.
-              </p>
-            </div>
-
-            {/* Status do Banco de Dados Cloud Firestore */}
-            <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent p-4 rounded-2xl border border-emerald-500/30 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm">
-                  <Cloud className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-stone-900 dark:text-white">Cloud Firestore Ativo</span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Sincronização em Tempo Real
-                    </span>
-                  </div>
-                  <p className="text-xs text-stone-600 dark:text-slate-300 mt-0.5 flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    Projeto: <code className="font-mono bg-stone-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] text-emerald-700 dark:text-emerald-300">atendeja-83ef5</code>
-                  </p>
-                </div>
-              </div>
-              <div className="text-right hidden sm:block">
-                <span className="text-[11px] text-stone-500 dark:text-slate-400 block">Status da Nuvem</span>
-                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Conectado & Pronto</span>
-              </div>
-            </div>
-
-            {/* Link do Cardápio Digital / Delivery */}
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-bold text-stone-900 dark:text-white flex items-center gap-2">
-                    <Share2 className="w-4 h-4 text-amber-500" />
-                    <span>Link do Cardápio Online (Delivery)</span>
-                  </h3>
-                  <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
-                    Envie este link para seus clientes no WhatsApp e redes sociais para eles pedirem direto com sua marca e logo.
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCopyLinkFromAdmin}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                      adminLinkCopied
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-red-700 hover:bg-red-800 text-white'
-                    }`}
-                  >
-                    {adminLinkCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{adminLinkCopied ? 'Link Copiado!' : 'Copiar Link WhatsApp'}</span>
-                  </button>
-                  <a
-                    href={getDeliveryUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-2 bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-                    title="Abrir cardápio em nova aba"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Abrir Cardápio</span>
-                  </a>
-                </div>
-              </div>
-
-              <div className="p-2.5 bg-stone-50 dark:bg-slate-800/80 rounded-xl border border-stone-200 dark:border-slate-700 flex items-center justify-between gap-3 text-xs font-mono text-stone-700 dark:text-slate-300 break-all select-all">
-                <span>{getDeliveryUrl()}</span>
-              </div>
-            </div>
-
-            {/* Links Exclusivos da Equipe */}
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs space-y-4">
-              <div>
-                <h3 className="text-sm font-bold text-stone-900 dark:text-white flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-purple-600" />
-                  <span>Links Exclusivos de Acesso da Equipe (com Tokens de Proteção)</span>
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
-                  Repasse estes links restritos apenas aos seus funcionários autorizados. Sem o token exato na URL, o sistema bloqueia o acesso à tela de login.
+          <div className="space-y-6 w-full">
+            {/* Header da Aba & Status da Nuvem em Grid Fluido */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs flex flex-col justify-center">
+                <h2 className="text-sm font-bold text-stone-900 dark:text-slate-100 uppercase flex items-center gap-2">
+                  <Store className="w-4 h-4 text-red-700" />
+                  <span>Configurações da Loja & Identidade Visual</span>
+                </h2>
+                <p className="text-xs text-stone-500 dark:text-slate-400 mt-1">
+                  Defina os dados da sua filial, marca, logotipo, endereço, telefone, horários e as taxas de entrega por bairro.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  {
-                    role: 'Garçom',
-                    painel: 'garcom',
-                    token: currentLoja?.token_garcom,
-                    icon: <UtensilsCrossed className="w-4 h-4 text-red-600" />,
-                    desc: 'Abertura de comandas e salão',
-                  },
-                  {
-                    role: 'Cozinha (KDS)',
-                    painel: 'cozinha',
-                    token: currentLoja?.token_cozinha,
-                    icon: <ChefHat className="w-4 h-4 text-amber-600" />,
-                    desc: 'Preparo e despacho de pedidos',
-                  },
-                  {
-                    role: 'Caixa (PDV)',
-                    painel: 'caixa',
-                    token: currentLoja?.token_caixa,
-                    icon: <CircleDollarSign className="w-4 h-4 text-emerald-600" />,
-                    desc: 'Contas, comandas e pagamentos',
-                  },
-                ].map((item) => {
-                  const fullUrl = `${window.location.origin}/?loja=${currentLoja?.slug}&painel=${item.painel}&token=${item.token}`;
-                  return (
-                    <div key={item.painel} className="p-3.5 rounded-xl border border-stone-200 dark:border-slate-800 bg-stone-50 dark:bg-slate-800/50 space-y-2">
-                      <div className="flex items-center gap-2">
-                        {item.icon}
-                        <span className="text-xs font-bold text-stone-900 dark:text-white">{item.role}</span>
-                      </div>
-                      <p className="text-[11px] text-stone-500 dark:text-slate-400">{item.desc}</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(fullUrl);
-                          setCopiedStaffRole(item.painel);
-                          setTimeout(() => setCopiedStaffRole(null), 2500);
-                        }}
-                        className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                          copiedStaffRole === item.painel
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-700'
-                        }`}
-                      >
-                        {copiedStaffRole === item.painel ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedStaffRole === item.painel ? 'Link Copiado!' : `Copiar Link ${item.role.split(' ')[0]}`}</span>
-                      </button>
+              {/* Status do Banco de Dados Cloud Firestore */}
+              <div className="lg:col-span-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent p-4 rounded-2xl border border-emerald-500/30 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                    <Cloud className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-sm text-stone-900 dark:text-white">Cloud Firestore Ativo</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Tempo Real
+                      </span>
                     </div>
-                  );
-                })}
+                    <p className="text-xs text-stone-600 dark:text-slate-300 mt-0.5 flex items-center gap-1.5">
+                      <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      Projeto: <code className="font-mono bg-stone-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] text-emerald-700 dark:text-emerald-300">atendeja-83ef5</code>
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right hidden sm:block shrink-0">
+                  <span className="text-[11px] text-stone-500 dark:text-slate-400 block">Status da Nuvem</span>
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Conectado & Pronto</span>
+                </div>
               </div>
             </div>
 
-            <form onSubmit={handleSaveLoja} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs space-y-5">
-              {lojaSaved && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <span>Configurações da loja salvas com sucesso!</span>
-                </div>
-              )}
+            {/* Layout Principal em 2 Colunas no Desktop para Ocupar Toda a Tela */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* COLUNA ESQUERDA (6 cols): Formulário de Dados da Loja, Identidade Visual e Horários */}
+              <div className="lg:col-span-6 space-y-6">
+                <form onSubmit={handleSaveLoja} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs space-y-5">
+                  {lojaSaved && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>Configurações da loja salvas com sucesso!</span>
+                    </div>
+                  )}
 
-              {/* Seção Identidade Visual & Nome */}
-              <div className="p-4 bg-stone-50 dark:bg-slate-800/60 rounded-xl border border-stone-200 dark:border-slate-700/60 space-y-4">
-                <h3 className="text-xs font-bold text-stone-800 dark:text-slate-200 uppercase tracking-wide flex items-center gap-2">
-                  <Camera className="w-4 h-4 text-red-600" />
-                  <span>Identidade Visual & Logotipo</span>
-                </h3>
+                  {/* Seção Identidade Visual & Nome */}
+                  <div className="p-4 bg-stone-50 dark:bg-slate-800/60 rounded-xl border border-stone-200 dark:border-slate-700/60 space-y-4">
+                    <h3 className="text-xs font-bold text-stone-800 dark:text-slate-200 uppercase tracking-wide flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-red-600" />
+                      <span>Identidade Visual & Logotipo</span>
+                    </h3>
 
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-                  {/* Visualizador da Logo */}
-                  <div className="relative group shrink-0">
-                    <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden shadow-xs">
-                      {lojaLogoUrl ? (
-                        <img
-                          src={lojaLogoUrl}
-                          alt="Logo da Loja"
-                          className="w-full h-full object-contain p-1"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-stone-400 dark:text-slate-500">
-                          <ImageIcon className="w-7 h-7" />
-                          <span className="text-[9px] font-semibold mt-1">Sem Logo</span>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      {/* Visualizador da Logo */}
+                      <div className="relative group shrink-0">
+                        <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center overflow-hidden shadow-xs">
+                          {lojaLogoUrl ? (
+                            <img
+                              src={lojaLogoUrl}
+                              alt="Logo da Loja"
+                              className="w-full h-full object-contain p-1"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-stone-400 dark:text-slate-500">
+                              <ImageIcon className="w-7 h-7" />
+                              <span className="text-[9px] font-semibold mt-1">Sem Logo</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    {lojaLogoUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setLojaLogoUrl('')}
-                        className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-1 shadow-md hover:bg-red-700 transition"
-                        title="Remover logotipo"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
+                        {lojaLogoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setLojaLogoUrl('')}
+                            className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-1 shadow-md hover:bg-red-700 transition cursor-pointer"
+                            title="Remover logotipo"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
 
-                  {/* Upload e URL */}
-                  <div className="flex-1 w-full space-y-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
-                        Carregar Imagem do Computador/Celular:
-                      </label>
-                      <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-900 border border-stone-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-stone-700 dark:text-slate-300 hover:bg-stone-50 dark:hover:bg-slate-800 cursor-pointer transition shadow-xs">
-                        <Upload className="w-4 h-4 text-red-600" />
-                        <span>Selecionar Imagem da Logo...</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleLogoFileChange}
-                          className="hidden"
-                        />
-                      </label>
-                      <span className="text-[10px] text-stone-400 dark:text-slate-500 block mt-1">
-                        PNG, JPG ou SVG. A imagem é otimizada automaticamente.
-                      </span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
-                        Ou Link Direto da Imagem (URL):
-                      </label>
-                      <input
-                        type="url"
-                        value={lojaLogoUrl}
-                        onChange={(e) => setLojaLogoUrl(e.target.value)}
-                        placeholder="https://exemplo.com/minha-logo.png"
-                        className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 transition"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
-                      Nome da Marca / Estabelecimento:
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={lojaMarca}
-                      onChange={(e) => setLojaMarca(e.target.value)}
-                      placeholder="Ex: Pizzaria Bella, Hamburgueria Grill..."
-                      className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 transition"
-                    />
-                    <span className="text-[10px] text-stone-400 dark:text-slate-500 block mt-1">
-                      Este nome aparece no cabeçalho superior do sistema, delivery e impressões.
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
-                      Nome da Filial / Unidade:
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={lojaNome}
-                      onChange={(e) => setLojaNome(e.target.value)}
-                      placeholder="Ex: Unidade Centro, Matriz..."
-                      className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 transition"
-                    />
-                    <span className="text-[10px] text-stone-400 dark:text-slate-500 block mt-1">
-                      Identificação específica desta filial.
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Taxa de Entrega Padrão (R$):</label>
-                  <input
-                    type="text"
-                    required
-                    value={lojaTaxa}
-                    onChange={(e) => setLojaTaxa(e.target.value)}
-                    placeholder="7,00"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 font-mono focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Tempo Estimado de Entrega:</label>
-                  <input
-                    type="text"
-                    value={lojaTempo}
-                    onChange={(e) => setLojaTempo(e.target.value)}
-                    placeholder="30 - 45 min"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Endereço da Loja (Para Retirada):</label>
-                <input
-                  type="text"
-                  required
-                  value={lojaEndereco}
-                  onChange={(e) => setLojaEndereco(e.target.value)}
-                  placeholder="Ex: Av. Paulista, 1000 - Centro, São Paulo - SP"
-                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Telefone / WhatsApp:</label>
-                  <input
-                    type="text"
-                    value={lojaTelefone}
-                    onChange={(e) => setLojaTelefone(e.target.value)}
-                    placeholder="(11) 99999-8888"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
-                    Horário de Funcionamento (Abertura e Fechamento):
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <span className="text-[10px] text-stone-500 font-bold uppercase block mb-1">
-                        ⏰ Início (Abre):
-                      </span>
-                      <input
-                        type="time"
-                        required
-                        value={lojaHoraAbertura}
-                        onChange={(e) => {
-                          setLojaHoraAbertura(e.target.value);
-                          setLojaHorario(`${e.target.value} às ${lojaHoraFechamento}`);
-                        }}
-                        className="w-full px-3 py-2 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 font-mono focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-stone-500 font-bold uppercase block mb-1">
-                        🌙 Fim (Fecha):
-                      </span>
-                      <input
-                        type="time"
-                        required
-                        value={lojaHoraFechamento}
-                        onChange={(e) => {
-                          setLojaHoraFechamento(e.target.value);
-                          setLojaHorario(`${lojaHoraAbertura} às ${e.target.value}`);
-                        }}
-                        className="w-full px-3 py-2 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 font-mono focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-stone-500 mt-1.5 bg-stone-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg">
-                    <span>Intervalo ativo:</span>
-                    <strong className="font-mono text-stone-900 dark:text-slate-100 font-bold">{lojaHoraAbertura} às {lojaHoraFechamento}</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Controle Manual de Abertura / Fechamento */}
-              <div className="p-3.5 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <span className="text-xs font-bold text-stone-800 dark:text-stone-200 block">
-                    Status de Atendimento (Controle Manual)
-                  </span>
-                  <span className="text-[11px] text-stone-500 dark:text-stone-400">
-                    Se você precisar pausar os pedidos antes do horário de fechamento, ative esta opção.
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setLojaFechadoManualmente(!lojaFechadoManualmente)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
-                    lojaFechadoManualmente
-                      ? 'bg-red-600 text-white shadow-xs'
-                      : 'bg-emerald-600 text-white shadow-xs'
-                  }`}
-                >
-                  {lojaFechadoManualmente ? '🔴 Fechada Manualmente' : '🟢 Aberta para Pedidos'}
-                </button>
-              </div>
-
-              <div className="flex justify-end pt-3 border-t border-stone-100 dark:border-slate-800">
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-red-700 hover:bg-red-800 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Salvar Configurações</span>
-                </button>
-              </div>
-            </form>
-
-            {/* Taxas por Bairro / Região */}
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-xs space-y-4">
-              <div>
-                <h3 className="text-sm font-bold text-stone-900 dark:text-slate-100 uppercase flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-red-700" />
-                  <span>Taxas de Entrega por Bairro / Região</span>
-                </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Cadastre os bairros atendidos e o valor do percurso para que o cliente selecione no cardápio online.
-                </p>
-              </div>
-
-              {/* Formulário para Adicionar Novo Bairro */}
-              <form onSubmit={handleAddBairroSubmit} className="flex flex-col sm:flex-row items-end gap-3 p-3.5 bg-stone-50 rounded-xl border border-stone-200">
-                <div className="flex-1 w-full">
-                  <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">Nome do Bairro / Região:</label>
-                  <input
-                    type="text"
-                    required
-                    value={newBairroNome}
-                    onChange={(e) => setNewBairroNome(e.target.value)}
-                    placeholder="Ex: Jardim América, Centro, Vila Nova..."
-                    className="w-full px-3 py-2 bg-white border border-stone-200 rounded-lg text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 font-semibold"
-                  />
-                </div>
-                <div className="w-full sm:w-36">
-                  <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">Valor do Percurso (R$):</label>
-                  <input
-                    type="text"
-                    required
-                    value={newBairroValor}
-                    onChange={(e) => setNewBairroValor(e.target.value)}
-                    placeholder="Ex: 8,50"
-                    className="w-full px-3 py-2 bg-white border border-stone-200 rounded-lg text-xs font-bold text-stone-900 dark:text-slate-100 font-mono focus:outline-hidden focus:border-red-600"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 shrink-0 cursor-pointer shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Cadastrar Bairro</span>
-                </button>
-              </form>
-
-              {/* Lista de Bairros Cadastrados */}
-              <div className="space-y-2 pt-1">
-                <h4 className="text-xs font-bold text-stone-700 dark:text-slate-300 uppercase tracking-wider">
-                  Bairros Cadastrados ({currentLoja?.taxas_bairro?.length || 0}):
-                </h4>
-                {(!currentLoja?.taxas_bairro || currentLoja.taxas_bairro.length === 0) ? (
-                  <p className="text-xs text-stone-400 italic p-3 bg-stone-50 rounded-xl text-center">
-                    Nenhum bairro individual cadastrado. Será cobrada a taxa de entrega padrão ({formatCurrency(currentLoja?.taxa_entrega || 0)}).
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {currentLoja.taxas_bairro.map((tb) => (
-                      <div key={tb.id} className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-center justify-between text-xs">
+                      {/* Upload e URL */}
+                      <div className="flex-1 w-full space-y-2">
                         <div>
-                          <span className="font-bold text-stone-900 dark:text-slate-100 block">{tb.bairro}</span>
-                          <span className="text-[11px] text-emerald-700 font-bold font-mono">
-                            Frete: {formatCurrency(tb.valor)}
+                          <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                            Carregar Imagem do Computador/Celular:
+                          </label>
+                          <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-900 border border-stone-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-stone-700 dark:text-slate-300 hover:bg-stone-50 dark:hover:bg-slate-800 cursor-pointer transition shadow-xs">
+                            <Upload className="w-4 h-4 text-red-600" />
+                            <span>Selecionar Imagem da Logo...</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleLogoFileChange}
+                              className="hidden"
+                            />
+                          </label>
+                          <span className="text-[10px] text-stone-400 dark:text-slate-500 block mt-1">
+                            PNG, JPG ou SVG. A imagem é otimizada automaticamente.
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (window.confirm(`Excluir a taxa do bairro "${tb.bairro}"?`)) {
-                              deleteTaxaBairro(currentLoja.id, tb.id);
-                            }
-                          }}
-                          className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
-                          title="Excluir Bairro"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                            Ou Link Direto da Imagem (URL):
+                          </label>
+                          <input
+                            type="url"
+                            value={lojaLogoUrl}
+                            onChange={(e) => setLojaLogoUrl(e.target.value)}
+                            placeholder="https://exemplo.com/minha-logo.png"
+                            className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 transition"
+                          />
+                        </div>
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                          Nome da Marca / Estabelecimento:
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={lojaMarca}
+                          onChange={(e) => setLojaMarca(e.target.value)}
+                          placeholder="Ex: Pizzaria Bella, Hamburgueria Grill..."
+                          className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 transition"
+                        />
+                        <span className="text-[10px] text-stone-400 dark:text-slate-500 block mt-1">
+                          Este nome aparece no cabeçalho superior do sistema, delivery e impressões.
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                          Nome da Filial / Unidade:
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={lojaNome}
+                          onChange={(e) => setLojaNome(e.target.value)}
+                          placeholder="Ex: Unidade Centro, Matriz..."
+                          className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 transition"
+                        />
+                        <span className="text-[10px] text-stone-400 dark:text-slate-500 block mt-1">
+                          Identificação específica desta filial.
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Taxa de Entrega Padrão (R$):</label>
+                      <input
+                        type="text"
+                        required
+                        value={lojaTaxa}
+                        onChange={(e) => setLojaTaxa(e.target.value)}
+                        placeholder="7,00"
+                        className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 font-mono focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Tempo Estimado de Entrega:</label>
+                      <input
+                        type="text"
+                        value={lojaTempo}
+                        onChange={(e) => setLojaTempo(e.target.value)}
+                        placeholder="30 - 45 min"
+                        className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Endereço da Loja (Para Retirada):</label>
+                    <input
+                      type="text"
+                      required
+                      value={lojaEndereco}
+                      onChange={(e) => setLojaEndereco(e.target.value)}
+                      placeholder="Ex: Av. Paulista, 1000 - Centro, São Paulo - SP"
+                      className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Telefone / WhatsApp:</label>
+                      <input
+                        type="text"
+                        value={lojaTelefone}
+                        onChange={(e) => setLojaTelefone(e.target.value)}
+                        placeholder="(11) 99999-8888"
+                        className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                        Horário de Funcionamento (Abertura e Fechamento):
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-[10px] text-stone-500 font-bold uppercase block mb-1">
+                            ⏰ Início (Abre):
+                          </span>
+                          <input
+                            type="time"
+                            required
+                            value={lojaHoraAbertura}
+                            onChange={(e) => {
+                              setLojaHoraAbertura(e.target.value);
+                              setLojaHorario(`${e.target.value} às ${lojaHoraFechamento}`);
+                            }}
+                            className="w-full px-3 py-2 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 font-mono focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-stone-500 font-bold uppercase block mb-1">
+                            🌙 Fim (Fecha):
+                          </span>
+                          <input
+                            type="time"
+                            required
+                            value={lojaHoraFechamento}
+                            onChange={(e) => {
+                              setLojaHoraFechamento(e.target.value);
+                              setLojaHorario(`${lojaHoraAbertura} às ${e.target.value}`);
+                            }}
+                            className="w-full px-3 py-2 bg-stone-50 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 font-mono focus:outline-hidden focus:border-red-600 focus:bg-white dark:focus:bg-slate-900 transition"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-stone-500 mt-1.5 bg-stone-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg">
+                        <span>Intervalo ativo:</span>
+                        <strong className="font-mono text-stone-900 dark:text-slate-100 font-bold">{lojaHoraAbertura} às {lojaHoraFechamento}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Controle Manual de Abertura / Fechamento */}
+                  <div className="p-3.5 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-stone-800 dark:text-stone-200 block">
+                        Status de Atendimento (Controle Manual)
+                      </span>
+                      <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                        Se você precisar pausar os pedidos antes do horário de fechamento, ative esta opção.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLojaFechadoManualmente(!lojaFechadoManualmente)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                        lojaFechadoManualmente
+                          ? 'bg-red-600 text-white shadow-xs'
+                          : 'bg-emerald-600 text-white shadow-xs'
+                      }`}
+                    >
+                      {lojaFechadoManualmente ? '🔴 Fechada Manualmente' : '🟢 Aberta para Pedidos'}
+                    </button>
+                  </div>
+
+                  <div className="flex justify-end pt-3 border-t border-stone-100 dark:border-slate-800">
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 bg-red-700 hover:bg-red-800 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Salvar Configurações</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* COLUNA DIREITA (6 cols): Links de Acesso, Tokens da Equipe e Bairros */}
+              <div className="lg:col-span-6 space-y-6">
+                {/* Link do Cardápio Digital / Delivery */}
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-stone-900 dark:text-white flex items-center gap-2">
+                        <Share2 className="w-4 h-4 text-amber-500" />
+                        <span>Link do Cardápio Online (Delivery)</span>
+                      </h3>
+                      <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
+                        Envie este link para seus clientes no WhatsApp e redes sociais para eles pedirem direto com sua marca e logo.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCopyLinkFromAdmin}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                          adminLinkCopied
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-red-700 hover:bg-red-800 text-white'
+                        }`}
+                      >
+                        {adminLinkCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{adminLinkCopied ? 'Link Copiado!' : 'Copiar Link WhatsApp'}</span>
+                      </button>
+                      <a
+                        href={getDeliveryUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-2 bg-stone-100 hover:bg-stone-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                        title="Abrir cardápio em nova aba"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Abrir Cardápio</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 bg-stone-50 dark:bg-slate-800/80 rounded-xl border border-stone-200 dark:border-slate-700 flex items-center justify-between gap-3 text-xs font-mono text-stone-700 dark:text-slate-300 break-all select-all">
+                    <span>{getDeliveryUrl()}</span>
+                  </div>
+                </div>
+
+                {/* Links Exclusivos da Equipe */}
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-stone-900 dark:text-white flex items-center gap-2">
+                      <KeyRound className="w-4 h-4 text-purple-600" />
+                      <span>Links Exclusivos de Acesso da Equipe (com Tokens)</span>
+                    </h3>
+                    <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
+                      Repasse estes links restritos aos seus funcionários autorizados. Sem o token exato na URL, o sistema bloqueia o acesso à tela de login.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      {
+                        role: 'Garçom',
+                        painel: 'garcom',
+                        token: currentLoja?.token_garcom,
+                        icon: <UtensilsCrossed className="w-4 h-4 text-red-600" />,
+                        desc: 'Abertura de comandas e salão',
+                      },
+                      {
+                        role: 'Cozinha (KDS)',
+                        painel: 'cozinha',
+                        token: currentLoja?.token_cozinha,
+                        icon: <ChefHat className="w-4 h-4 text-amber-600" />,
+                        desc: 'Preparo e despacho de pedidos',
+                      },
+                      {
+                        role: 'Caixa (PDV)',
+                        painel: 'caixa',
+                        token: currentLoja?.token_caixa,
+                        icon: <CircleDollarSign className="w-4 h-4 text-emerald-600" />,
+                        desc: 'Contas, comandas e pagamentos',
+                      },
+                    ].map((item) => {
+                      const fullUrl = `${window.location.origin}/?loja=${currentLoja?.slug}&painel=${item.painel}&token=${item.token}`;
+                      return (
+                        <div key={item.painel} className="p-3.5 rounded-xl border border-stone-200 dark:border-slate-800 bg-stone-50 dark:bg-slate-800/50 space-y-2 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              {item.icon}
+                              <span className="text-xs font-bold text-stone-900 dark:text-white">{item.role}</span>
+                            </div>
+                            <p className="text-[11px] text-stone-500 dark:text-slate-400 mt-1">{item.desc}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(fullUrl);
+                              setCopiedStaffRole(item.painel);
+                              setTimeout(() => setCopiedStaffRole(null), 2500);
+                            }}
+                            className={`w-full py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer mt-2 ${
+                              copiedStaffRole === item.painel
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-700'
+                            }`}
+                          >
+                            {copiedStaffRole === item.painel ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedStaffRole === item.painel ? 'Link Copiado!' : `Copiar Link ${item.role.split(' ')[0]}`}</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Taxas por Bairro / Região */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-stone-200 dark:border-slate-800 shadow-xs space-y-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-stone-900 dark:text-slate-100 uppercase flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-red-700" />
+                      <span>Taxas de Entrega por Bairro / Região</span>
+                    </h3>
+                    <p className="text-xs text-stone-500 dark:text-slate-400 mt-0.5">
+                      Cadastre os bairros atendidos e o valor do percurso para que o cliente selecione no cardápio online.
+                    </p>
+                  </div>
+
+                  {/* Formulário para Adicionar Novo Bairro */}
+                  <form onSubmit={handleAddBairroSubmit} className="flex flex-col sm:flex-row items-end gap-3 p-3.5 bg-stone-50 dark:bg-slate-800/60 rounded-xl border border-stone-200 dark:border-slate-700">
+                    <div className="flex-1 w-full">
+                      <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">Nome do Bairro / Região:</label>
+                      <input
+                        type="text"
+                        required
+                        value={newBairroNome}
+                        onChange={(e) => setNewBairroNome(e.target.value)}
+                        placeholder="Ex: Jardim América, Centro, Vila Nova..."
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-red-600 font-semibold"
+                      />
+                    </div>
+                    <div className="w-full sm:w-36">
+                      <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">Valor do Frete (R$):</label>
+                      <input
+                        type="text"
+                        required
+                        value={newBairroValor}
+                        onChange={(e) => setNewBairroValor(e.target.value)}
+                        placeholder="Ex: 8,50"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs font-bold text-stone-900 dark:text-slate-100 font-mono focus:outline-hidden focus:border-red-600"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full sm:w-auto px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 shrink-0 cursor-pointer shadow-2xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Cadastrar Bairro</span>
+                    </button>
+                  </form>
+
+                  {/* Lista de Bairros Cadastrados */}
+                  <div className="space-y-2 pt-1">
+                    <h4 className="text-xs font-bold text-stone-700 dark:text-slate-300 uppercase tracking-wider">
+                      Bairros Cadastrados ({currentLoja?.taxas_bairro?.length || 0}):
+                    </h4>
+                    {(!currentLoja?.taxas_bairro || currentLoja.taxas_bairro.length === 0) ? (
+                      <p className="text-xs text-stone-400 dark:text-slate-500 italic p-3 bg-stone-50 dark:bg-slate-800/40 rounded-xl text-center">
+                        Nenhum bairro individual cadastrado. Será cobrada a taxa de entrega padrão ({formatCurrency(currentLoja?.taxa_entrega || 0)}).
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
+                        {currentLoja.taxas_bairro.map((tb) => (
+                          <div key={tb.id} className="p-3 bg-stone-50 dark:bg-slate-800/70 rounded-xl border border-stone-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                            <div>
+                              <span className="font-bold text-stone-900 dark:text-slate-100 block">{tb.bairro}</span>
+                              <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold font-mono">
+                                Frete: {formatCurrency(tb.valor)}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Excluir a taxa do bairro "${tb.bairro}"?`)) {
+                                  deleteTaxaBairro(currentLoja.id, tb.id);
+                                }
+                              }}
+                              className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition cursor-pointer"
+                              title="Excluir Bairro"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

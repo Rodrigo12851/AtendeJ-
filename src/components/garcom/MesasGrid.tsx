@@ -1,10 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Users, Search, PlusCircle, Clock, AlertCircle, Grid2X2, LayoutGrid } from 'lucide-react';
+import { Users, Search, PlusCircle, Clock, AlertCircle } from 'lucide-react';
 import { Table, Comanda, User, TableStatus, Order } from '../../types';
 import { formatCurrency, formatTime } from '../../utils/formatters';
-import { MesasGridCompacto } from './MesasGridCompacto';
-
-export { MesasGridCompacto } from './MesasGridCompacto';
 
 export interface MesasGridProps {
   tables: Table[];
@@ -25,9 +22,7 @@ export const MesasGrid: React.FC<MesasGridProps> = ({
   onSelectTable,
   onOpenComanda,
   onReleaseTable,
-  defaultViewMode = 'compacto',
 }) => {
-  const [viewMode, setViewMode] = useState<'detalhado' | 'compacto'>(defaultViewMode);
   const [filterStatus, setFilterStatus] = useState<string>('todas');
   const [searchQuery, setSearchQuery] = useState('');
   const [openingTable, setOpeningTable] = useState<Table | null>(null);
@@ -92,26 +87,6 @@ export const MesasGrid: React.FC<MesasGridProps> = ({
     }
   };
 
-  if (viewMode === 'compacto') {
-    return (
-      <div className="max-w-7xl mx-auto w-full p-3 sm:p-6">
-        <MesasGridCompacto
-          tables={tables}
-          comandas={comandas}
-          orders={orders}
-          currentUser={currentUser}
-          onSelectTable={onSelectTable}
-          onOpenComanda={onOpenComanda}
-          onReleaseTable={onReleaseTable}
-          initialFilterStatus={filterStatus}
-          initialSearchQuery={searchQuery}
-          onViewModeChange={setViewMode}
-          currentViewMode={viewMode}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-7xl mx-auto w-full p-3 sm:p-6 space-y-4">
       {/* Refined Filter Bar */}
@@ -163,47 +138,16 @@ export const MesasGrid: React.FC<MesasGridProps> = ({
           </button>
         </div>
 
-        {/* Quick Search and View Mode Switcher */}
-        <div className="flex items-center gap-2">
-          <div className="relative min-w-[180px] sm:min-w-[220px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 dark:text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar mesa ou garçom..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-lg focus:outline-hidden focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 text-stone-900 dark:text-slate-100 placeholder:text-stone-400 dark:placeholder:text-slate-500"
-            />
-          </div>
-
-          <div className="flex border border-stone-200 dark:border-slate-800 rounded-lg bg-stone-100 dark:bg-slate-950 p-0.5 text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => setViewMode('compacto')}
-              className={`px-2.5 py-1 rounded flex items-center gap-1.5 transition cursor-pointer ${
-                viewMode === 'compacto'
-                  ? 'bg-white dark:bg-slate-800 text-stone-900 dark:text-white shadow-xs'
-                  : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
-              }`}
-              title="Visualização em Grid Compacto (Mobile)"
-            >
-              <Grid2X2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Compacto</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('detalhado')}
-              className={`px-2.5 py-1 rounded flex items-center gap-1.5 transition cursor-pointer ${
-                viewMode === 'detalhado'
-                  ? 'bg-white dark:bg-slate-800 text-stone-900 dark:text-white shadow-xs'
-                  : 'text-stone-600 dark:text-slate-400 hover:text-stone-900 dark:hover:text-white'
-              }`}
-              title="Visualização em Cards Detalhados"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Detalhado</span>
-            </button>
-          </div>
+        {/* Quick Search */}
+        <div className="relative min-w-[180px] sm:min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 dark:text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar mesa ou garçom..."
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-lg focus:outline-hidden focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 text-stone-900 dark:text-slate-100 placeholder:text-stone-400 dark:placeholder:text-slate-500"
+          />
         </div>
       </div>
 
