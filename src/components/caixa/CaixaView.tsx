@@ -43,7 +43,7 @@ import { ReceiptModal } from '../ReceiptModal';
 import { KitchenTicketModal } from '../KitchenTicketModal';
 import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
 import { playAddPop, playKitchenBell } from '../../utils/audio';
-import { sortOrdersNovosFirst } from '../../utils/orderSorting';
+import { sortOrdersNovosFirst, filterAndSortCaixaChannelOrders, formatOrderDateTimeCaixa } from '../../utils/orderSorting';
 
 const DEFAULT_FOOD_IMG = 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80';
 
@@ -680,10 +680,27 @@ export const CaixaView: React.FC = () => {
     return o.tipo_pedido === 'mesa' || !!o.mesa_numero;
   };
 
-  // Channel Lists (all orders, including completed for Tab 2 / History) - Novos sempre na frente
-  const allDeliveryOrders = useMemo(() => orders.filter(isDeliveryOrder).sort(sortOrdersNovosFirst), [orders]);
-  const allRetiradaOrders = useMemo(() => orders.filter(isRetiradaOrder).sort(sortOrdersNovosFirst), [orders]);
-  const allMesaOrders = useMemo(() => orders.filter(isMesaOrder).sort(sortOrdersNovosFirst), [orders]);
+  // Regra de 24 Horas & Exceção do Último Pedido por Categoria / Canal no Caixa:
+  // 1. Pedidos só podem ficar até 24 horas no painel do caixa.
+  // 2. Se não houver pedidos nas últimas 24h em um canal, o último pedido realizado é mantido.
+  // 3. Pedidos mais antigos que 24h ficam posicionados PARA BAIXO na lista da categoria.
+  const allDeliveryOrders = useMemo(
+    () => filterAndSortCaixaChannelOrders(orders.filter(isDeliveryOrder)),
+    [orders]
+  );
+  const allRetiradaOrders = useMemo(
+    () => filterAndSortCaixaChannelOrders(orders.filter(isRetiradaOrder)),
+    [orders]
+  );
+  const allMesaOrders = useMemo(
+    () => filterAndSortCaixaChannelOrders(orders.filter(isMesaOrder)),
+    [orders]
+  );
+
+  // Total de pedidos consolidados visíveis no Caixa (máximo 24h + último retido por canal)
+  const caixaTotalOrders = useMemo(() => {
+    return [...allDeliveryOrders, ...allRetiradaOrders, ...allMesaOrders];
+  }, [allDeliveryOrders, allRetiradaOrders, allMesaOrders]);
 
   // Operational active lists (excludes 'entregue' and 'cancelado' from Coluna 1 & Coluna 2)
   const activeDeliveryOrders = useMemo(() => {
@@ -746,44 +763,43 @@ export const CaixaView: React.FC = () => {
       .sort(sortOrdersNovosFirst);
   }, [activeRetiradaOrders, retiradaFilter, retiradaSearch]);
 
-  // Orders filtering and status counts for Caixa Pedidos tab (Tab 2 - Com Histórico de Entregues, novos sempre na frente)
+  // Orders filtering and status counts for Caixa Pedidos tab (Tab 3 - Gestão de Pedidos & Produção)
   const filteredCaixaOrders = useMemo(() => {
-    return orders
-      .filter((order) => {
-        if (pedidosCanalFilter === 'delivery' && !isDeliveryOrder(order)) return false;
-        if (pedidosCanalFilter === 'retirada' && !isRetiradaOrder(order)) return false;
-        if (pedidosCanalFilter === 'mesa' && !isMesaOrder(order)) return false;
+    let source = caixaTotalOrders;
+    if (pedidosCanalFilter === 'delivery') source = allDeliveryOrders;
+    else if (pedidosCanalFilter === 'retirada') source = allRetiradaOrders;
+    else if (pedidosCanalFilter === 'mesa') source = allMesaOrders;
 
-        if (pedidosFilterStatus !== 'todos' && order.status !== pedidosFilterStatus) {
+    return source.filter((order) => {
+      if (pedidosFilterStatus !== 'todos' && order.status !== pedidosFilterStatus) {
+        return false;
+      }
+      if (pedidosSearch) {
+        const query = pedidosSearch.toLowerCase();
+        const matchId = order.id.toString().includes(query);
+        const matchMesa = order.mesa_numero?.toString().includes(query);
+        const matchCliente = order.cliente_nome?.toLowerCase().includes(query);
+        const matchGarcom = order.garcom_nome?.toLowerCase().includes(query);
+        const matchTel = (order.cliente_telefone || (order.delivery_info as any)?.telefone || '')?.includes(query);
+        const matchEndereco = (order.cliente_endereco || (order.delivery_info as any)?.endereco || '')?.toLowerCase().includes(query);
+        if (!matchId && !matchMesa && !matchCliente && !matchGarcom && !matchTel && !matchEndereco) {
           return false;
         }
-        if (pedidosSearch) {
-          const query = pedidosSearch.toLowerCase();
-          const matchId = order.id.toString().includes(query);
-          const matchMesa = order.mesa_numero?.toString().includes(query);
-          const matchCliente = order.cliente_nome?.toLowerCase().includes(query);
-          const matchGarcom = order.garcom_nome?.toLowerCase().includes(query);
-          const matchTel = (order.cliente_telefone || (order.delivery_info as any)?.telefone || '')?.includes(query);
-          const matchEndereco = (order.cliente_endereco || (order.delivery_info as any)?.endereco || '')?.toLowerCase().includes(query);
-          if (!matchId && !matchMesa && !matchCliente && !matchGarcom && !matchTel && !matchEndereco) {
-            return false;
-          }
-        }
-        return true;
-      })
-      .sort(sortOrdersNovosFirst);
-  }, [orders, pedidosCanalFilter, pedidosFilterStatus, pedidosSearch]);
+      }
+      return true;
+    });
+  }, [caixaTotalOrders, allDeliveryOrders, allRetiradaOrders, allMesaOrders, pedidosCanalFilter, pedidosFilterStatus, pedidosSearch]);
 
-  // Separated lists per channel for Tab 2 "Todos"
+  // Separated lists per channel for Tab 3 "Todos"
   const pedidosDeliveryList = useMemo(() => filteredCaixaOrders.filter(isDeliveryOrder), [filteredCaixaOrders]);
   const pedidosRetiradaList = useMemo(() => filteredCaixaOrders.filter(isRetiradaOrder), [filteredCaixaOrders]);
   const pedidosMesaList = useMemo(() => filteredCaixaOrders.filter(isMesaOrder), [filteredCaixaOrders]);
 
-  const countNovos = useMemo(() => orders.filter((o) => o.status === 'novo').length, [orders]);
-  const countPreparo = useMemo(() => orders.filter((o) => o.status === 'em_preparo').length, [orders]);
-  const countProntos = useMemo(() => orders.filter((o) => o.status === 'pronto').length, [orders]);
-  const countACaminho = useMemo(() => orders.filter((o) => o.status === 'a_caminho').length, [orders]);
-  const countEntregues = useMemo(() => orders.filter((o) => o.status === 'entregue').length, [orders]);
+  const countNovos = useMemo(() => caixaTotalOrders.filter((o) => o.status === 'novo').length, [caixaTotalOrders]);
+  const countPreparo = useMemo(() => caixaTotalOrders.filter((o) => o.status === 'em_preparo').length, [caixaTotalOrders]);
+  const countProntos = useMemo(() => caixaTotalOrders.filter((o) => o.status === 'pronto').length, [caixaTotalOrders]);
+  const countACaminho = useMemo(() => caixaTotalOrders.filter((o) => o.status === 'a_caminho').length, [caixaTotalOrders]);
+  const countEntregues = useMemo(() => caixaTotalOrders.filter((o) => o.status === 'entregue').length, [caixaTotalOrders]);
 
   const handleConfirmOrder = (order: Order) => {
     updateOrderStatus(order.id, 'em_preparo');
@@ -1110,15 +1126,27 @@ export const CaixaView: React.FC = () => {
                               {order.troco_para ? ` (Troco p/ R$ ${order.troco_para.toFixed(2)})` : ''}
                             </div>
                           )}
-                          <div className="text-[10px] text-stone-500 font-mono pt-0.5 flex items-center gap-1">
-                            <Clock className="w-2.5 h-2.5" />
-                            <span>{formatTime(order.criado_em)}</span>
-                            {order.observacao && (
-                              <span className="text-amber-700 dark:text-amber-400 truncate ml-1 font-sans">
-                                • Obs: {order.observacao}
-                              </span>
-                            )}
-                          </div>
+                          {(() => {
+                            const dateInfo = formatOrderDateTimeCaixa(order.criado_em);
+                            return (
+                              <div className="text-[10px] text-stone-500 font-mono pt-0.5 flex items-center gap-1 flex-wrap">
+                                <Clock className="w-2.5 h-2.5 text-stone-400 shrink-0" />
+                                <span className={dateInfo.isOlderThan24h ? 'font-bold text-amber-800 dark:text-amber-300' : ''}>
+                                  {dateInfo.text}
+                                </span>
+                                {dateInfo.isOlderThan24h && (
+                                  <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80">
+                                    Anterior
+                                  </span>
+                                )}
+                                {order.observacao && (
+                                  <span className="text-amber-700 dark:text-amber-400 truncate ml-1 font-sans">
+                                    • Obs: {order.observacao}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Items mini list */}
@@ -1417,15 +1445,27 @@ export const CaixaView: React.FC = () => {
                               {order.troco_para ? ` (Troco p/ R$ ${order.troco_para.toFixed(2)})` : ''}
                             </div>
                           )}
-                          <div className="text-[10px] text-stone-500 font-mono pt-0.5 flex items-center gap-1">
-                            <Clock className="w-2.5 h-2.5" />
-                            <span>{formatTime(order.criado_em)}</span>
-                            {order.observacao && (
-                              <span className="text-amber-700 dark:text-amber-400 truncate ml-1 font-sans">
-                                • Obs: {order.observacao}
-                              </span>
-                            )}
-                          </div>
+                          {(() => {
+                            const dateInfo = formatOrderDateTimeCaixa(order.criado_em);
+                            return (
+                              <div className="text-[10px] text-stone-500 font-mono pt-0.5 flex items-center gap-1 flex-wrap">
+                                <Clock className="w-2.5 h-2.5 text-stone-400 shrink-0" />
+                                <span className={dateInfo.isOlderThan24h ? 'font-bold text-amber-800 dark:text-amber-300' : ''}>
+                                  {dateInfo.text}
+                                </span>
+                                {dateInfo.isOlderThan24h && (
+                                  <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80">
+                                    Anterior
+                                  </span>
+                                )}
+                                {order.observacao && (
+                                  <span className="text-amber-700 dark:text-amber-400 truncate ml-1 font-sans">
+                                    • Obs: {order.observacao}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Items mini list */}
@@ -2906,7 +2946,7 @@ export const CaixaView: React.FC = () => {
                     : 'bg-stone-50 dark:bg-slate-950 text-stone-600 dark:text-slate-400 border-stone-200 dark:border-slate-800 hover:bg-stone-100 dark:hover:bg-slate-900'
                 }`}
               >
-                Todos ({orders.length})
+                Todos ({caixaTotalOrders.length})
               </button>
               <button
                 type="button"
@@ -3122,8 +3162,22 @@ export const CaixaView: React.FC = () => {
                             <div className="bg-stone-50/80 dark:bg-slate-950 p-2.5 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1">
                               {order.cliente_nome && <div className="font-black text-stone-950 dark:text-white flex items-center gap-1.5"><span className="text-emerald-700 dark:text-emerald-400">👤</span><span>{order.cliente_nome}</span></div>}
                               {(order.delivery_info?.telefone || order.cliente_telefone) && <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1 text-[11px]"><Phone className="w-2.5 h-2.5 text-stone-400" /><span>{order.delivery_info?.telefone || order.cliente_telefone}</span></div>}
-                              {(order.delivery_info?.endereco || order.cliente_endereco) && <div className="text-stone-800 dark:text-slate-300 flex items-start gap-1"><MapPin className="w-2.5 h-2.5 text-red-500 shrink-0 mt-0.5" /><span className="text-[10px] leading-tight font-medium">{order.delivery_info?.endereco || order.cliente_endereco}</span></div>}
-                              <div className="text-[10px] text-stone-500 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
+                              {(() => {
+                                const dateInfo = formatOrderDateTimeCaixa(order.criado_em);
+                                return (
+                                  <div className="text-[10px] text-stone-500 dark:text-slate-400 font-mono pt-0.5 flex items-center gap-1.5 flex-wrap">
+                                    <Clock className="w-2.5 h-2.5 text-stone-400 shrink-0" />
+                                    <span className={dateInfo.isOlderThan24h ? 'font-bold text-amber-800 dark:text-amber-300' : ''}>
+                                      {dateInfo.text}
+                                    </span>
+                                    {dateInfo.isOlderThan24h && (
+                                      <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80">
+                                        Anterior
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
                               {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
@@ -3238,8 +3292,22 @@ export const CaixaView: React.FC = () => {
                             <div className="bg-stone-50/80 dark:bg-slate-950 p-2.5 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1">
                               {order.cliente_nome && <div className="font-black text-stone-950 dark:text-white flex items-center gap-1.5"><span className="text-amber-700 dark:text-amber-400">👤</span><span>{order.cliente_nome}</span></div>}
                               {(order.delivery_info?.telefone || order.cliente_telefone) && <div className="text-stone-600 dark:text-slate-400 flex items-center gap-1 text-[11px]"><Phone className="w-2.5 h-2.5 text-stone-400" /><span>{order.delivery_info?.telefone || order.cliente_telefone}</span></div>}
-                              <div className="text-amber-950 dark:text-amber-300 font-semibold flex items-center gap-1 text-[10px] bg-amber-100/70 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200/60"><ShoppingBag className="w-2.5 h-2.5 text-amber-600" /><span>Retirada no balcão da loja</span></div>
-                              <div className="text-[10px] text-stone-500 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
+                              {(() => {
+                                const dateInfo = formatOrderDateTimeCaixa(order.criado_em);
+                                return (
+                                  <div className="text-[10px] text-stone-500 dark:text-slate-400 font-mono pt-0.5 flex items-center gap-1.5 flex-wrap">
+                                    <Clock className="w-2.5 h-2.5 text-stone-400 shrink-0" />
+                                    <span className={dateInfo.isOlderThan24h ? 'font-bold text-amber-800 dark:text-amber-300' : ''}>
+                                      {dateInfo.text}
+                                    </span>
+                                    {dateInfo.isOlderThan24h && (
+                                      <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80">
+                                        Anterior
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
                               {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
@@ -3333,7 +3401,22 @@ export const CaixaView: React.FC = () => {
                             <div className="bg-stone-50/80 dark:bg-slate-950 p-2.5 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1">
                               {order.cliente_nome && <div className="font-black text-stone-950 dark:text-white flex items-center gap-1.5"><span className="text-sky-700 dark:text-sky-400">👤</span><span>{order.cliente_nome}</span></div>}
                               {order.garcom_nome && <div className="text-stone-600 dark:text-slate-400 text-[11px]">Atendente: {order.garcom_nome}</div>}
-                              <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" /><span>{formatTime(order.criado_em)}</span></div>
+                              {(() => {
+                                const dateInfo = formatOrderDateTimeCaixa(order.criado_em);
+                                return (
+                                  <div className="text-[10px] text-stone-500 dark:text-slate-400 font-mono pt-0.5 flex items-center gap-1.5 flex-wrap">
+                                    <Clock className="w-2.5 h-2.5 text-stone-400 shrink-0" />
+                                    <span className={dateInfo.isOlderThan24h ? 'font-bold text-amber-800 dark:text-amber-300' : ''}>
+                                      {dateInfo.text}
+                                    </span>
+                                    {dateInfo.isOlderThan24h && (
+                                      <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80">
+                                        Anterior
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
                               {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
@@ -3427,7 +3510,22 @@ export const CaixaView: React.FC = () => {
                         ) : (order.delivery_info?.endereco || order.cliente_endereco) ? (
                           <div className="text-stone-700 dark:text-slate-300 flex items-start gap-1"><MapPin className="w-3 h-3 text-red-500 shrink-0 mt-0.5" /><span className="text-[11px] leading-tight font-medium">{order.delivery_info?.endereco || order.cliente_endereco}</span></div>
                         ) : null}
-                        <div className="text-[10px] text-stone-400 font-mono pt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" /><span>Recebido às {formatTime(order.criado_em)}</span></div>
+                        {(() => {
+                          const dateInfo = formatOrderDateTimeCaixa(order.criado_em);
+                          return (
+                            <div className="text-[10px] text-stone-500 dark:text-slate-400 font-mono pt-0.5 flex items-center gap-1.5 flex-wrap">
+                              <Clock className="w-3 h-3 text-stone-400 shrink-0" />
+                              <span className={dateInfo.isOlderThan24h ? 'font-bold text-amber-800 dark:text-amber-300' : ''}>
+                                Recebido {dateInfo.isOlderThan24h ? 'em ' : 'às '}{dateInfo.text}
+                              </span>
+                              {dateInfo.isOlderThan24h && (
+                                <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80">
+                                  Anterior
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
                         {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
