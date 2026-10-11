@@ -31,18 +31,28 @@ import {
   Copy,
   ExternalLink,
   MessageCircle,
+  Plus,
+  Minus,
+  Trash2,
+  Sparkles,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
-import { Comanda, Order, Table, PaymentMethod, CashEntry, OrderStatus } from '../../types';
+import { Comanda, Order, Table, PaymentMethod, CashEntry, OrderStatus, Product, OrderItem, Category } from '../../types';
 import { formatCurrency, formatTime, formatDateTime } from '../../utils/formatters';
 import { ReceiptModal } from '../ReceiptModal';
 import { KitchenTicketModal } from '../KitchenTicketModal';
+import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
+import { playAddPop, playKitchenBell } from '../../utils/audio';
+
+const DEFAULT_FOOD_IMG = 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80';
 
 export const CaixaView: React.FC = () => {
   const {
     tables,
     comandas,
     orders,
+    products,
+    categories,
     cashRegister,
     currentUser,
     registerPayment,
@@ -54,9 +64,13 @@ export const CaixaView: React.FC = () => {
     addCashEntry,
     updateOrderStatus,
     currentLoja,
+    currentLojaId,
+    createDeliveryOrder,
+    openComanda,
+    addOrderToComanda,
   } = useStore();
 
-  const [caixaActiveTab, setCaixaActiveTab] = useState<'comandas' | 'pedidos'>('comandas');
+  const [caixaActiveTab, setCaixaActiveTab] = useState<'comandas' | 'balcao' | 'pedidos'>('comandas');
   const [selectedComandaId, setSelectedComandaId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
@@ -168,6 +182,190 @@ export const CaixaView: React.FC = () => {
   const [entryAmountInput, setEntryAmountInput] = useState<string>('');
   const [entryReasonInput, setEntryReasonInput] = useState<string>('');
   const [closeNotesInput, setCloseNotesInput] = useState<string>('');
+
+  // Estados para Pedido no Balcão (Aba central do Caixa)
+  const [balcaoModalidade, setBalcaoModalidade] = useState<'retirada' | 'mesa'>('retirada');
+  const [balcaoSelectedMesaId, setBalcaoSelectedMesaId] = useState<string>('');
+  const [balcaoClienteNome, setBalcaoClienteNome] = useState('');
+  const [balcaoClienteTelefone, setBalcaoClienteTelefone] = useState('');
+  const [balcaoObservacao, setBalcaoObservacao] = useState('');
+  const [balcaoFormaPagamento, setBalcaoFormaPagamento] = useState<string>('pix');
+  const [balcaoTrocoPara, setBalcaoTrocoPara] = useState<string>('');
+  const [balcaoCategoryFilter, setBalcaoCategoryFilter] = useState<string>('todas');
+  const [balcaoSearchQuery, setBalcaoSearchQuery] = useState('');
+  const [balcaoCart, setBalcaoCart] = useState<OrderItem[]>([]);
+  const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
+  const [isSubmittingBalcaoOrder, setIsSubmittingBalcaoOrder] = useState(false);
+  const [balcaoCreatedOrder, setBalcaoCreatedOrder] = useState<Order | null>(null);
+  const [balcaoErrorMessage, setBalcaoErrorMessage] = useState<string | null>(null);
+
+  const isPizzaProduct = (prod: Product) => {
+    if (prod.isPizza) return true;
+    const cat = categories.find((c) => c.id === prod.categoria_id);
+    return Boolean(cat?.nome?.toLowerCase().includes('pizza') || prod.nome?.toLowerCase().includes('pizza'));
+  };
+
+  const balcaoProducts = useMemo(() => {
+    return products.filter((p) => {
+      if (currentLojaId !== 'todas') {
+        if (p.loja_id && p.loja_id !== currentLojaId && p.loja_id !== currentLoja?.id) {
+          return false;
+        }
+      }
+      if (p.ativo === false || p.disponivel === false) return false;
+
+      if (balcaoCategoryFilter !== 'todas' && p.categoria_id !== balcaoCategoryFilter) {
+        return false;
+      }
+
+      if (balcaoSearchQuery.trim()) {
+        const query = balcaoSearchQuery.toLowerCase();
+        const matchesName = p.nome.toLowerCase().includes(query);
+        const matchesDesc = p.descricao?.toLowerCase().includes(query);
+        const matchesCode = p.codigo_interno?.toLowerCase().includes(query);
+        if (!matchesName && !matchesDesc && !matchesCode) return false;
+      }
+
+      return true;
+    });
+  }, [products, currentLojaId, currentLoja, balcaoCategoryFilter, balcaoSearchQuery]);
+
+  const balcaoCartTotal = useMemo(() => {
+    return balcaoCart.reduce((sum, item) => sum + item.preco_total, 0);
+  }, [balcaoCart]);
+
+  const handleAddSimpleProductToBalcao = (prod: Product) => {
+    playAddPop();
+    setBalcaoCart((prev) => {
+      const existingIdx = prev.findIndex(
+        (it) => it.produto_id === prod.id && (!it.sabores || it.sabores.length <= 1) && !it.borda && !it.massa && (!it.adicionais || it.adicionais.length === 0)
+      );
+      if (existingIdx >= 0) {
+        const copy = [...prev];
+        const existing = copy[existingIdx];
+        const newQty = existing.quantidade + 1;
+        copy[existingIdx] = {
+          ...existing,
+          quantidade: newQty,
+          preco_total: newQty * existing.preco_unitario,
+        };
+        return copy;
+      }
+
+      const finalPrice = prod.em_promocao && prod.preco_promocional ? prod.preco_promocional : prod.preco;
+      const newItem: OrderItem = {
+        id: `balcao_item_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        produto_id: prod.id,
+        nome: prod.nome,
+        quantidade: 1,
+        preco_unitario: finalPrice,
+        preco_total: finalPrice,
+        status: 'ativo',
+      };
+      return [...prev, newItem];
+    });
+  };
+
+  const handleUpdateBalcaoItemQuantity = (index: number, delta: number) => {
+    setBalcaoCart((prev) => {
+      const copy = [...prev];
+      const item = copy[index];
+      if (!item) return prev;
+      const newQty = item.quantidade + delta;
+      if (newQty <= 0) {
+        return copy.filter((_, i) => i !== index);
+      }
+      copy[index] = {
+        ...item,
+        quantidade: newQty,
+        preco_total: newQty * item.preco_unitario,
+      };
+      return copy;
+    });
+  };
+
+  const handleRemoveBalcaoItem = (index: number) => {
+    setBalcaoCart((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleFinalizeBalcaoOrder = async () => {
+    if (balcaoCart.length === 0) {
+      setBalcaoErrorMessage('Adicione pelo menos um produto ao pedido no balcão.');
+      return;
+    }
+
+    setIsSubmittingBalcaoOrder(true);
+    setBalcaoErrorMessage(null);
+
+    try {
+      const activeLojaId = currentLoja?.id || (currentLojaId === 'todas' ? 'loja_centro' : currentLojaId);
+      const clienteNomeFinal = balcaoClienteNome.trim() || 'Cliente Balcão';
+      const trocoNum = balcaoTrocoPara.trim() ? parseFloat(balcaoTrocoPara.replace(',', '.')) : undefined;
+
+      if (balcaoModalidade === 'mesa') {
+        if (!balcaoSelectedMesaId) {
+          setBalcaoErrorMessage('Selecione uma mesa para lançar o pedido.');
+          setIsSubmittingBalcaoOrder(false);
+          return;
+        }
+
+        const selectedTable = tables.find((t) => t.id === balcaoSelectedMesaId);
+        if (!selectedTable) {
+          setBalcaoErrorMessage('Mesa não encontrada.');
+          setIsSubmittingBalcaoOrder(false);
+          return;
+        }
+
+        let comandaId = selectedTable.comanda_atual_id;
+        if (!comandaId) {
+          const newCmd = openComanda(
+            selectedTable.id,
+            currentUser.id,
+            currentUser.nome,
+            clienteNomeFinal
+          );
+          comandaId = newCmd.id;
+        }
+
+        const newOrder = addOrderToComanda(comandaId, balcaoCart, balcaoObservacao.trim() || undefined);
+        playKitchenBell();
+        setBalcaoCreatedOrder(newOrder);
+        setBalcaoCart([]);
+        setBalcaoObservacao('');
+        setBalcaoTrocoPara('');
+        setBalcaoClienteNome('');
+        setBalcaoClienteTelefone('');
+      } else {
+        const newOrder = createDeliveryOrder(
+          activeLojaId,
+          {
+            nome: clienteNomeFinal,
+            telefone: balcaoClienteTelefone.trim() || '(Balcão)',
+            endereco: `Retirada no Balcão — ${currentLoja?.nome || 'Loja'}`,
+            formaPagamento: balcaoFormaPagamento,
+            trocoPara: trocoNum,
+            tipoPedido: 'retirada',
+            bypassStoreOpenCheck: true,
+          },
+          balcaoCart,
+          balcaoObservacao.trim() || undefined
+        );
+
+        playKitchenBell();
+        setBalcaoCreatedOrder(newOrder);
+        setBalcaoCart([]);
+        setBalcaoObservacao('');
+        setBalcaoTrocoPara('');
+        setBalcaoClienteNome('');
+        setBalcaoClienteTelefone('');
+      }
+    } catch (err: any) {
+      console.error('Erro ao lançar pedido no balcão:', err);
+      setBalcaoErrorMessage(err?.message || 'Erro ao lançar pedido no balcão.');
+    } finally {
+      setIsSubmittingBalcaoOrder(false);
+    }
+  };
 
   // Active open comandas
   const openComandas = useMemo(() => {
@@ -581,6 +779,23 @@ export const CaixaView: React.FC = () => {
             >
               <Receipt className="w-4 h-4" />
               <span>Comandas & Mesas ({openComandas.length})</span>
+            </button>
+
+            <button
+              onClick={() => setCaixaActiveTab('balcao')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer relative ${
+                caixaActiveTab === 'balcao'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-stone-400 hover:text-white hover:bg-stone-800'
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4 text-amber-400" />
+              <span>Pedido no Balcão</span>
+              {balcaoCart.length > 0 && (
+                <span className="px-1.5 py-0.2 text-[10px] font-black bg-white text-stone-950 rounded-full animate-bounce">
+                  {balcaoCart.reduce((sum, i) => sum + i.quantidade, 0)}
+                </span>
+              )}
             </button>
 
             <button
@@ -1976,7 +2191,580 @@ export const CaixaView: React.FC = () => {
       </main>
       )}
 
-      {/* Tab 2: Gestão de Pedidos & Produção */}
+      {/* Tab 2: Pedido no Balcão (Atendimento e Lançamento de Pedidos pelo Caixa) */}
+      {caixaActiveTab === 'balcao' && (
+        <main className="max-w-[1920px] mx-auto w-full p-2.5 sm:p-3.5 lg:p-4 space-y-4 flex-1">
+          {/* Sucesso / Pedido Criado */}
+          {balcaoCreatedOrder && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 border-2 border-emerald-500/40 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in duration-300">
+              <div className="flex items-center gap-3.5 w-full md:w-auto">
+                <div className="p-3 bg-emerald-600 text-white rounded-2xl shadow-sm shrink-0">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-black text-emerald-950 dark:text-emerald-200">
+                      Pedido #{balcaoCreatedOrder.id} Lançado com Sucesso! 🎉
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200">
+                      {balcaoCreatedOrder.tipo_pedido === 'retirada' ? 'Retirada no Balcão' : `Mesa ${balcaoCreatedOrder.mesa_numero}`}
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-600 dark:text-stone-300 mt-0.5">
+                    Cliente: <strong>{balcaoCreatedOrder.cliente_nome || 'Cliente Balcão'}</strong> • Total:{' '}
+                    <strong className="font-mono text-emerald-700 dark:text-emerald-400">
+                      {formatCurrency(balcaoCreatedOrder.itens.reduce((a, c) => a + c.preco_total, 0))}
+                    </strong>{' '}
+                    • Enviado em tempo real à Cozinha.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setPrintingOrder({ order: balcaoCreatedOrder, autoPrint: true })}
+                  className="px-3.5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-800 dark:hover:bg-stone-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Imprimir Ticket</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetCmd = comandas.find(
+                      (c) => c.id === balcaoCreatedOrder.comanda_id || c.pedidos_ids?.includes(balcaoCreatedOrder.id)
+                    );
+                    if (targetCmd) {
+                      setSelectedComandaId(targetCmd.id);
+                    }
+                    setSelectedOrderId(balcaoCreatedOrder.id);
+                    setCaixaActiveTab('comandas');
+                    setBalcaoCreatedOrder(null);
+                  }}
+                  className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>Cobrar no Caixa</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBalcaoCreatedOrder(null)}
+                  className="px-3.5 py-2.5 bg-stone-200 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  ➕ Novo Pedido
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Erro ao lançar pedido */}
+          {balcaoErrorMessage && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-red-700 dark:text-red-300">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                <span>{balcaoErrorMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBalcaoErrorMessage(null)}
+                className="p-1 hover:bg-red-500/20 rounded-lg text-red-500 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Layout Principal: Catálogo à esquerda (8 cols) e Carrinho/Resumo à direita (4 cols) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            {/* Coluna Esquerda: Catálogo de Produtos e Filtros */}
+            <div className="lg:col-span-7 xl:col-span-8 space-y-3.5">
+              {/* Barra de Busca e Categorias */}
+              <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl p-3.5 space-y-3 shadow-xs">
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input
+                    type="text"
+                    value={balcaoSearchQuery}
+                    onChange={(e) => setBalcaoSearchQuery(e.target.value)}
+                    placeholder="Buscar produtos por nome, código ou ingrediente..."
+                    className="w-full pl-9 pr-8 py-2 bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-xs text-stone-900 dark:text-white placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500/40"
+                  />
+                  {balcaoSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setBalcaoSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro de Categorias */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => setBalcaoCategoryFilter('todas')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer ${
+                      balcaoCategoryFilter === 'todas'
+                        ? 'bg-amber-600 text-white shadow-2xs'
+                        : 'bg-stone-100 dark:bg-slate-850 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    Todas ({products.filter((p) => p.ativo !== false && p.disponivel !== false).length})
+                  </button>
+
+                  {categories
+                    .filter((c) => c.ativo !== false)
+                    .sort((a, b) => a.ordem - b.ordem)
+                    .map((cat) => {
+                      const countInCat = products.filter(
+                        (p) =>
+                          p.categoria_id === cat.id &&
+                          p.ativo !== false &&
+                          p.disponivel !== false &&
+                          (currentLojaId === 'todas' || !p.loja_id || p.loja_id === currentLojaId || p.loja_id === currentLoja?.id)
+                      ).length;
+
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setBalcaoCategoryFilter(cat.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1.5 cursor-pointer ${
+                            balcaoCategoryFilter === cat.id
+                              ? 'bg-amber-600 text-white shadow-2xs'
+                              : 'bg-stone-100 dark:bg-slate-850 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <span>{cat.icone || '🍽️'}</span>
+                          <span>{cat.nome}</span>
+                          <span className="text-[10px] opacity-75 font-mono">({countInCat})</span>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Grid de Produtos */}
+              {balcaoProducts.length === 0 ? (
+                <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl p-10 text-center space-y-2">
+                  <div className="text-3xl">🔍</div>
+                  <h4 className="text-sm font-bold text-stone-800 dark:text-stone-200">
+                    Nenhum produto encontrado
+                  </h4>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    Tente buscar por outro termo ou selecione outra categoria.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {balcaoProducts.map((prod) => {
+                    const isPizza = isPizzaProduct(prod);
+                    const inCartCount = balcaoCart
+                      .filter((it) => it.produto_id === prod.id)
+                      .reduce((sum, it) => sum + it.quantidade, 0);
+                    const finalPrice = prod.em_promocao && prod.preco_promocional ? prod.preco_promocional : prod.preco;
+
+                    return (
+                      <div
+                        key={prod.id}
+                        className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col justify-between shadow-2xs hover:shadow-xs transition group"
+                      >
+                        <div className="space-y-2">
+                          <div className="relative h-28 w-full rounded-xl overflow-hidden bg-stone-100 dark:bg-slate-950">
+                            <img
+                              src={prod.imagem || DEFAULT_FOOD_IMG}
+                              alt={prod.nome}
+                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
+                              }}
+                            />
+                            {isPizza && (
+                              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500 text-stone-950 shadow-xs flex items-center gap-1">
+                                🍕 Pizza
+                              </span>
+                            )}
+                            {prod.em_promocao && (
+                              <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md text-[10px] font-black bg-red-600 text-white shadow-xs">
+                                Promoção
+                              </span>
+                            )}
+                          </div>
+
+                          <div>
+                            <h4 className="text-xs font-bold text-stone-900 dark:text-white line-clamp-1">
+                              {prod.nome}
+                            </h4>
+                            {prod.descricao && (
+                              <p className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-2 mt-0.5">
+                                {prod.descricao}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="pt-2.5 mt-2 border-t border-stone-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] text-stone-400 block leading-tight">Preço</span>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">
+                                {formatCurrency(finalPrice)}
+                              </span>
+                              {prod.em_promocao && prod.preco_promocional && (
+                                <span className="text-[10px] line-through text-stone-400 font-mono">
+                                  {formatCurrency(prod.preco)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {isPizza ? (
+                            <button
+                              type="button"
+                              onClick={() => setCustomizingProduct(prod)}
+                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Montar Pizza</span>
+                              {inCartCount > 0 && (
+                                <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-stone-950 text-white rounded-full">
+                                  {inCartCount}
+                                </span>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleAddSimpleProductToBalcao(prod)}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Adicionar</span>
+                              {inCartCount > 0 && (
+                                <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-white text-emerald-900 rounded-full font-black">
+                                  {inCartCount}
+                                </span>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Coluna Direita: Carrinho, Dados do Pedido e Finalização */}
+            <div className="lg:col-span-5 xl:col-span-4">
+              <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl shadow-xs p-4 space-y-4 sticky top-[130px]">
+                {/* Header do Resumo */}
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl">
+                      <ShoppingBag className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-stone-900 dark:text-white uppercase tracking-wider">
+                        Resumo do Pedido no Balcão
+                      </h3>
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                        {balcaoCart.length} {balcaoCart.length === 1 ? 'item diferente' : 'itens diferentes'} no carrinho
+                      </p>
+                    </div>
+                  </div>
+
+                  {balcaoCart.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setBalcaoCart([])}
+                      className="text-[11px] font-bold text-red-600 hover:text-red-700 hover:underline cursor-pointer"
+                    >
+                      Limpar
+                    </button>
+                  )}
+                </div>
+
+                {/* Seletor de Modalidade: Retirada no Balcão ou Consumo na Mesa */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 block">
+                    Modalidade do Pedido
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-100 dark:bg-slate-950 rounded-xl border border-stone-200 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setBalcaoModalidade('retirada')}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                        balcaoModalidade === 'retirada'
+                          ? 'bg-amber-600 text-white shadow-2xs'
+                          : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      <span>Retirada / Levar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBalcaoModalidade('mesa')}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                        balcaoModalidade === 'mesa'
+                          ? 'bg-sky-600 text-white shadow-2xs'
+                          : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <UtensilsCrossed className="w-3.5 h-3.5" />
+                      <span>Na Mesa</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Seleção de Mesa (se modalidade === 'mesa') */}
+                {balcaoModalidade === 'mesa' && (
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 block">
+                      Selecione a Mesa *
+                    </label>
+                    <select
+                      value={balcaoSelectedMesaId}
+                      onChange={(e) => setBalcaoSelectedMesaId(e.target.value)}
+                      className="w-full px-3 py-2 bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-stone-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500/40"
+                    >
+                      <option value="">Selecione uma mesa...</option>
+                      {tables
+                        .slice()
+                        .sort((a, b) => a.numero - b.numero)
+                        .map((tbl) => (
+                          <option key={tbl.id} value={tbl.id}>
+                            Mesa {tbl.numero} — {tbl.status === 'livre' ? '🟢 Livre' : `🔴 Ocupada ${tbl.cliente_atual_nome ? `(${tbl.cliente_atual_nome})` : ''}`}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Dados do Cliente */}
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 block mb-1">
+                      Nome do Cliente {balcaoModalidade === 'retirada' ? '(para chamar na retirada)' : ''}
+                    </label>
+                    <input
+                      type="text"
+                      value={balcaoClienteNome}
+                      onChange={(e) => setBalcaoClienteNome(e.target.value)}
+                      placeholder="Ex: Paulo ou Cliente Balcão"
+                      className="w-full px-3 py-2 bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-xs text-stone-900 dark:text-white placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 block mb-1">
+                      Telefone / WhatsApp (opcional)
+                    </label>
+                    <input
+                      type="tel"
+                      value={balcaoClienteTelefone}
+                      onChange={(e) => setBalcaoClienteTelefone(e.target.value)}
+                      placeholder="(99) 99999-9999"
+                      className="w-full px-3 py-2 bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-xs text-stone-900 dark:text-white placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500/40"
+                    />
+                  </div>
+                </div>
+
+                {/* Forma de Pagamento (se Retirada) */}
+                {balcaoModalidade === 'retirada' && (
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 block">
+                      Forma de Pagamento
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { id: 'pix', label: 'PIX', icon: QrCode },
+                        { id: 'dinheiro', label: 'Dinheiro', icon: Banknote },
+                        { id: 'cartao_debito', label: 'Débito', icon: CreditCard },
+                        { id: 'cartao_credito', label: 'Crédito', icon: CreditCard },
+                        { id: 'pagar_depois', label: 'Pagar na Retirada', icon: Clock },
+                      ].map((fp) => {
+                        const Icon = fp.icon;
+                        const isSelected = balcaoFormaPagamento === fp.id;
+                        return (
+                          <button
+                            key={fp.id}
+                            type="button"
+                            onClick={() => setBalcaoFormaPagamento(fp.id)}
+                            className={`p-2 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                              isSelected
+                                ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                                : 'bg-stone-50 dark:bg-slate-950 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-slate-800 hover:bg-stone-100 dark:hover:bg-slate-900'
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{fp.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {balcaoFormaPagamento === 'dinheiro' && (
+                      <div className="pt-1">
+                        <label className="text-[11px] font-semibold text-stone-600 dark:text-stone-400 block mb-1">
+                          Troco para quanto? (opcional)
+                        </label>
+                        <input
+                          type="text"
+                          value={balcaoTrocoPara}
+                          onChange={(e) => setBalcaoTrocoPara(e.target.value)}
+                          placeholder="Ex: 50,00 ou 100,00"
+                          className="w-full px-3 py-1.5 bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-xs font-mono text-stone-900 dark:text-white placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500/40"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Observações Gerais do Pedido */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 block">
+                    Observações da Comanda / Cozinha
+                  </label>
+                  <textarea
+                    value={balcaoObservacao}
+                    onChange={(e) => setBalcaoObservacao(e.target.value)}
+                    rows={2}
+                    placeholder="Ex: Sem cebola, caprichar no orégano, cliente vai aguardar no balcão..."
+                    className="w-full px-3 py-2 bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl text-xs text-stone-900 dark:text-white placeholder-stone-400 focus:outline-hidden focus:ring-2 focus:ring-amber-500/40 resize-none"
+                  />
+                </div>
+
+                {/* Itens do Carrinho */}
+                <div className="space-y-2 pt-2 border-t border-stone-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
+                    <span>Itens do Pedido ({balcaoCart.reduce((s, i) => s + i.quantidade, 0)})</span>
+                    <span>Subtotal</span>
+                  </div>
+
+                  {balcaoCart.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-stone-400 border border-dashed border-stone-200 dark:border-slate-800 rounded-xl">
+                      Nenhum item adicionado ainda.<br />
+                      Selecione os produtos ao lado para incluir no pedido.
+                    </div>
+                  ) : (
+                    <div className="max-h-60 overflow-y-auto space-y-2 pr-1 no-scrollbar">
+                      {balcaoCart.map((item, idx) => (
+                        <div
+                          key={item.id || idx}
+                          className="bg-stone-50 dark:bg-slate-950 border border-stone-200 dark:border-slate-800 rounded-xl p-2.5 flex items-start justify-between gap-2 text-xs"
+                        >
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <div className="font-bold text-stone-900 dark:text-white leading-tight">
+                              {item.nome}
+                            </div>
+                            {item.tamanho && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-stone-200 dark:bg-slate-800 text-stone-700 dark:text-stone-300 font-semibold mr-1">
+                                {item.tamanho}
+                              </span>
+                            )}
+                            {item.sabores && item.sabores.length > 1 && (
+                              <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                                Sabores: {item.sabores.join(' / ')}
+                              </div>
+                            )}
+                            {item.borda && (
+                              <div className="text-[10px] text-stone-500 dark:text-stone-400">
+                                Borda: {item.borda.nome}
+                              </div>
+                            )}
+                            {item.adicionais && item.adicionais.length > 0 && (
+                              <div className="text-[10px] text-stone-500 dark:text-stone-400">
+                                Extras: {item.adicionais.map((a) => a.nome).join(', ')}
+                              </div>
+                            )}
+                            {item.observacao && (
+                              <div className="text-[10px] italic text-stone-500 dark:text-stone-400">
+                                Obs: {item.observacao}
+                              </div>
+                            )}
+                            <div className="text-[10px] font-mono text-stone-500 dark:text-stone-400">
+                              {formatCurrency(item.preco_unitario)} cada
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-1.5 shrink-0">
+                            <span className="font-bold font-mono text-stone-900 dark:text-white">
+                              {formatCurrency(item.preco_total)}
+                            </span>
+                            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-lg p-0.5">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateBalcaoItemQuantity(idx, -1)}
+                                className="w-5 h-5 flex items-center justify-center text-stone-500 hover:text-stone-900 dark:hover:text-white cursor-pointer"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-5 text-center font-bold text-[11px] font-mono">
+                                {item.quantidade}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateBalcaoItemQuantity(idx, 1)}
+                                className="w-5 h-5 flex items-center justify-center text-stone-500 hover:text-stone-900 dark:hover:text-white cursor-pointer"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBalcaoItem(idx)}
+                                className="w-5 h-5 flex items-center justify-center text-red-500 hover:text-red-700 ml-0.5 cursor-pointer"
+                                title="Remover item"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Total Financeiro e Botão de Ação */}
+                <div className="pt-3 border-t border-stone-200 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                      Total do Pedido
+                    </span>
+                    <span className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(balcaoCartTotal)}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={balcaoCart.length === 0 || isSubmittingBalcaoOrder}
+                    onClick={handleFinalizeBalcaoOrder}
+                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                  >
+                    {isSubmittingBalcaoOrder ? (
+                      <span>Enviando Pedido à Cozinha...</span>
+                    ) : (
+                      <>
+                        <ChefHat className="w-4 h-4" />
+                        <span>Lançar Pedido & Enviar à Cozinha 🚀</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      )}
+
+      {/* Tab 3: Gestão de Pedidos & Produção */}
       {caixaActiveTab === 'pedidos' && (
         <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 space-y-4 flex-1">
           {/* Top Bar for Pedidos: Status Filter Chips & Search */}
@@ -2992,6 +3780,19 @@ export const CaixaView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Pizza Customizer Modal for Balcão Order */}
+      {customizingProduct && (
+        <PizzaCustomizerModal
+          baseProduct={customizingProduct}
+          onClose={() => setCustomizingProduct(null)}
+          onConfirm={(item) => {
+            setBalcaoCart((prev) => [...prev, item]);
+            setCustomizingProduct(null);
+            playAddPop();
+          }}
+        />
       )}
     </div>
   );

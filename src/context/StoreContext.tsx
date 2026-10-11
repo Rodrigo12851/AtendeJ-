@@ -158,7 +158,7 @@ interface StoreContextType {
   resetLoginLockout: (usuario: string) => void;
   createDeliveryOrder: (
     lojaId: string,
-    clienteInfo: { nome: string; telefone: string; endereco: string; formaPagamento: string; trocoPara?: number; tipoPedido?: 'delivery' | 'retirada' },
+    clienteInfo: { nome: string; telefone: string; endereco: string; formaPagamento: string; trocoPara?: number; tipoPedido?: 'delivery' | 'retirada'; bypassStoreOpenCheck?: boolean },
     itens: OrderItem[],
     observacao?: string
   ) => Order;
@@ -1929,7 +1929,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const createDeliveryOrder = (
     lojaId: string,
-    clienteInfo: { nome: string; telefone: string; endereco: string; formaPagamento: string; trocoPara?: number; tipoPedido?: 'delivery' | 'retirada' },
+    clienteInfo: { nome: string; telefone: string; endereco: string; formaPagamento: string; trocoPara?: number; tipoPedido?: 'delivery' | 'retirada'; bypassStoreOpenCheck?: boolean },
     itens: OrderItem[],
     observacao?: string
   ): Order => {
@@ -1940,10 +1940,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       throw new Error(`O estabelecimento "${targetLoja.nome}" está temporariamente suspenso e não aceita pedidos no momento.`);
     }
 
-    // Validação em tempo real do horário de funcionamento
-    const statusAtual = getStoreOpenStatus(targetLoja);
-    if (!statusAtual.isOpen) {
-      throw new Error(`O estabelecimento "${targetLoja?.nome || 'Loja'}" está fechado no momento (${statusAtual.horarioFormatado}). Novos pedidos não são aceitos agora.`);
+    // Validação em tempo real do horário de funcionamento (ignorado se for pedido de balcão/operador)
+    if (!clienteInfo.bypassStoreOpenCheck) {
+      const statusAtual = getStoreOpenStatus(targetLoja);
+      if (!statusAtual.isOpen) {
+        throw new Error(`O estabelecimento "${targetLoja?.nome || 'Loja'}" está fechado no momento (${statusAtual.horarioFormatado}). Novos pedidos não são aceitos agora.`);
+      }
     }
 
     const isRetirada = clienteInfo.tipoPedido === 'retirada';
