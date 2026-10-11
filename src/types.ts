@@ -196,6 +196,8 @@ export interface Order {
   entregue_em?: string;
   itens: OrderItem[];
 
+  motoboy_token?: string;
+  motoboy_nome?: string;
   // Delivery & Cliente (Anota AI Style)
   tipo_pedido?: 'mesa' | 'delivery' | 'retirada';
   origem?: string;

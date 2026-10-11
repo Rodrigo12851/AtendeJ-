@@ -28,6 +28,9 @@ import {
   ShoppingBag,
   UtensilsCrossed,
   X,
+  Copy,
+  ExternalLink,
+  MessageCircle,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Comanda, Order, Table, PaymentMethod, CashEntry, OrderStatus } from '../../types';
@@ -72,6 +75,58 @@ export const CaixaView: React.FC = () => {
     navigator.clipboard.writeText(url);
     setCopiedDeliveryLink(true);
     setTimeout(() => setCopiedDeliveryLink(false), 2500);
+  };
+
+  // Motoboy unique delivery link modal state
+  const [motoboyModalOrder, setMotoboyModalOrder] = useState<Order | null>(null);
+  const [copiedMotoboyLink, setCopiedMotoboyLink] = useState(false);
+
+  const getMotoboyLink = (order: Order) => {
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    const token = order.motoboy_token || String(order.id);
+    return `${origin}${pathname}?motoboy=1&pedido=${order.id}&token=${token}`;
+  };
+
+  const handleShareMotoboyLink = (order: Order) => {
+    setMotoboyModalOrder(order);
+    setCopiedMotoboyLink(false);
+  };
+
+  const handleCopyMotoboyLink = async (order: Order) => {
+    const link = getMotoboyLink(order);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = link;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopiedMotoboyLink(true);
+      setTimeout(() => setCopiedMotoboyLink(false), 2500);
+    } catch {
+      setCopiedMotoboyLink(false);
+    }
+  };
+
+  const getMotoboyWhatsAppUrl = (order: Order) => {
+    const link = getMotoboyLink(order);
+    const totalOrderVal = order.itens
+      .filter((it) => it.status === 'ativo')
+      .reduce((a, c) => a + c.preco_total, 0) + (order.taxa_entrega || 0);
+    const enderecoTxt = order.cliente_endereco || order.delivery_info?.endereco || 'Ver no link';
+    const text = `🛵 *ENTREGA PEDIDO #${order.id}*\n\n` +
+      `👤 *Cliente:* ${order.cliente_nome || 'Cliente'}\n` +
+      `📍 *Endereço:* ${enderecoTxt}\n` +
+      `💰 *Total a Cobrar:* ${formatCurrency(totalOrderVal)}\n` +
+      `💳 *Forma de Pgto:* ${order.forma_pagamento || 'A combinar'}` +
+      (order.troco_para ? ` (Troco para ${formatCurrency(order.troco_para)})` : '') + `\n\n` +
+      `👉 *Clique no link para ver a rota no GPS e finalizar a entrega:*\n${link}`;
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
   };
 
   // Pedidos & Delivery / Retirada tracking state (Caixa Operacional)
@@ -667,8 +722,6 @@ export const CaixaView: React.FC = () => {
                     const isPreparo = order.status === 'em_preparo';
                     const isPronto = order.status === 'pronto';
                     const isACaminho = order.status === 'a_caminho';
-                    const isSelected = selectedOrderId === order.id;
-
                     const orderTotal =
                       order.itens
                         .filter((it) => it.status === 'ativo')
@@ -680,11 +733,8 @@ export const CaixaView: React.FC = () => {
                     return (
                       <div
                         key={order.id}
-                        onClick={() => handleSelectOrder(order)}
-                        className={`p-3 rounded-xl border text-xs transition shadow-2xs space-y-2 relative cursor-pointer ${
-                          isSelected
-                            ? 'bg-purple-900/10 dark:bg-purple-950/40 border-2 border-purple-600 ring-2 ring-purple-600/40 shadow-md'
-                            : isNovo
+                        className={`p-3 rounded-xl border text-xs transition shadow-2xs space-y-2 relative ${
+                          isNovo
                             ? 'bg-red-50/50 dark:bg-slate-950 border-2 border-red-500 ring-2 ring-red-500/20 hover:bg-red-50/80'
                             : isPreparo
                             ? 'bg-amber-50/40 dark:bg-slate-950 border-2 border-amber-400/90 dark:border-amber-500 hover:bg-amber-50/70'
@@ -708,11 +758,6 @@ export const CaixaView: React.FC = () => {
 
                           {/* Status Badge */}
                           <div className="flex items-center gap-1">
-                            {isSelected && (
-                              <span className="px-1.5 py-0.5 text-[9px] font-black uppercase bg-purple-700 text-white rounded-md shadow-xs animate-pulse">
-                                ✓ NO CAIXA
-                              </span>
-                            )}
                             {isNovo && (
                               <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-red-600 text-white rounded-md animate-pulse">
                                 ● NOVO
@@ -840,22 +885,39 @@ export const CaixaView: React.FC = () => {
                               </button>
                             )}
 
-                            {/* Botão para receber no Caixa / Finalizar */}
+                            {/* Link do Motoboy */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleSelectOrder(order);
+                                handleShareMotoboyLink(order);
                               }}
-                              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95 ${
-                                isSelected
-                                  ? 'bg-purple-700 text-white'
-                                  : 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700'
-                              }`}
-                              title="Conferir itens e receber pagamento no Caixa"
+                              className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                              title="Copiar link do motoboy ou enviar para o WhatsApp dele"
                             >
-                              <Receipt className="w-3 h-3 text-purple-300" />
-                              <span>{isSelected ? 'No Caixa' : 'Receber ➔'}</span>
+                              <Bike className="w-3 h-3 text-purple-200" />
+                              <span>Link Motoboy</span>
+                            </button>
+
+                            {/* Confirmar Entrega (caso o motoboy esqueceu de finalizar pelo link) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const confirmOk = window.confirm(
+                                  `Confirmar que o Pedido Delivery #${order.id} foi entregue com sucesso ao cliente?`
+                                );
+                                if (!confirmOk) return;
+                                updateOrderStatus(order.id, 'entregue');
+                                if (order.comanda_id) {
+                                  closeComanda(order.comanda_id);
+                                }
+                              }}
+                              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                              title="Confirmar entrega do pedido (caso o motoboy tenha esquecido de finalizar pelo link)"
+                            >
+                              <Check className="w-3 h-3 text-white stroke-[2.5]" />
+                              <span>Confirmar Entrega</span>
                             </button>
                           </div>
                         </div>
@@ -2159,10 +2221,31 @@ export const CaixaView: React.FC = () => {
                               <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
                               {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Confirmar</button>}
                               {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'a_caminho')} className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Despachar</button>}
-                              <button type="button" onClick={() => { handleSelectOrder(order); setCaixaActiveTab('comandas'); }} className="px-2 py-1 bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs">
-                                <Receipt className="w-3 h-3 text-purple-300" />
-                                <span>Caixa ➔</span>
+                              <button
+                                type="button"
+                                onClick={() => handleShareMotoboyLink(order)}
+                                className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs"
+                                title="Link do Motoboy"
+                              >
+                                <Bike className="w-3 h-3 text-purple-200" />
+                                <span>Link</span>
                               </button>
+                              {!isEntregue && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (window.confirm(`Confirmar que o Pedido #${order.id} foi entregue?`)) {
+                                      updateOrderStatus(order.id, 'entregue');
+                                      if (order.comanda_id) closeComanda(order.comanda_id);
+                                    }
+                                  }}
+                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs"
+                                  title="Confirmar Entrega"
+                                >
+                                  <Check className="w-3 h-3 text-white stroke-[2.5]" />
+                                  <span>Entregue</span>
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2442,10 +2525,46 @@ export const CaixaView: React.FC = () => {
                         <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="px-3 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-semibold cursor-pointer shadow-2xs"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
                         {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">Confirmar 🖨️</button>}
                         {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'pronto')} className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">Pronto 🍕</button>}
-                        <button type="button" onClick={() => { handleSelectOrder(order); setCaixaActiveTab('comandas'); }} className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs">
-                          <Receipt className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Caixa ➔</span>
-                        </button>
+                        {order.tipo_pedido === 'delivery' ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleShareMotoboyLink(order)}
+                              className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                              title="Link do Motoboy"
+                            >
+                              <Bike className="w-3.5 h-3.5 text-purple-200" />
+                              <span>Link Motoboy</span>
+                            </button>
+                            {!isEntregue && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`Confirmar que o Pedido #${order.id} foi entregue?`)) {
+                                    updateOrderStatus(order.id, 'entregue');
+                                    if (order.comanda_id) closeComanda(order.comanda_id);
+                                  }
+                                }}
+                                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                              >
+                                <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                                <span>Entregue</span>
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSelectOrder(order);
+                              setCaixaActiveTab('comandas');
+                            }}
+                            className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                          >
+                            <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Caixa ➔</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2752,6 +2871,120 @@ export const CaixaView: React.FC = () => {
           autoPrint={printingOrder.autoPrint}
           onClose={() => setPrintingOrder(null)}
         />
+      )}
+
+      {/* Motoboy Link Modal */}
+      {motoboyModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs">
+          <div className="bg-white dark:bg-stone-900 rounded-2xl shadow-2xl max-w-md w-full p-5 space-y-4 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-purple-600/10 text-purple-600 dark:text-purple-400 rounded-xl">
+                  <Bike className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black leading-tight">
+                    Link do Motoboy • Pedido #{motoboyModalOrder.id}
+                  </h3>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    Acesso direto sem necessidade de login ou senha
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMotoboyModalOrder(null)}
+                className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Description */}
+            <div className="p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/50 rounded-xl text-xs space-y-1.5 text-purple-900 dark:text-purple-200">
+              <p className="font-semibold">
+                📱 Esta página leve abre no celular do motoboy com:
+              </p>
+              <ul className="list-disc list-inside text-[11px] space-y-0.5 opacity-90">
+                <li>Endereço do cliente com GPS (Google Maps e Waze)</li>
+                <li>Telefone do cliente com botão para ligar ou abrir WhatsApp</li>
+                <li>Valor total a cobrar e troco exato a devolver</li>
+                <li>Botão "Finalizar Entrega" para atualizar no sistema</li>
+              </ul>
+            </div>
+
+            {/* Link Box */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                Link de Entrega Exclusivo:
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={getMotoboyLink(motoboyModalOrder)}
+                  className="flex-1 px-3 py-2 bg-stone-100 dark:bg-stone-950 border border-stone-300 dark:border-stone-800 rounded-xl text-xs font-mono text-stone-800 dark:text-stone-200 select-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCopyMotoboyLink(motoboyModalOrder)}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0 shadow-xs ${
+                    copiedMotoboyLink
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-800 dark:hover:bg-stone-700'
+                  }`}
+                >
+                  {copiedMotoboyLink ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Actions Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <a
+                href={getMotoboyWhatsAppUrl(motoboyModalOrder)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition shadow-sm"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Enviar no WhatsApp</span>
+              </a>
+
+              <a
+                href={getMotoboyLink(motoboyModalOrder)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 px-3 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-100 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition border border-stone-300 dark:border-stone-700"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Visualizar Tela</span>
+              </a>
+            </div>
+
+            {/* Close button */}
+            <div className="pt-2 border-t border-stone-200 dark:border-stone-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setMotoboyModalOrder(null)}
+                className="px-4 py-2 text-xs font-bold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

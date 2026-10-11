@@ -1050,6 +1050,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } else if (newStatus === 'a_caminho') {
       const notif: SystemNotification = {
         id: `notif_${Date.now()}`,
+        loja_id: order.loja_id,
         tipo: 'pedido_novo',
         titulo: `🛵 Pedido #${orderId} a caminho!`,
         mensagem: `${order.cliente_nome ? `Cliente: ${order.cliente_nome} — ` : ''}Saiu para entrega.`,
@@ -1059,13 +1060,43 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
       updatedNotifs = [notif, ...notifications];
       broadcastSound('kitchen');
+    } else if (newStatus === 'entregue') {
+      const notif: SystemNotification = {
+        id: `notif_${Date.now()}`,
+        loja_id: order.loja_id,
+        tipo: 'pedido_novo',
+        titulo: `✅ Pedido #${orderId} Entregue!`,
+        mensagem: `${order.cliente_nome ? `Cliente: ${order.cliente_nome} — ` : ''}Entrega finalizada com sucesso.`,
+        data: nowIso,
+        lida: false,
+        pedido_id: orderId,
+      };
+      updatedNotifs = [notif, ...notifications];
+      if (audioEnabled) playReadyDing();
+      broadcastSound('ready');
+    }
+
+    let updatedComandas = comandas;
+    if (newStatus === 'entregue' && order.comanda_id) {
+      updatedComandas = comandas.map((c) =>
+        c.id === order.comanda_id
+          ? {
+              ...c,
+              status: 'fechada' as const,
+              fechamento: c.fechamento || nowIso,
+            }
+          : c
+      );
+      setComandas(updatedComandas);
+      const targetCmd = updatedComandas.find((c) => c.id === order.comanda_id);
+      if (targetCmd) saveComandaToFirestore(targetCmd);
     }
 
     setOrders(updatedOrders);
     setNotifications(updatedNotifs);
     const targetOrder = updatedOrders.find((o) => o.id === orderId);
     if (targetOrder) saveOrderToFirestore(targetOrder);
-    broadcastSync({ orders: updatedOrders, notifications: updatedNotifs });
+    broadcastSync({ orders: updatedOrders, comandas: updatedComandas, notifications: updatedNotifs });
   };
 
   const cancelOrderItem = (comandaId: string, orderId: number, itemId: string, motivo: string) => {
@@ -1956,6 +1987,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       observacao: observacao || '',
       criado_em: nowIso,
       itens: preparedItens,
+      motoboy_token: Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10),
       tipo_pedido: isRetirada ? 'retirada' : 'delivery',
       cliente_nome: clienteInfo.nome,
       cliente_telefone: clienteInfo.telefone,

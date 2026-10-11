@@ -11,6 +11,7 @@ import { CaixaView } from './components/caixa/CaixaView';
 import { AdminView } from './components/admin/AdminView';
 import { SuperAdminView } from './components/superadmin/SuperAdminView';
 import { CustomerDeliveryView } from './components/delivery/CustomerDeliveryView';
+import { MotoboyDeliveryView } from './components/delivery/MotoboyDeliveryView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { MASTER_PORTAL_TOKEN } from './data/initialData';
 
@@ -123,6 +124,26 @@ const MainApp: React.FC = () => {
       setCurrentLojaId(currentUser.loja_id);
     }
   }, [targetLoja, currentUser, currentLojaId, setCurrentLojaId]);
+
+  // 0. Motoboy mobile delivery view: accessible directly via unique order link without login requirement
+  const isMotoboyParam =
+    urlParams.get('motoboy') === '1' ||
+    urlParams.get('painel') === 'motoboy' ||
+    urlParams.get('perfil') === 'motoboy' ||
+    urlParams.has('motoboy');
+  const motoboyPedidoId =
+    urlParams.get('pedido') ||
+    urlParams.get('pedido_id') ||
+    urlParams.get('order_id');
+
+  if (isMotoboyParam && motoboyPedidoId) {
+    return (
+      <MotoboyDeliveryView
+        pedidoId={parseInt(motoboyPedidoId, 10)}
+        token={urlParams.get('token') || ''}
+      />
+    );
+  }
 
   // 1. IF ?loja= URL parameter is present WITHOUT ?painel=, ALWAYS render ONLY Customer Delivery View
   if (publicLojaSlug && !painelParam) {
