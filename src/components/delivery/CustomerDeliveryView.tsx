@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Pizza,
   ShoppingBag,
@@ -151,6 +151,24 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   // Active Category Filter
   const [activeCategory, setActiveCategory] = useState<string>('todos');
+  const catalogSectionRef = useRef<HTMLDivElement | null>(null);
+
+  // Seleciona categoria e rola a tela suavemente até a lista de produtos correspondente
+  const handleSelectCategory = (categoryId: string) => {
+    setActiveCategory(categoryId);
+    setTimeout(() => {
+      if (catalogSectionRef.current) {
+        const headerOffset = 75; // compensação do header fixo
+        const elementPosition = catalogSectionRef.current.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.scrollY - headerOffset;
+
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: 'smooth',
+        });
+      }
+    }, 60);
+  };
 
   // Cart State
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -1147,7 +1165,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto pb-1.5 scrollbar-none flex-nowrap whitespace-nowrap -mx-1 px-1">
                       {/* Pílula "Todos" */}
                       <button
-                        onClick={() => setActiveCategory('todos')}
+                        onClick={() => handleSelectCategory('todos')}
                         className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer ${
                           activeCategory === 'todos'
                             ? 'bg-[#FF8A00] text-white shadow-xs'
@@ -1165,7 +1183,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                         return (
                           <button
                             key={catItem.id}
-                            onClick={() => setActiveCategory(catItem.id)}
+                            onClick={() => handleSelectCategory(catItem.id)}
                             className={`px-3.5 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                               isCatActive
                                 ? 'bg-[#FF8A00] text-white shadow-xs'
@@ -1286,7 +1304,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                 )}
 
                 {/* 4. Seção "Todos os Lanches" / Produtos Gerais (1 Coluna no celular como na Imagem 1, Grid expansivo no PC/Tablet como na Imagem 2) */}
-                <div className="space-y-3 pt-3">
+                <div ref={catalogSectionRef} id="secao-catalogo" className="space-y-3 pt-3 scroll-mt-20">
                   <div className="flex items-center justify-between pb-1">
                     <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-white tracking-tight">
                       {activeCategory !== 'todos'
