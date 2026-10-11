@@ -396,13 +396,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   // Categorias exibidas nos círculos (apenas as que possuem produtos cadastrados nesta loja)
   const displayCategoryCircles = useMemo(() => {
     const iconMap: Record<string, string> = {
+      pizzas: '🍕',
+      bebidas: '🥤',
+      porcoes: '🍟',
+      lanches: '🍔',
       hamburgueres: '🍔',
       combos: '🍟',
-      bebidas: '🥤',
-      porcoes: '🍗',
-      lanches: '🌭',
       sobremesas: '🍰',
-      pizzas: '🍕',
+      cafes: '☕',
       pizzas_doces: '🍫',
       promocoes: '🔥',
     };
@@ -1135,39 +1136,41 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                 </div>
               )}
 
-                {/* 2. Círculos de Categorias (Apenas categorias com produtos cadastrados, halo ativo e tamanho compacto no mobile) */}
+                {/* 2. Pílulas / Chips de Categorias (Formato Imagem 2 - Linha única contínua com scroll no celular) */}
                 {displayCategoryCircles.length > 0 && (
-                  <div className="py-1">
-                    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-6 lg:gap-8">
+                  <div className="py-2 overflow-hidden">
+                    <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto pb-1.5 scrollbar-none flex-nowrap whitespace-nowrap -mx-1 px-1">
+                      {/* Pílula "Todos" */}
+                      <button
+                        onClick={() => setActiveCategory('todos')}
+                        className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer ${
+                          activeCategory === 'todos'
+                            ? 'bg-[#FF8A00] text-white shadow-xs'
+                            : isDarkMode
+                            ? 'bg-[#1E1E28] text-stone-300 border border-stone-800 hover:border-stone-700'
+                            : 'bg-white text-stone-700 border border-stone-200 hover:border-stone-300 shadow-2xs'
+                        }`}
+                      >
+                        Todos
+                      </button>
+
+                      {/* Pílulas de Cada Categoria */}
                       {displayCategoryCircles.map((catItem) => {
                         const isCatActive = activeCategory === catItem.id;
                         return (
                           <button
                             key={catItem.id}
-                            onClick={() => {
-                              setActiveCategory(catItem.id);
-                              setCurrentTab('cardapio');
-                            }}
-                            className="flex flex-col items-center gap-1 sm:gap-1.5 group cursor-pointer shrink-0"
+                            onClick={() => setActiveCategory(catItem.id)}
+                            className={`px-3.5 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                              isCatActive
+                                ? 'bg-[#FF8A00] text-white shadow-xs'
+                                : isDarkMode
+                                ? 'bg-[#1E1E28] text-stone-300 border border-stone-800 hover:border-stone-700'
+                                : 'bg-white text-stone-700 border border-stone-200 hover:border-stone-300 shadow-2xs'
+                            }`}
                           >
-                            <div
-                              className={`w-11 h-11 sm:w-13 sm:h-13 md:w-15 md:h-15 rounded-full flex items-center justify-center text-lg sm:text-xl md:text-2xl transition-all ${
-                                isCatActive
-                                  ? 'bg-[#FF8A00] text-white ring-4 ring-[#FF8A00]/30 border-2 border-[#FF8A00] shadow-md scale-105'
-                                  : 'bg-[#FF8A00] hover:bg-[#E07A00] active:scale-95 text-white shadow-xs group-hover:shadow-md'
-                              }`}
-                            >
-                              {catItem.icon}
-                            </div>
-                            <span
-                              className={`text-[10px] sm:text-xs tracking-tight text-center max-w-[70px] sm:max-w-[85px] truncate ${
-                                isCatActive
-                                  ? 'font-black text-[#FF8A00]'
-                                  : 'font-bold text-stone-800 dark:text-stone-200'
-                              }`}
-                            >
-                              {catItem.label}
-                            </span>
+                            <span className="text-sm sm:text-base leading-none">{catItem.icon}</span>
+                            <span>{catItem.label}</span>
                           </button>
                         );
                       })}
@@ -1281,20 +1284,22 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                 <div className="space-y-3 pt-3">
                   <div className="flex items-center justify-between pb-1">
                     <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-white tracking-tight">
-                      {targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger'))
+                      {activeCategory !== 'todos'
+                        ? availableCategories.find((c) => c.id === activeCategory)?.nome || (activeCategory === 'promocoes' ? 'Promoções' : 'Cardápio')
+                        : targetLoja.nome.toLowerCase().includes('burger') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('burger'))
                         ? 'Todos os Lanches'
                         : targetLoja.nome.toLowerCase().includes('pizza') || (targetLoja.marca && targetLoja.marca.toLowerCase().includes('pizza'))
                         ? 'Todas as Pizzas'
                         : 'Nosso Cardápio'}
                     </h3>
                     <span className="text-xs font-bold text-stone-400">
-                      {storeProducts.length} {storeProducts.length === 1 ? 'item' : 'itens'}
+                      {filteredProducts.length} {filteredProducts.length === 1 ? 'item' : 'itens'}
                     </span>
                   </div>
 
                   {/* Grid Responsivo: 1 coluna no mobile (como imagem 1), 2 no tablet, 3 ou 4 no desktop (como imagem 2) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    {storeProducts.map((prod) => {
+                    {filteredProducts.map((prod) => {
                       const isFav = favorites.includes(prod.id);
                       const isPromo = isProductPromotionActive(prod);
                       return (
