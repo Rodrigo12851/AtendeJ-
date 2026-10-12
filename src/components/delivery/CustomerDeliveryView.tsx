@@ -373,7 +373,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
     const isPix = (order.forma_pagamento || formaPagamento).toLowerCase() === 'pix';
     const pixBlock = isPix && targetLoja.pix_chave
-      ? `*DADOS DO PIX:* ⚡\n` +
+      ? `*DADOS DO PIX:*\n` +
         `• *Chave:* ${formatPixKeyDisplay(targetLoja.pix_chave, targetLoja.pix_tipo_chave)} (${(targetLoja.pix_tipo_chave || 'Chave').toUpperCase()})\n` +
         (targetLoja.pix_titular ? `• *Titular:* ${targetLoja.pix_titular}\n` : '') +
         `• *Status:* Aguardando comprovante\n` +
@@ -389,7 +389,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       (order.tipo_pedido !== 'retirada'
         ? `*Endereço:* ${order.cliente_endereco || clienteEndereco}\n`
         : '') +
-      `*Forma de Pagamento:* ${(order.forma_pagamento || formaPagamento).toUpperCase()} ${isPix ? '⚡' : ''}\n\n` +
+      `*Forma de Pagamento:* ${(order.forma_pagamento || formaPagamento).toUpperCase()}\n\n` +
       pixBlock +
       `*ITENS DO PEDIDO:*\n${itensTexto}\n\n` +
       (order.taxa_entrega ? `*Taxa de Entrega:* ${formatCurrency(order.taxa_entrega)}\n` : '') +
@@ -2379,7 +2379,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                             : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300'
                         }`}
                       >
-                        <span>⚡</span>
+                        <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span>PIX (Instantâneo)</span>
                       </button>
 
@@ -2427,7 +2427,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                       <div className="mt-2.5 p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 space-y-2 animate-in fade-in duration-200 shadow-2xs">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-                            <Zap className="w-4 h-4 text-emerald-600" />
+                            <QrCode className="w-4 h-4 text-emerald-600" />
                             <span>PAGAMENTO VIA PIX</span>
                           </span>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/80 dark:bg-emerald-800 text-emerald-950 dark:text-emerald-100">
@@ -2923,11 +2923,11 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                 <div className="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-4 mt-4 text-left shadow-xs space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs font-black text-emerald-950 uppercase tracking-wide">
-                      <Zap className="w-4 h-4 text-emerald-600 fill-emerald-600" />
+                      <QrCode className="w-4 h-4 text-emerald-600" />
                       <span>PAGAR COM PIX • {formatCurrency(submittedOrderTotal)}</span>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-950">
-                      ⚡ Instantâneo
+                      Instantâneo
                     </span>
                   </div>
 
@@ -3030,7 +3030,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                 <div className="flex items-center justify-between">
                   <span className="text-stone-500 font-medium">Pagamento:</span>
                   <span className="font-bold text-stone-900 flex items-center gap-1 uppercase">
-                    {isSubmittedPix ? '⚡ PIX' : submittedOrder.forma_pagamento}
+                    {isSubmittedPix ? 'PIX' : submittedOrder.forma_pagamento}
                   </span>
                 </div>
 
@@ -3349,7 +3349,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   <div className="mt-3.5 p-3.5 bg-stone-900 rounded-2xl border border-emerald-500/40 space-y-2 text-left">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                        <Zap className="w-4 h-4 text-emerald-500 fill-emerald-500" />
+                        <QrCode className="w-4 h-4 text-emerald-500" />
                         <span>Pagamento via PIX</span>
                       </span>
                       <button

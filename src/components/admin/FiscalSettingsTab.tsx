@@ -345,7 +345,7 @@ export const FiscalSettingsTab: React.FC<FiscalSettingsTabProps> = ({
                 onChange={(e) => setApiGateway(e.target.value as any)}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs font-bold text-stone-900 dark:text-white"
               >
-                <option value="simulador">⚡ Simulador Local (Teste Imediato sem API)</option>
+                <option value="simulador">Simulador Local (Teste Imediato sem API)</option>
                 <option value="focus_nfe">Focus NFe (API Oficial)</option>
                 <option value="nuvem_fiscal">Nuvem Fiscal (API Oficial)</option>
               </select>

@@ -1961,11 +1961,11 @@ export const AdminView: React.FC = () => {
                   <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800/60 space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wide flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-emerald-600" />
+                        <QrCode className="w-4 h-4 text-emerald-600" />
                         <span>Chave PIX da Loja (Recebimento no Delivery)</span>
                       </h3>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/80 dark:bg-emerald-850 text-emerald-900 dark:text-emerald-200">
-                        ⚡ Pagamento Instantâneo
+                        Pagamento Instantâneo
                       </span>
                     </div>
 
@@ -2401,7 +2401,7 @@ export const AdminView: React.FC = () => {
                       {prodImagem && (
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
-                            ⚡ Compactada!
+                            Compactada!
                           </span>
                           <button
                             type="button"
