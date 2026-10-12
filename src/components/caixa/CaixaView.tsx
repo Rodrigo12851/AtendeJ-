@@ -35,6 +35,7 @@ import {
   Minus,
   Trash2,
   Sparkles,
+  FileText,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Comanda, Order, Table, PaymentMethod, CashEntry, OrderStatus, Product, OrderItem, Category } from '../../types';
@@ -42,6 +43,7 @@ import { formatCurrency, formatTime, formatDateTime } from '../../utils/formatte
 import { ReceiptModal } from '../ReceiptModal';
 import { KitchenTicketModal } from '../KitchenTicketModal';
 import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
+import { NfceModal } from './NfceModal';
 import { playAddPop, playKitchenBell } from '../../utils/audio';
 import { sortOrdersNovosFirst, filterAndSortCaixaChannelOrders, formatOrderDateTimeCaixa } from '../../utils/orderSorting';
 
@@ -80,6 +82,8 @@ export const CaixaView: React.FC = () => {
     closeCashRegister,
     addCashEntry,
     updateOrderStatus,
+    updateOrderNfce,
+    updateComandaNfce,
     currentLoja,
     currentLojaId,
     createDeliveryOrder,
@@ -174,6 +178,8 @@ export const CaixaView: React.FC = () => {
 
   // Modals inside Caixa
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showNfceModal, setShowNfceModal] = useState(false);
+  const [nfceTarget, setNfceTarget] = useState<Order | Comanda | null>(null);
   const [showOpenRegisterModal, setShowOpenRegisterModal] = useState(false);
   const [showCloseRegisterModal, setShowCloseRegisterModal] = useState(false);
   const [showCashEntryModal, setShowCashEntryModal] = useState<'suprimento' | 'sangria' | null>(null);
@@ -1845,6 +1851,26 @@ export const CaixaView: React.FC = () => {
                   </button>
 
                   <button
+                    onClick={() => {
+                      setNfceTarget(isOrderCheckout && activeOrder ? activeOrder : activeComanda);
+                      setShowNfceModal(true);
+                    }}
+                    className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer shadow-2xs ${
+                      ((isOrderCheckout && activeOrder ? activeOrder.nfce_info : activeComanda.nfce_info)?.status === 'autorizada')
+                        ? 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                        : 'bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/50 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-700'
+                    }`}
+                    title="Emitir ou Consultar NFC-e (Nota Fiscal de Consumidor)"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                    <span>
+                      {((isOrderCheckout && activeOrder ? activeOrder.nfce_info : activeComanda.nfce_info)?.status === 'autorizada')
+                        ? 'NFC-e Emitida'
+                        : 'Emitir NFC-e'}
+                    </span>
+                  </button>
+
+                  <button
                     onClick={handleOpenDiscountModal}
                     className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer shadow-2xs ${
                       activeComanda.desconto > 0
@@ -3244,6 +3270,22 @@ export const CaixaView: React.FC = () => {
                                   <span>Entregue</span>
                                 </button>
                               )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNfceTarget(order);
+                                  setShowNfceModal(true);
+                                }}
+                                className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs ${
+                                  order.nfce_info?.status === 'autorizada'
+                                    ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                                    : 'bg-white dark:bg-slate-900 text-stone-700 dark:text-slate-300 border border-stone-200 dark:border-slate-700 hover:bg-stone-50'
+                                }`}
+                                title={order.nfce_info?.status === 'autorizada' ? `NFC-e #${order.nfce_info.numero} Autorizada` : 'Emitir NFC-e'}
+                              >
+                                <FileText className="w-3 h-3 text-sky-600" />
+                                <span>{order.nfce_info?.status === 'autorizada' ? 'NFC-e ✓' : 'NFC-e'}</span>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -3357,6 +3399,22 @@ export const CaixaView: React.FC = () => {
                                 <Receipt className="w-3 h-3 text-amber-300" />
                                 <span>Caixa ➔</span>
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNfceTarget(order);
+                                  setShowNfceModal(true);
+                                }}
+                                className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs ${
+                                  order.nfce_info?.status === 'autorizada'
+                                    ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                                    : 'bg-white dark:bg-slate-900 text-stone-700 dark:text-slate-300 border border-stone-200 dark:border-slate-700 hover:bg-stone-50'
+                                }`}
+                                title={order.nfce_info?.status === 'autorizada' ? `NFC-e #${order.nfce_info.numero} Autorizada` : 'Emitir NFC-e'}
+                              >
+                                <FileText className="w-3 h-3 text-sky-600" />
+                                <span>{order.nfce_info?.status === 'autorizada' ? 'NFC-e ✓' : 'NFC-e'}</span>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -3467,6 +3525,22 @@ export const CaixaView: React.FC = () => {
                               {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Confirmar</button>}
                               {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'pronto')} className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Pronto</button>}
                               {isPronto && <button type="button" onClick={() => updateOrderStatus(order.id, 'entregue')} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Entregue</button>}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNfceTarget(order);
+                                  setShowNfceModal(true);
+                                }}
+                                className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs ${
+                                  order.nfce_info?.status === 'autorizada'
+                                    ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                                    : 'bg-white dark:bg-slate-900 text-stone-700 dark:text-slate-300 border border-stone-200 dark:border-slate-700 hover:bg-stone-50'
+                                }`}
+                                title={order.nfce_info?.status === 'autorizada' ? `NFC-e #${order.nfce_info.numero} Autorizada` : 'Emitir NFC-e'}
+                              >
+                                <FileText className="w-3 h-3 text-sky-600" />
+                                <span>{order.nfce_info?.status === 'autorizada' ? 'NFC-e ✓' : 'NFC-e'}</span>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -3619,6 +3693,22 @@ export const CaixaView: React.FC = () => {
                             <span>Caixa ➔</span>
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNfceTarget(order);
+                            setShowNfceModal(true);
+                          }}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs ${
+                            order.nfce_info?.status === 'autorizada'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                              : 'bg-white dark:bg-slate-900 text-stone-700 dark:text-slate-300 border border-stone-200 dark:border-slate-700 hover:bg-stone-50'
+                          }`}
+                          title={order.nfce_info?.status === 'autorizada' ? `NFC-e #${order.nfce_info.numero} Autorizada` : 'Emitir NFC-e'}
+                        >
+                          <FileText className="w-3.5 h-3.5 text-sky-600" />
+                          <span>{order.nfce_info?.status === 'autorizada' ? 'NFC-e ✓' : 'NFC-e'}</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -3635,6 +3725,26 @@ export const CaixaView: React.FC = () => {
           comanda={activeComanda}
           orders={orders}
           onClose={() => setShowReceiptModal(false)}
+        />
+      )}
+
+      {/* NFC-e Fiscal Modal */}
+      {showNfceModal && nfceTarget && currentLoja && (
+        <NfceModal
+          isOpen={showNfceModal}
+          target={nfceTarget}
+          currentLoja={currentLoja}
+          onClose={() => {
+            setShowNfceModal(false);
+            setNfceTarget(null);
+          }}
+          onNfceUpdated={(updatedNfce) => {
+            if ('itens' in nfceTarget && typeof nfceTarget.id === 'number') {
+              updateOrderNfce(nfceTarget.id, updatedNfce);
+            } else if ('pedidos_ids' in nfceTarget) {
+              updateComandaNfce((nfceTarget as Comanda).id, updatedNfce);
+            }
+          }}
         />
       )}
 

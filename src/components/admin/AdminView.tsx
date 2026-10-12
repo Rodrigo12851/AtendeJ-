@@ -38,6 +38,7 @@ import {
   Timer,
   Zap,
   QrCode,
+  FileText,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, Table, User, Category } from '../../types';
@@ -47,6 +48,7 @@ import { hashPassword } from '../../utils/security';
 import { isProductPromotionActive, formatPromotionRemaining } from '../../utils/promotionUtils';
 import { formatPixKeyDisplay } from '../../utils/pix';
 import { GraficosVendasPanel } from './GraficosVendasPanel';
+import { FiscalSettingsTab } from './FiscalSettingsTab';
 
 export const AdminView: React.FC = () => {
   const {
@@ -89,7 +91,7 @@ export const AdminView: React.FC = () => {
   } = useStore();
 
   const [activeTab, setActiveTab] = useState<
-    'metricas' | 'graficos' | 'produtos' | 'opcoes' | 'mesas' | 'usuarios' | 'cancelamentos' | 'configuracoes'
+    'metricas' | 'graficos' | 'produtos' | 'opcoes' | 'mesas' | 'usuarios' | 'cancelamentos' | 'configuracoes' | 'fiscal'
   >('graficos');
   const [metricasSubView, setMetricasSubView] = useState<'graficos' | 'tabelas'>('graficos');
   const [periodFilter, setPeriodFilter] = useState<'hoje' | '7dias' | 'mes'>('hoje');
@@ -128,6 +130,14 @@ export const AdminView: React.FC = () => {
   const [prodBordasSel, setProdBordasSel] = useState<string[]>([]);
   const [prodMassasSel, setProdMassasSel] = useState<string[]>([]);
   const [prodAdicionaisSel, setProdAdicionaisSel] = useState<string[]>([]);
+
+  // Dados Fiscais do Produto (NFC-e / SEFAZ)
+  const [prodNcm, setProdNcm] = useState('19059090');
+  const [prodCest, setProdCest] = useState('');
+  const [prodCodigoBarras, setProdCodigoBarras] = useState('SEM GTIN');
+  const [prodCfop, setProdCfop] = useState('5101');
+  const [prodCsosn, setProdCsosn] = useState<'102' | '500' | '900'>('102');
+  const [prodOrigem, setProdOrigem] = useState<'0' | '1' | '2'>('0');
 
   // Quick Promo Modal State (Botão Rápido de Promoção direto na tabela)
   const [quickPromoProduct, setQuickPromoProduct] = useState<Product | null>(null);
@@ -396,6 +406,14 @@ export const AdminView: React.FC = () => {
         bordas_disponiveis: prodBordasSel,
         massas_disponiveis: prodMassasSel,
         adicionais_disponiveis: prodAdicionaisSel,
+        // Fiscal / NFC-e
+        ncm: prodNcm.trim() || '19059090',
+        cest: prodCest.trim() || undefined,
+        codigo_barras: prodCodigoBarras.trim() || 'SEM GTIN',
+        cfop: prodCfop.trim() || '5101',
+        csosn: prodCsosn,
+        origem: prodOrigem,
+        unidade_comercial: 'UN',
       });
       setEditingProduct(null);
     } else {
@@ -420,6 +438,14 @@ export const AdminView: React.FC = () => {
         bordas_disponiveis: prodBordasSel,
         massas_disponiveis: prodMassasSel,
         adicionais_disponiveis: prodAdicionaisSel,
+        // Fiscal / NFC-e
+        ncm: prodNcm.trim() || '19059090',
+        cest: prodCest.trim() || undefined,
+        codigo_barras: prodCodigoBarras.trim() || 'SEM GTIN',
+        cfop: prodCfop.trim() || '5101',
+        csosn: prodCsosn,
+        origem: prodOrigem,
+        unidade_comercial: 'UN',
       });
     }
 
@@ -430,6 +456,12 @@ export const AdminView: React.FC = () => {
     setProdDestaque(false);
     setProdEmPromocao(false);
     setProdPrecoPromocional('');
+    setProdNcm('19059090');
+    setProdCest('');
+    setProdCodigoBarras('SEM GTIN');
+    setProdCfop('5101');
+    setProdCsosn('102');
+    setProdOrigem('0');
     setShowAddProductModal(false);
   };
 
@@ -612,6 +644,7 @@ export const AdminView: React.FC = () => {
               <option value="usuarios">👥 Equipe ({storeUsers.length} membros)</option>
               <option value="cancelamentos">📋 Auditoria ({cancellationAuditList.length} registros)</option>
               <option value="configuracoes">⚙️ Configurações & Taxas da Loja</option>
+              <option value="fiscal">🏛️ Fiscal & Emissão NFC-e</option>
             </select>
           </div>
 
@@ -704,6 +737,17 @@ export const AdminView: React.FC = () => {
             >
               <Settings className="w-3.5 h-3.5" />
               <span>Configurações & Taxas</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('fiscal')}
+              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'fiscal'
+                  ? 'bg-red-700 text-white shadow-xs'
+                  : 'text-stone-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Fiscal & NFC-e</span>
             </button>
           </div>
         </div>
@@ -981,6 +1025,12 @@ export const AdminView: React.FC = () => {
                   setProdBordasSel(pizzaCrusts.map((c) => c.id));
                   setProdMassasSel(pizzaDoughs.map((d) => d.id));
                   setProdAdicionaisSel(pizzaAddons.map((a) => a.id));
+                  setProdNcm('1905.90.90');
+                  setProdCest('');
+                  setProdCodigoBarras('');
+                  setProdCfop('5102');
+                  setProdCsosn('102');
+                  setProdOrigem('0');
                   setShowAddProductModal(true);
                 }}
                 className="px-4 py-2.5 bg-red-700 hover:bg-red-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
@@ -1128,6 +1178,12 @@ export const AdminView: React.FC = () => {
                               setProdBordasSel(p.bordas_disponiveis || pizzaCrusts.map((c) => c.id));
                               setProdMassasSel(p.massas_disponiveis || pizzaDoughs.map((d) => d.id));
                               setProdAdicionaisSel(p.adicionais_disponiveis || pizzaAddons.map((a) => a.id));
+                              setProdNcm(p.ncm || '');
+                              setProdCest(p.cest || '');
+                              setProdCodigoBarras(p.codigo_barras || '');
+                              setProdCfop(p.cfop || '5102');
+                              setProdCsosn(p.csosn || '102');
+                              setProdOrigem(p.origem || '0');
                               setShowAddProductModal(true);
                             }}
                             title="Editar Produto"
@@ -2211,12 +2267,20 @@ export const AdminView: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* ================= TAB 8: FISCAL & NFC-E ================= */}
+        {activeTab === 'fiscal' && currentLoja && (
+          <FiscalSettingsTab
+            currentLoja={currentLoja}
+            updateLoja={updateLoja}
+          />
+        )}
       </main>
 
       {/* Add / Edit Product Modal */}
       {showAddProductModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-stone-200 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-6 space-y-4 border border-stone-200 animate-in fade-in zoom-in-95 duration-150">
             <h3 className="text-base font-bold text-stone-900 dark:text-slate-100">
               {editingProduct ? 'Editar Produto' : 'Cadastrar Novo Produto'}
             </h3>
@@ -2581,6 +2645,133 @@ export const AdminView: React.FC = () => {
                   />
                   <span>Enviar para tela e impressora da cozinha (KDS)</span>
                 </label>
+
+                {/* 🏛️ Dados Fiscais (NFC-e / SEFAZ) */}
+                <div className="p-3.5 bg-sky-50/70 dark:bg-sky-950/20 rounded-xl border border-sky-200 dark:border-sky-800/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-sky-900 dark:text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                      Dados Fiscais (NFC-e / Tributação)
+                    </span>
+                    <span className="text-[10px] bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300 px-2 py-0.5 rounded-full font-semibold">
+                      Obrigatório para Emissão
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                        NCM (8 dígitos): *
+                      </label>
+                      <input
+                        type="text"
+                        value={prodNcm}
+                        onChange={(e) => setProdNcm(e.target.value)}
+                        placeholder="Ex: 1905.90.90"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-sky-500"
+                      />
+                      {/* Atalhos rápidos de NCM comum */}
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setProdNcm('1905.90.90')}
+                          className="text-[9px] px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-sky-200 dark:border-sky-800 rounded text-sky-700 dark:text-sky-300 hover:bg-sky-50 cursor-pointer"
+                        >
+                          🍕 Pizza (1905.90.90)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProdNcm('2106.90.90')}
+                          className="text-[9px] px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-sky-200 dark:border-sky-800 rounded text-sky-700 dark:text-sky-300 hover:bg-sky-50 cursor-pointer"
+                        >
+                          🍔 Lanches (2106.90.90)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setProdNcm('2202.10.00'); setProdCest('03.010.00'); setProdCfop('5405'); setProdCsosn('500'); }}
+                          className="text-[9px] px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-sky-200 dark:border-sky-800 rounded text-sky-700 dark:text-sky-300 hover:bg-sky-50 cursor-pointer"
+                        >
+                          🥤 Refri (2202.10.00)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                        CEST (Substituição Tributária):
+                      </label>
+                      <input
+                        type="text"
+                        value={prodCest}
+                        onChange={(e) => setProdCest(e.target.value)}
+                        placeholder="Ex: 03.010.00 (opcional)"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-mono text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-sky-500"
+                      />
+                      <span className="text-[10px] text-stone-400 dark:text-slate-500 mt-1 block">
+                        Exigido para bebidas e itens com ICMS-ST
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                        Código de Barras / GTIN (EAN):
+                      </label>
+                      <input
+                        type="text"
+                        value={prodCodigoBarras}
+                        onChange={(e) => setProdCodigoBarras(e.target.value)}
+                        placeholder="Ex: 7891234567890 ou 'SEM GTIN'"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-mono text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-sky-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                        CFOP:
+                      </label>
+                      <select
+                        value={prodCfop}
+                        onChange={(e) => setProdCfop(e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-mono font-semibold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-sky-500 cursor-pointer"
+                      >
+                        <option value="5102">5102 - Venda mercadoria adquirida (Padrão)</option>
+                        <option value="5101">5101 - Venda produção do estabelecimento</option>
+                        <option value="5405">5405 - Venda mercadoria com ICMS-ST (Bebidas)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                        CSOSN / CST ICMS:
+                      </label>
+                      <select
+                        value={prodCsosn}
+                        onChange={(e) => setProdCsosn(e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-mono font-semibold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-sky-500 cursor-pointer"
+                      >
+                        <option value="102">102 - Tributada pelo Simples s/ permissão crédito</option>
+                        <option value="500">500 - ICMS cobrado anteriormente por ST</option>
+                        <option value="101">101 - Tributada pelo Simples c/ permissão crédito</option>
+                        <option value="900">900 - Outros</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                        Origem da Mercadoria:
+                      </label>
+                      <select
+                        value={prodOrigem}
+                        onChange={(e) => setProdOrigem(e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-sky-500 cursor-pointer"
+                      >
+                        <option value="0">0 - Nacional</option>
+                        <option value="1">1 - Estrangeira (Importação direta)</option>
+                        <option value="2">2 - Estrangeira (Adquirida no mercado interno)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-stone-100">
                 <button

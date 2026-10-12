@@ -123,6 +123,8 @@ interface StoreContextType {
     itens_pagos_ids?: string[]
   ) => void;
   closeComanda: (comandaId: string) => void;
+  updateOrderNfce: (orderId: number, nfce: NfceInfo) => void;
+  updateComandaNfce: (comandaId: string, nfce: NfceInfo) => void;
   ensureOrderComanda: (order: Order) => Comanda;
   openCashRegister: (valorInicial: number) => void;
   closeCashRegister: (valorFinal: number, observacoes?: string) => void;
@@ -1358,6 +1360,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     broadcastSync({ comandas: updatedComandas, tables: updatedTables, orders: updatedOrders });
   };
 
+  const updateOrderNfce = (orderId: number, nfce: NfceInfo) => {
+    const updatedOrders = orders.map((o) => (o.id === orderId ? { ...o, nfce_info: nfce } : o));
+    setOrders(updatedOrders);
+    const targetOrder = updatedOrders.find((o) => o.id === orderId);
+    if (targetOrder) saveOrderToFirestore(targetOrder);
+    broadcastSync({ orders: updatedOrders });
+  };
+
+  const updateComandaNfce = (comandaId: string, nfce: NfceInfo) => {
+    const updatedComandas = comandas.map((c) => (c.id === comandaId ? { ...c, nfce_info: nfce } : c));
+    setComandas(updatedComandas);
+    const targetCmd = updatedComandas.find((c) => c.id === comandaId);
+    if (targetCmd) saveComandaToFirestore(targetCmd);
+    broadcastSync({ comandas: updatedComandas });
+  };
+
   const ensureOrderComanda = (order: Order): Comanda => {
     const existing = comandas.find(
       (c) => c.pedidos_ids.includes(order.id) || (order.comanda_id && c.id === order.comanda_id)
@@ -2244,6 +2262,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         applyDiscount,
         registerPayment,
         closeComanda,
+        updateOrderNfce,
+        updateComandaNfce,
         ensureOrderComanda,
         openCashRegister,
         closeCashRegister,

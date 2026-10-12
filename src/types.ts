@@ -33,6 +33,56 @@ export interface Loja {
   pix_tipo_chave?: 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
   pix_titular?: string;
   pix_cidade?: string;
+  // Configuração Fiscal (NFC-e)
+  fiscal_config?: LojaFiscalConfig;
+}
+
+export interface LojaFiscalConfig {
+  habilitar_nfce: boolean;
+  ambiente: 'homologacao' | 'producao';
+  razao_social: string;
+  nome_fantasia: string;
+  cnpj: string;
+  inscricao_estadual: string;
+  inscricao_municipal?: string;
+  regime_tributario: '1' | '2' | '3'; // 1: Simples Nacional, 2: Simples Nacional (excesso), 3: Regime Normal
+  // Endereço fiscal
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  municipio: string;
+  codigo_municipio_ibge: string;
+  uf: string;
+  // Parâmetros da NFC-e SEFAZ
+  serie_nfce: number;
+  proximo_numero_nfce: number;
+  csc_token_id: string;
+  csc_token_codigo: string;
+  // Certificado Digital A1
+  certificado_nome?: string;
+  certificado_expiracao?: string;
+  certificado_senha?: string;
+  certificado_base64?: string;
+  // Gateway de Emissão Fiscal
+  api_gateway: 'focus_nfe' | 'nuvem_fiscal' | 'simulador';
+  api_token?: string;
+}
+
+export interface NfceInfo {
+  status: 'autorizada' | 'rejeitada' | 'pendente' | 'cancelada';
+  numero?: number;
+  serie?: number;
+  chave_acesso?: string;
+  protocolo?: string;
+  data_emissao?: string;
+  mensagem_sefaz?: string;
+  danfe_url?: string;
+  danfe_qrcode?: string;
+  xml_url?: string;
+  cpf_consumidor?: string;
+  ambiente?: 'homologacao' | 'producao';
 }
 
 export interface LoginAttempt {
@@ -158,6 +208,14 @@ export interface Product {
   bordas_disponiveis?: string[];
   massas_disponiveis?: string[];
   adicionais_disponiveis?: string[];
+  // Fiscal / NFC-e
+  ncm?: string;
+  cest?: string;
+  codigo_barras?: string; // EAN/GTIN ou "SEM GTIN"
+  cfop?: string;
+  origem?: '0' | '1' | '2';
+  csosn?: '102' | '500' | '900';
+  unidade_comercial?: string;
 }
 
 export interface OrderItem {
@@ -223,6 +281,7 @@ export interface Order {
     taxa_entrega?: number;
     tipo?: string;
   };
+  nfce_info?: NfceInfo;
 }
 
 export type PaymentMethod = 'dinheiro' | 'pix' | 'debito' | 'credito' | 'vale';
@@ -261,6 +320,7 @@ export interface Comanda {
   pedidos_ids: number[];
   pagamentos: Payment[];
   observacao?: string;
+  nfce_info?: NfceInfo;
 }
 
 export interface CashEntry {
