@@ -36,6 +36,8 @@ import {
   Flame,
   Tag,
   Timer,
+  Zap,
+  QrCode,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, Table, User, Category } from '../../types';
@@ -43,6 +45,7 @@ import { formatCurrency, formatDateTime, formatTime } from '../../utils/formatte
 import { compressImageFile } from '../../utils/imageCompressor';
 import { hashPassword } from '../../utils/security';
 import { isProductPromotionActive, formatPromotionRemaining } from '../../utils/promotionUtils';
+import { formatPixKeyDisplay } from '../../utils/pix';
 import { GraficosVendasPanel } from './GraficosVendasPanel';
 
 export const AdminView: React.FC = () => {
@@ -181,6 +184,12 @@ export const AdminView: React.FC = () => {
   const [lojaFechadoManualmente, setLojaFechadoManualmente] = useState(currentLoja?.fechado_manualmente || false);
   const [lojaSaved, setLojaSaved] = useState(false);
 
+  // Store Pix Settings State
+  const [lojaPixChave, setLojaPixChave] = useState(currentLoja?.pix_chave || '');
+  const [lojaPixTipo, setLojaPixTipo] = useState<'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria'>(currentLoja?.pix_tipo_chave || 'cnpj');
+  const [lojaPixTitular, setLojaPixTitular] = useState(currentLoja?.pix_titular || '');
+  const [lojaPixCidade, setLojaPixCidade] = useState(currentLoja?.pix_cidade || 'São Paulo');
+
   // New Neighborhood Fee State
   const [newBairroNome, setNewBairroNome] = useState('');
   const [newBairroValor, setNewBairroValor] = useState('');
@@ -243,8 +252,12 @@ export const AdminView: React.FC = () => {
       setLojaHoraFechamento(parsed.fech);
       setLojaHorario(currentLoja.horario_funcionamento || `${parsed.abert} às ${parsed.fech}`);
       setLojaFechadoManualmente(currentLoja.fechado_manualmente || false);
+      setLojaPixChave(currentLoja.pix_chave || '');
+      setLojaPixTipo(currentLoja.pix_tipo_chave || 'cnpj');
+      setLojaPixTitular(currentLoja.pix_titular || '');
+      setLojaPixCidade(currentLoja.pix_cidade || 'São Paulo');
     }
-  }, [currentLoja?.id, currentLoja?.horario_funcionamento, currentLoja?.fechado_manualmente]);
+  }, [currentLoja?.id, currentLoja?.horario_funcionamento, currentLoja?.fechado_manualmente, currentLoja?.pix_chave]);
 
   const handleSaveLoja = (e: React.FormEvent) => {
     e.preventDefault();
@@ -262,6 +275,10 @@ export const AdminView: React.FC = () => {
       tempo_estimado_entrega: lojaTempo.trim(),
       horario_funcionamento: finalHorario,
       fechado_manualmente: lojaFechadoManualmente,
+      pix_chave: lojaPixChave.trim() || undefined,
+      pix_tipo_chave: lojaPixTipo,
+      pix_titular: lojaPixTitular.trim() || undefined,
+      pix_cidade: lojaPixCidade.trim() || undefined,
     });
     setLojaHorario(finalHorario);
     setLojaSaved(true);
@@ -1873,6 +1890,114 @@ export const AdminView: React.FC = () => {
                     >
                       {lojaFechadoManualmente ? '🔴 Fechada Manualmente' : '🟢 Aberta para Pedidos'}
                     </button>
+                  </div>
+
+                  {/* Seção de Configuração do PIX */}
+                  <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800/60 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wide flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-emerald-600" />
+                        <span>Chave PIX da Loja (Recebimento no Delivery)</span>
+                      </h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/80 dark:bg-emerald-850 text-emerald-900 dark:text-emerald-200">
+                        ⚡ Pagamento Instantâneo
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-emerald-800/90 dark:text-emerald-400 leading-relaxed">
+                      Cadastre a chave PIX da sua filial. Quando os clientes escolherem PIX no cardápio de delivery, o sistema exibirá automaticamente a chave formatada, o código oficial Copia e Cola e o QR Code, além de solicitar o envio do comprovante no WhatsApp da loja.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                          Tipo de Chave PIX:
+                        </label>
+                        <select
+                          value={lojaPixTipo}
+                          onChange={(e) => setLojaPixTipo(e.target.value as any)}
+                          className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-bold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-emerald-600 transition"
+                        >
+                          <option value="cnpj">CNPJ</option>
+                          <option value="cpf">CPF</option>
+                          <option value="telefone">Telefone / Celular</option>
+                          <option value="email">E-mail</option>
+                          <option value="aleatoria">Chave Aleatória (EVP)</option>
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                          Chave PIX da Loja:
+                        </label>
+                        <input
+                          type="text"
+                          value={lojaPixChave}
+                          onChange={(e) => setLojaPixChave(e.target.value)}
+                          placeholder={
+                            lojaPixTipo === 'cnpj'
+                              ? 'Ex: 12.345.678/0001-90'
+                              : lojaPixTipo === 'cpf'
+                              ? 'Ex: 123.456.789-00'
+                              : lojaPixTipo === 'telefone'
+                              ? 'Ex: (11) 99999-8888'
+                              : lojaPixTipo === 'email'
+                              ? 'Ex: financeiro@sualoja.com.br'
+                              : 'Ex: 123e4567-e89b-12d3-a456-426614174000'
+                          }
+                          className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-emerald-600 transition"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                          Nome do Titular / Beneficiário:
+                        </label>
+                        <input
+                          type="text"
+                          value={lojaPixTitular}
+                          onChange={(e) => setLojaPixTitular(e.target.value)}
+                          placeholder="Ex: Pizzaria Bella Itália Ltda"
+                          className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-emerald-600 transition"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                          Cidade do Titular da Conta:
+                        </label>
+                        <input
+                          type="text"
+                          value={lojaPixCidade}
+                          onChange={(e) => setLojaPixCidade(e.target.value)}
+                          placeholder="Ex: São Paulo"
+                          className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-emerald-600 transition"
+                        />
+                      </div>
+                    </div>
+
+                    {lojaPixChave && (
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-emerald-200/80 dark:border-emerald-850 flex items-center justify-between gap-3 text-xs">
+                        <div className="min-w-0">
+                          <span className="text-[10px] text-stone-500 uppercase font-bold block">
+                            Prévia da Chave para os Clientes no Delivery:
+                          </span>
+                          <span className="font-mono font-black text-emerald-700 dark:text-emerald-400 truncate block">
+                            {formatPixKeyDisplay(lojaPixChave, lojaPixTipo)}
+                          </span>
+                          {lojaPixTitular && (
+                            <span className="text-[10px] text-stone-500 block truncate">
+                              Titular: {lojaPixTitular} • {lojaPixCidade || 'Brasil'}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-lg font-bold shrink-0">
+                          ✅ PIX Ativo
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end pt-3 border-t border-stone-100 dark:border-slate-800">

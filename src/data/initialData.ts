@@ -20,6 +20,10 @@ export const INITIAL_LOJAS: Loja[] = [
     token_garcom: 'gar_c3n7r0_4p1w',
     token_cozinha: 'coz_c3n7r0_8v5x',
     token_caixa: 'cax_c3n7r0_2m7q',
+    pix_chave: '12345678000190',
+    pix_tipo_chave: 'cnpj',
+    pix_titular: 'Pizzaria Bella Itália Ltda',
+    pix_cidade: 'São Paulo',
     taxas_bairro: [
       { id: 'tb_1', bairro: 'Centro', valor: 5.00 },
       { id: 'tb_2', bairro: 'Jardim América', valor: 7.50 },
@@ -44,6 +48,10 @@ export const INITIAL_LOJAS: Loja[] = [
     token_garcom: 'gar_5h0pp_6r2t',
     token_cozinha: 'coz_5h0pp_9q4v',
     token_caixa: 'cax_5h0pp_3m8k',
+    pix_chave: '11999992000',
+    pix_tipo_chave: 'telefone',
+    pix_titular: 'Smash Burger House ME',
+    pix_cidade: 'São Paulo',
     taxas_bairro: [
       { id: 'tb_5', bairro: 'Centro / Shopping', valor: 6.00 },
       { id: 'tb_6', bairro: 'Bairro Alto', valor: 9.00 },

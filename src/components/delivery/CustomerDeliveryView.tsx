@@ -34,6 +34,9 @@ import {
   ExternalLink,
   MessageCircle,
   Bike,
+  Copy,
+  Zap,
+  QrCode,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, OrderItem, Loja, Order, OrderStatus } from '../../types';
@@ -42,6 +45,7 @@ import { sortOrdersNovosFirst } from '../../utils/orderSorting';
 import { getStoreOpenStatus } from '../../utils/storeHours';
 import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
 import { isProductPromotionActive, getProductEffectivePrice, formatPromotionRemaining } from '../../utils/promotionUtils';
+import { generatePixPayload, getPixQrCodeUrl, formatPixKeyDisplay } from '../../utils/pix';
 
 const CUSTOMER_PROFILE_KEY = 'atendeja_customer_profile_v1';
 const CUSTOMER_ORDERS_KEY = 'atendeja_customer_orders_v1';
@@ -208,6 +212,23 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   const [trackingOrderId, setTrackingOrderId] = useState<number | null>(null);
   const [showOrderHistoryModal, setShowOrderHistoryModal] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [pixKeyCopied, setPixKeyCopied] = useState(false);
+  const [pixPayloadCopied, setPixPayloadCopied] = useState(false);
+  const [showPixQrCodeModal, setShowPixQrCodeModal] = useState(false);
+
+  const handleCopyPixKey = (key: string) => {
+    if (!key) return;
+    navigator.clipboard.writeText(key);
+    setPixKeyCopied(true);
+    setTimeout(() => setPixKeyCopied(false), 2500);
+  };
+
+  const handleCopyPixPayload = (payload: string) => {
+    if (!payload) return;
+    navigator.clipboard.writeText(payload);
+    setPixPayloadCopied(true);
+    setTimeout(() => setPixPayloadCopied(false), 2500);
+  };
 
   // Chave de pedidos isolada estritamente por loja para evitar que pedidos de uma loja apareçam em outra
   const storeOrdersKey = useMemo(() => {
@@ -350,6 +371,15 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       order.itens.reduce((acc, it) => acc + it.preco_total, 0) + (order.taxa_entrega || 0);
     const modalidade = order.tipo_pedido === 'retirada' ? 'Retirada na Loja' : 'Entrega (Delivery)';
 
+    const isPix = (order.forma_pagamento || formaPagamento).toLowerCase() === 'pix';
+    const pixBlock = isPix && targetLoja.pix_chave
+      ? `*DADOS DO PIX:* ⚡\n` +
+        `• *Chave:* ${formatPixKeyDisplay(targetLoja.pix_chave, targetLoja.pix_tipo_chave)} (${(targetLoja.pix_tipo_chave || 'Chave').toUpperCase()})\n` +
+        (targetLoja.pix_titular ? `• *Titular:* ${targetLoja.pix_titular}\n` : '') +
+        `• *Status:* Aguardando comprovante\n` +
+        `📎 *ATENÇÃO:* _Por favor, anexe o comprovante do PIX nesta conversa para confirmarmos o pedido imediatamente!_\n\n`
+      : '';
+
     const msg =
       `*NOVO PEDIDO #${order.id}* 🚀\n` +
       `*Estabelecimento:* ${targetLoja.marca || targetLoja.nome}\n\n` +
@@ -359,7 +389,8 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       (order.tipo_pedido !== 'retirada'
         ? `*Endereço:* ${order.cliente_endereco || clienteEndereco}\n`
         : '') +
-      `*Forma de Pagamento:* ${(order.forma_pagamento || formaPagamento).toUpperCase()}\n\n` +
+      `*Forma de Pagamento:* ${(order.forma_pagamento || formaPagamento).toUpperCase()} ${isPix ? '⚡' : ''}\n\n` +
+      pixBlock +
       `*ITENS DO PEDIDO:*\n${itensTexto}\n\n` +
       (order.taxa_entrega ? `*Taxa de Entrega:* ${formatCurrency(order.taxa_entrega)}\n` : '') +
       `*VALOR TOTAL:* ${formatCurrency(orderTotal)}\n\n` +
@@ -2344,12 +2375,12 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                         onClick={() => setFormaPagamento('pix')}
                         className={`p-2.5 rounded-xl border-2 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
                           formaPagamento === 'pix'
-                            ? 'border-emerald-600 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200'
+                            ? 'border-emerald-600 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200 shadow-2xs'
                             : 'border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300'
                         }`}
                       >
                         <span>⚡</span>
-                        <span>PIX na Entrega</span>
+                        <span>PIX (Instantâneo)</span>
                       </button>
 
                       <button
@@ -2391,6 +2422,55 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                         <span>Crédito (Cartão)</span>
                       </button>
                     </div>
+
+                    {formaPagamento === 'pix' && (
+                      <div className="mt-2.5 p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 space-y-2 animate-in fade-in duration-200 shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                            <Zap className="w-4 h-4 text-emerald-600" />
+                            <span>PAGAMENTO VIA PIX</span>
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/80 dark:bg-emerald-800 text-emerald-950 dark:text-emerald-100">
+                            Aprovação Rápida
+                          </span>
+                        </div>
+
+                        {targetLoja?.pix_chave ? (
+                          <div className="space-y-2">
+                            <div className="bg-white dark:bg-stone-900/90 p-3 rounded-xl border border-emerald-200/80 dark:border-emerald-800/40 flex items-center justify-between gap-2 shadow-2xs">
+                              <div className="min-w-0">
+                                <span className="text-[10px] text-stone-500 block uppercase font-bold tracking-wide">
+                                  Chave PIX da Loja ({(targetLoja.pix_tipo_chave || 'Chave').toUpperCase()}):
+                                </span>
+                                <span className="font-mono font-bold text-xs sm:text-sm text-stone-900 dark:text-stone-100 truncate block">
+                                  {formatPixKeyDisplay(targetLoja.pix_chave, targetLoja.pix_tipo_chave)}
+                                </span>
+                                {targetLoja.pix_titular && (
+                                  <span className="text-[10px] text-stone-500 block truncate font-medium">
+                                    Titular: {targetLoja.pix_titular}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyPixKey(targetLoja.pix_chave!)}
+                                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
+                              >
+                                {pixKeyCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                <span>{pixKeyCopied ? 'Copiada!' : 'Copiar Chave'}</span>
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-tight">
+                              💡 Você pode copiar a chave agora ou após finalizar o pedido. Na próxima tela você também terá o código <strong>Pix Copia e Cola</strong> com o valor exato e o botão para enviar o comprovante no WhatsApp da loja!
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                            A chave Pix será confirmada pela loja no WhatsApp ou poderá ser paga via maquininha/QR Code na entrega/retirada.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {formaPagamento === 'dinheiro' && (
                       <div className="pt-1">
@@ -2805,101 +2885,191 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       {/* ======================================================== */}
       {/* MODAL 2: PEDIDO REALIZADO COM SUCESSO (IMAGEM 2)           */}
       {/* ======================================================== */}
-      {submittedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-          <div className="bg-white text-stone-900 rounded-3xl p-6 sm:p-7 max-w-sm sm:max-w-md w-full shadow-2xl relative my-auto animate-in zoom-in-95 duration-200 border border-stone-100">
-            {/* Top Check Icon */}
-            <div className="w-14 h-14 rounded-2xl bg-[#D1FAE5] text-[#10B981] flex items-center justify-center mx-auto shadow-xs border border-[#A7F3D0]">
-              <Check className="w-8 h-8 stroke-[3]" />
-            </div>
+      {submittedOrder && (() => {
+        const submittedOrderTotal =
+          submittedOrder.itens.reduce((acc, it) => acc + it.preco_total, 0) +
+          (submittedOrder.taxa_entrega || 0);
+        const isSubmittedPix = submittedOrder.forma_pagamento === 'pix';
+        const pixPayload = isSubmittedPix && targetLoja?.pix_chave
+          ? generatePixPayload({
+              chave: targetLoja.pix_chave,
+              tipoChave: targetLoja.pix_tipo_chave,
+              nomeTitular: targetLoja.pix_titular || targetLoja.marca || targetLoja.nome,
+              cidadeTitular: targetLoja.pix_cidade || 'SAO PAULO',
+              valor: submittedOrderTotal,
+              txId: `PEDIDO${submittedOrder.id}`,
+            })
+          : '';
+        const qrCodeUrl = pixPayload ? getPixQrCodeUrl(pixPayload, 260) : '';
 
-            {/* Title & Subtitle */}
-            <h2 className="text-xl sm:text-2xl font-black text-stone-900 text-center tracking-tight mt-3">
-              Pedido #{submittedOrder.id} Realizado!
-            </h2>
-            <p className="text-xs sm:text-sm text-stone-500 text-center mt-1">
-              Seu pedido já foi salvo e enviado para a nossa cozinha.
-            </p>
-
-            {/* Box 1: ENVIE NO WHATSAPP PARA AGILIZAR */}
-            <div className="bg-[#ECFDF5] border border-[#A7F3D0] rounded-2xl p-4 mt-5 text-left shadow-2xs">
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#065F46] uppercase tracking-wide">
-                <span>📲</span>
-                <span>ENVIE NO WHATSAPP PARA AGILIZAR</span>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+            <div className="bg-white text-stone-900 rounded-3xl p-5 sm:p-7 max-w-sm sm:max-w-md w-full shadow-2xl relative my-auto animate-in zoom-in-95 duration-200 border border-stone-100 max-h-[92vh] overflow-y-auto">
+              {/* Top Check Icon */}
+              <div className="w-13 h-13 rounded-2xl bg-[#D1FAE5] text-[#10B981] flex items-center justify-center mx-auto shadow-xs border border-[#A7F3D0]">
+                <Check className="w-7 h-7 stroke-[3]" />
               </div>
-              <p className="text-xs text-[#047857] mt-1.5 leading-relaxed">
-                Para confirmar o recebimento imediato e receber fotos do preparo, envie a comanda diretamente para o nosso WhatsApp:
+
+              {/* Title & Subtitle */}
+              <h2 className="text-xl sm:text-2xl font-black text-stone-900 text-center tracking-tight mt-3">
+                Pedido #{submittedOrder.id} Realizado!
+              </h2>
+              <p className="text-xs sm:text-sm text-stone-500 text-center mt-1">
+                Seu pedido já foi salvo e enviado para a nossa cozinha.
               </p>
 
-              <button
-                type="button"
-                onClick={() => handleOpenWhatsAppOrder(submittedOrder)}
-                className="w-full mt-3.5 py-3 px-4 bg-[#00A884] hover:bg-[#008F6F] active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span>Abrir WhatsApp com o Pedido</span>
-              </button>
-            </div>
+              {/* BOX PIX (Destaque quando a forma de pagamento for PIX) */}
+              {isSubmittedPix && targetLoja?.pix_chave && (
+                <div className="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-4 mt-4 text-left shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-black text-emerald-950 uppercase tracking-wide">
+                      <Zap className="w-4 h-4 text-emerald-600 fill-emerald-600" />
+                      <span>PAGAR COM PIX • {formatCurrency(submittedOrderTotal)}</span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-950">
+                      ⚡ Instantâneo
+                    </span>
+                  </div>
 
-            {/* Box 2: Resumo do Pedido */}
-            <div className="bg-stone-50 border border-stone-200/90 rounded-2xl p-4 mt-3 space-y-2 text-xs text-left shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-stone-500 font-medium">Cliente:</span>
-                <span className="font-bold text-stone-900 uppercase truncate max-w-[200px]">
-                  {submittedOrder.cliente_nome || clienteNome}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-stone-500 font-medium">Telefone / WhatsApp:</span>
-                <span className="font-bold font-mono text-stone-900">
-                  {submittedOrder.cliente_telefone || clienteTelefone}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-stone-500 font-medium">Modalidade:</span>
-                <span className="font-bold text-stone-900 flex items-center gap-1">
-                  {submittedOrder.tipo_pedido === 'retirada' ? '🏪 Retirada' : '🛵 Entrega'}
-                </span>
-              </div>
-
-              <div className="border-t border-stone-200/80 my-2" />
-
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-stone-800">Total a pagar:</span>
-                <span className="font-mono font-black text-lg sm:text-xl text-[#FF8A00]">
-                  {formatCurrency(
-                    submittedOrder.itens.reduce((acc, it) => acc + it.preco_total, 0) +
-                      (submittedOrder.taxa_entrega || 0)
+                  {/* QR Code */}
+                  {qrCodeUrl && (
+                    <div className="flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-emerald-200 shadow-2xs">
+                      <img
+                        src={qrCodeUrl}
+                        alt="QR Code Pix"
+                        className="w-40 h-40 object-contain rounded-lg"
+                      />
+                      <span className="text-[10px] text-stone-500 font-bold mt-1.5 flex items-center gap-1">
+                        <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Aponte o app do banco ou copie o código abaixo</span>
+                      </span>
+                    </div>
                   )}
-                </span>
+
+                  {/* Botões de Ação Pix */}
+                  <div className="space-y-1.5">
+                    {pixPayload && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyPixPayload(pixPayload)}
+                        className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        {pixPayloadCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{pixPayloadCopied ? 'Código Pix Copiado!' : 'Copiar Pix Copia e Cola'}</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyPixKey(targetLoja.pix_chave!)}
+                      className="w-full py-2 px-3 bg-white hover:bg-stone-50 border border-emerald-300 text-emerald-900 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      {pixKeyCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{pixKeyCopied ? 'Chave Copiada!' : `Copiar Chave (${formatPixKeyDisplay(targetLoja.pix_chave, targetLoja.pix_tipo_chave)})`}</span>
+                    </button>
+                  </div>
+
+                  {targetLoja.pix_titular && (
+                    <div className="text-[10px] text-emerald-900/80 bg-emerald-100/60 px-2.5 py-1 rounded-lg">
+                      <strong>Titular da Conta:</strong> {targetLoja.pix_titular} • {targetLoja.pix_cidade || 'Brasil'}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Box 1: ENVIE NO WHATSAPP PARA AGILIZAR */}
+              <div className="bg-[#ECFDF5] border border-[#A7F3D0] rounded-2xl p-4 mt-3 text-left shadow-2xs">
+                <div className="flex items-center gap-1.5 text-xs font-black text-[#065F46] uppercase tracking-wide">
+                  <span>📲</span>
+                  <span>
+                    {isSubmittedPix
+                      ? 'ENVIE O PEDIDO & COMPROVANTE'
+                      : 'ENVIE NO WHATSAPP PARA AGILIZAR'}
+                  </span>
+                </div>
+                <p className="text-xs text-[#047857] mt-1.5 leading-relaxed">
+                  {isSubmittedPix
+                    ? 'Abra o WhatsApp abaixo para enviar os dados do pedido e anexe a foto do comprovante do PIX para liberação na cozinha:'
+                    : 'Para confirmar o recebimento imediato e receber fotos do preparo, envie a comanda diretamente para o nosso WhatsApp:'}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenWhatsAppOrder(submittedOrder)}
+                  className="w-full mt-3.5 py-3 px-4 bg-[#00A884] hover:bg-[#008F6F] active:scale-98 text-white font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>
+                    {isSubmittedPix
+                      ? 'Enviar Pedido & Comprovante no WhatsApp'
+                      : 'Abrir WhatsApp com o Pedido'}
+                  </span>
+                </button>
               </div>
-            </div>
 
-            {/* Bottom Action Buttons */}
-            <div className="space-y-2 mt-5">
-              <button
-                type="button"
-                onClick={() => {
-                  setTrackingOrderId(submittedOrder.id);
-                  setSubmittedOrder(null);
-                }}
-                className="w-full py-3.5 px-4 bg-[#FF8A00] hover:bg-[#E07A00] active:scale-98 text-stone-950 font-black text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
-              >
-                <Bike className="w-4 h-4 text-stone-950" />
-                <span>Acompanhar Pedido em Tempo Real</span>
-              </button>
+              {/* Box 2: Resumo do Pedido */}
+              <div className="bg-stone-50 border border-stone-200/90 rounded-2xl p-4 mt-3 space-y-2 text-xs text-left shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-stone-500 font-medium">Cliente:</span>
+                  <span className="font-bold text-stone-900 uppercase truncate max-w-[200px]">
+                    {submittedOrder.cliente_nome || clienteNome}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-stone-500 font-medium">Telefone / WhatsApp:</span>
+                  <span className="font-bold font-mono text-stone-900">
+                    {submittedOrder.cliente_telefone || clienteTelefone}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-stone-500 font-medium">Modalidade:</span>
+                  <span className="font-bold text-stone-900 flex items-center gap-1">
+                    {submittedOrder.tipo_pedido === 'retirada' ? '🏪 Retirada' : '🛵 Entrega'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-stone-500 font-medium">Pagamento:</span>
+                  <span className="font-bold text-stone-900 flex items-center gap-1 uppercase">
+                    {isSubmittedPix ? '⚡ PIX' : submittedOrder.forma_pagamento}
+                  </span>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => setSubmittedOrder(null)}
-                className="w-full py-2.5 px-4 bg-stone-100 hover:bg-stone-200 active:scale-98 text-stone-700 font-bold text-xs rounded-xl transition flex items-center justify-center cursor-pointer"
-              >
-                Voltar ao Cardápio
-              </button>
+                <div className="border-t border-stone-200/80 my-2" />
+
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-stone-800">Total a pagar:</span>
+                  <span className="font-mono font-black text-lg sm:text-xl text-[#FF8A00]">
+                    {formatCurrency(submittedOrderTotal)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Bottom Action Buttons */}
+              <div className="space-y-2 mt-5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTrackingOrderId(submittedOrder.id);
+                    setSubmittedOrder(null);
+                  }}
+                  className="w-full py-3.5 px-4 bg-[#FF8A00] hover:bg-[#E07A00] active:scale-98 text-stone-950 font-black text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                >
+                  <Bike className="w-4 h-4 text-stone-950" />
+                  <span>Acompanhar Pedido em Tempo Real</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSubmittedOrder(null)}
+                  className="w-full py-2.5 px-4 bg-stone-100 hover:bg-stone-200 active:scale-98 text-stone-700 font-bold text-xs rounded-xl transition flex items-center justify-center cursor-pointer"
+                >
+                  Voltar ao Cardápio
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ======================================================== */}
       {/* MODAL 1: ACOMPANHAR PEDIDO AO VIVO (IMAGEM 1)             */}
@@ -3173,6 +3343,39 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     )}
                   </span>
                 </div>
+
+                {/* Card de PIX no Rastreamento Ao Vivo */}
+                {liveTrackingOrder.forma_pagamento === 'pix' && targetLoja?.pix_chave && (
+                  <div className="mt-3.5 p-3.5 bg-stone-900 rounded-2xl border border-emerald-500/40 space-y-2 text-left">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-emerald-500 fill-emerald-500" />
+                        <span>Pagamento via PIX</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyPixKey(targetLoja.pix_chave!)}
+                        className="text-[11px] bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                      >
+                        {pixKeyCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        <span>{pixKeyCopied ? 'Chave Copiada!' : 'Copiar Chave'}</span>
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-800">
+                      <span className="text-stone-300 font-mono font-bold">
+                        {formatPixKeyDisplay(targetLoja.pix_chave, targetLoja.pix_tipo_chave)}
+                      </span>
+                      {targetLoja.pix_titular && (
+                        <span className="text-stone-400 text-[10px] truncate max-w-[160px]">
+                          {targetLoja.pix_titular}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-emerald-300/80 leading-tight">
+                      💡 Copie a chave e anexe o comprovante no WhatsApp abaixo para confirmar o pedido!
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

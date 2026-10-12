@@ -28,6 +28,11 @@ export interface Loja {
   token_garcom?: string;
   token_cozinha?: string;
   token_caixa?: string;
+  // Configuração do PIX
+  pix_chave?: string;
+  pix_tipo_chave?: 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
+  pix_titular?: string;
+  pix_cidade?: string;
 }
 
 export interface LoginAttempt {
