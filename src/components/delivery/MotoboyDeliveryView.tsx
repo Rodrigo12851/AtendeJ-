@@ -55,7 +55,7 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
   const loja = lojas.find((l) => l.id === order?.loja_id) || lojas[0];
 
   const rawEndereco = order?.cliente_endereco || order?.delivery_info?.endereco || '';
-  // Limpa sufixos de bairro repetidos entre parênteses no endereço se houver
+  // Limpa repetições de bairro se houver
   const enderecoLimpo = rawEndereco.replace(/\s*\([^)]*Bairro[^)]*\)/gi, '').trim();
   const bairro = order?.delivery_info?.bairro || 'Centro';
   const telefone = order?.cliente_telefone || order?.delivery_info?.telefone || '';
@@ -190,30 +190,30 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
   }
 
   return (
-    <div className="h-screen w-full bg-[#0B1017] text-white font-sans flex flex-col justify-between overflow-hidden select-none">
+    <div className="h-screen w-full bg-[#0B1017] text-white font-sans flex flex-col justify-between overflow-hidden select-none pb-2 sm:pb-3">
       
-      {/* 1. TOPO COMPACTO PROPORCIONAL */}
-      <header className="px-3.5 pt-2 pb-1.5 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2.5">
+      {/* 1. TOPO COMPACTO OTIMIZADO */}
+      <header className="px-3 pt-1.5 pb-1 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="w-8 h-8 rounded-full bg-[#121A24] border border-[#1E293B] flex items-center justify-center text-slate-300 hover:text-white transition cursor-pointer"
+            className="w-7 h-7 rounded-full bg-[#121A24] border border-[#1E293B] flex items-center justify-center text-slate-300 hover:text-white transition cursor-pointer"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <div className="text-orange-500">
-              <Bike className="w-5 h-5 stroke-[2.2]" />
+              <Bike className="w-4 h-4 stroke-[2.2]" />
             </div>
 
             <div>
               <div className="flex items-center gap-1.5 leading-none">
                 <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">ENTREGADOR</span>
-                <span className="text-base font-black text-white font-mono leading-none">#{order.id}</span>
+                <span className="text-sm font-black text-white font-mono leading-none">#{order.id}</span>
               </div>
-              <div className="text-[10px] text-slate-400 font-medium leading-none mt-0.5 truncate max-w-[150px]">
+              <div className="text-[10px] text-slate-400 font-medium leading-none mt-0.5 truncate max-w-[140px]">
                 {loja?.nome || 'Filial — Shopping'}
               </div>
             </div>
@@ -221,8 +221,8 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
         </div>
 
         {/* Badge Status */}
-        <div className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-amber-500/70 bg-[#1A1608] text-amber-400 font-black text-[10px] tracking-wide shrink-0">
-          <Clock className="w-3 h-3" />
+        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-500/70 bg-[#1A1608] text-amber-400 font-black text-[9px] tracking-wide shrink-0">
+          <Clock className="w-2.5 h-2.5" />
           <span className="uppercase">
             {isEntregue
               ? 'CONCLUÍDO'
@@ -235,18 +235,18 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
         </div>
       </header>
 
-      {/* 2. CONTEÚDO PRINCIPAL (OCUPA 100% DA ALTURA LIVRE SEM ROLAGEM) */}
-      <main className="max-w-md w-full mx-auto px-3 py-1 flex-1 flex flex-col justify-between gap-1.5 min-h-0 overflow-hidden">
+      {/* 2. CONTEÚDO PRINCIPAL - CARDS SUBIDOS E DISTRIBUÍDOS COM PRECISÃO */}
+      <main className="max-w-md w-full mx-auto px-2.5 py-0.5 flex-1 flex flex-col justify-between gap-1.5 min-h-0 overflow-hidden">
         
-        {/* CARD 1: CLIENTE (Layout em 2 linhas para nunca cortar o nome) */}
-        <div className="bg-[#121A24] border border-[#1E293B] rounded-xl p-2.5 shadow-md shrink-0 space-y-1.5">
+        {/* CARD 1: CLIENTE */}
+        <div className="bg-[#121A24] border border-[#1E293B] rounded-xl p-2 shadow-md shrink-0 space-y-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="w-8 h-8 rounded-full bg-[#1E293B] text-slate-300 flex items-center justify-center shrink-0 text-sm">
+              <div className="w-7 h-7 rounded-full bg-[#1E293B] text-slate-300 flex items-center justify-center shrink-0 text-xs">
                 👤
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block leading-none">
+                <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block leading-none">
                   CLIENTE
                 </span>
                 <p className="text-xs font-black text-white truncate mt-0.5 leading-tight">
@@ -257,7 +257,7 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
                     {telefone}
                   </p>
                 ) : (
-                  <p className="text-[10px] text-slate-500 mt-0.5">Sem telefone</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5 leading-none">Sem telefone</p>
                 )}
               </div>
             </div>
@@ -269,7 +269,7 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-2.5 py-1.5 bg-[#00A859] hover:bg-[#00914c] active:scale-95 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 transition shadow-xs"
+                  className="px-2 py-1 bg-[#00A859] hover:bg-[#00914c] active:scale-95 text-white rounded-lg font-bold text-[10px] flex items-center gap-1 transition shadow-xs"
                 >
                   <MessageCircle className="w-3 h-3 fill-white" />
                   <span>WhatsApp</span>
@@ -279,7 +279,7 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
               {telefone && (
                 <a
                   href={`tel:${cleanPhone}`}
-                  className="px-2 py-1.5 bg-[#1E293B] hover:bg-[#283548] active:scale-95 text-slate-200 rounded-lg font-bold text-[11px] flex items-center gap-1 transition border border-slate-700/60"
+                  className="px-2 py-1 bg-[#1E293B] hover:bg-[#283548] active:scale-95 text-slate-200 rounded-lg font-bold text-[10px] flex items-center gap-1 transition border border-slate-700/60"
                 >
                   <Phone className="w-3 h-3 text-slate-300" />
                   <span>Ligar</span>
@@ -289,32 +289,32 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
           </div>
         </div>
 
-        {/* CARD 2: ENDEREÇO DE ENTREGA + MAPA PREVIEW */}
-        <div className="bg-[#121A24] border border-[#1E293B] rounded-xl p-2.5 shadow-md shrink-0 space-y-1.5">
+        {/* CARD 2: ENDEREÇO DE ENTREGA + MAPA */}
+        <div className="bg-[#121A24] border border-[#1E293B] rounded-xl p-2 shadow-md shrink-0 space-y-1.5">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex items-start gap-2 min-w-0 flex-1">
-              <div className="w-7 h-7 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center shrink-0 mt-0.5">
-                <MapPin className="w-3.5 h-3.5 fill-red-500 text-red-500" />
+            <div className="flex items-start gap-1.5 min-w-0 flex-1">
+              <div className="w-6 h-6 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center shrink-0 mt-0.5">
+                <MapPin className="w-3 h-3 fill-red-500 text-red-500" />
               </div>
 
               <div className="min-w-0 flex-1">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block leading-none">
+                <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block leading-none">
                   ENDEREÇO DE ENTREGA
                 </span>
-                <p className="text-xs font-black text-white leading-tight mt-0.5 line-clamp-2">
+                <p className="text-[11px] font-black text-white leading-tight mt-0.5 line-clamp-2">
                   {enderecoLimpo || 'Endereço não informado'}
                 </p>
-                <p className="text-[10px] text-slate-400 mt-0.5 leading-none">
+                <p className="text-[9px] text-slate-400 mt-0.5 leading-none">
                   Bairro: {bairro}
                 </p>
 
                 {/* Tags Tipo e Distância */}
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <span className="px-1.5 py-0.5 bg-[#1E293B] text-slate-300 rounded text-[9px] font-bold flex items-center gap-1">
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="px-1.5 py-0.5 bg-[#1E293B] text-slate-300 rounded text-[8px] font-bold flex items-center gap-1 leading-none">
                     <Home className="w-2.5 h-2.5 text-slate-400" />
                     <span>Residencial</span>
                   </span>
-                  <span className="px-1.5 py-0.5 bg-[#1E293B] text-slate-300 rounded text-[9px] font-bold flex items-center gap-1">
+                  <span className="px-1.5 py-0.5 bg-[#1E293B] text-slate-300 rounded text-[8px] font-bold flex items-center gap-1 leading-none">
                     <MapPin className="w-2.5 h-2.5 text-slate-400" />
                     <span>3,4 km</span>
                   </span>
@@ -327,7 +327,7 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
               href={mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-20 h-16 rounded-lg overflow-hidden relative shrink-0 border border-slate-700/60 bg-[#0F172A] block group"
+              className="w-16 h-14 rounded-lg overflow-hidden relative shrink-0 border border-slate-700/60 bg-[#0F172A] block group"
               title="Abrir no Google Maps"
             >
               <svg className="w-full h-full opacity-40" viewBox="0 0 100 80" fill="none">
@@ -337,10 +337,10 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
                 <path d="M-10 65 L110 25" stroke="#334155" strokeWidth="3" />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <MapPin className="w-4 h-4 fill-red-500 text-red-500 drop-shadow" />
+                <MapPin className="w-3.5 h-3.5 fill-red-500 text-red-500 drop-shadow" />
               </div>
-              <div className="absolute bottom-0.5 left-0.5 right-0.5 bg-[#121A24]/90 py-0.5 px-0.5 rounded text-[7px] font-bold text-slate-200 flex items-center justify-center gap-0.5">
-                <Navigation className="w-2 h-2 text-blue-400" />
+              <div className="absolute bottom-0.5 left-0.5 right-0.5 bg-[#121A24]/90 py-0.5 px-0.5 rounded text-[7px] font-bold text-slate-200 flex items-center justify-center gap-0.5 leading-none">
+                <Navigation className="w-1.5 h-1.5 text-blue-400" />
                 <span>Ver no mapa</span>
               </div>
             </a>
@@ -352,39 +352,39 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
               href={mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="py-1.5 px-2 bg-[#1D63FF] hover:bg-[#1553dd] active:scale-95 text-white rounded-lg font-black text-[11px] flex items-center justify-center gap-1.5 transition shadow-xs"
+              className="py-1 px-2 bg-[#1D63FF] hover:bg-[#1553dd] active:scale-95 text-white rounded-lg font-black text-[10px] flex items-center justify-center gap-1.5 transition shadow-xs"
             >
-              <Navigation className="w-3.5 h-3.5 shrink-0" />
+              <Navigation className="w-3 h-3 shrink-0" />
               <div className="text-left leading-none">
-                <div className="text-[11px] font-black">Navegar</div>
-                <div className="text-[8px] text-blue-200 font-normal">Google Maps</div>
+                <div className="text-[10px] font-black">Navegar</div>
+                <div className="text-[7px] text-blue-200 font-normal">Google Maps</div>
               </div>
             </a>
 
             <button
               type="button"
               onClick={handleCopyAddress}
-              className="py-1.5 px-2 bg-[#1E293B] hover:bg-[#283548] active:scale-95 text-slate-200 rounded-lg font-black text-[11px] flex items-center justify-center gap-1.5 transition border border-slate-700/60 cursor-pointer"
+              className="py-1 px-2 bg-[#1E293B] hover:bg-[#283548] active:scale-95 text-slate-200 rounded-lg font-black text-[10px] flex items-center justify-center gap-1 transition border border-slate-700/60 cursor-pointer"
             >
-              <Copy className="w-3 h-3 text-slate-400" />
+              <Copy className="w-2.5 h-2.5 text-slate-400" />
               <span>{copiedAddress ? 'Copiado!' : 'Copiar endereço'}</span>
             </button>
           </div>
         </div>
 
         {/* CARD 3: COBRANÇA */}
-        <div className="bg-[#121A24] border border-[#1E293B] rounded-xl p-2.5 shadow-md shrink-0 space-y-1.5">
+        <div className="bg-[#121A24] border border-[#1E293B] rounded-xl p-2 shadow-md shrink-0 space-y-1">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <div className="flex items-center gap-1">
+              <div className="w-5 h-5 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                 <DollarSign className="w-3 h-3" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+              <span className="text-[8px] font-black uppercase tracking-wider text-slate-400">
                 COBRANÇA
               </span>
             </div>
 
-            <div className="px-2 py-0.5 bg-[#1E293B] border border-slate-700/60 rounded text-emerald-400 text-[10px] font-extrabold uppercase flex items-center gap-1">
+            <div className="px-1.5 py-0.5 bg-[#1E293B] border border-slate-700/60 rounded text-emerald-400 text-[9px] font-extrabold uppercase flex items-center gap-0.5">
               <span>❖</span>
               <span>{order.forma_pagamento || 'PIX'}</span>
             </div>
@@ -392,34 +392,34 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
 
           <div className="flex items-center justify-between gap-2">
             <div>
-              <span className="text-[10px] text-slate-400 block font-medium leading-none">Total a cobrar</span>
-              <span className="text-xl font-black text-emerald-400 font-mono leading-tight">
+              <span className="text-[9px] text-slate-400 block font-medium leading-none">Total a cobrar</span>
+              <span className="text-lg font-black text-emerald-400 font-mono leading-tight">
                 {formatCurrency(orderTotal)}
               </span>
             </div>
 
-            <div className="p-1.5 px-2 bg-[#0C1E1B] border border-emerald-500/30 rounded-lg text-left max-w-[170px]">
-              <div className="flex items-center gap-1 text-[10px] font-black text-emerald-400">
-                <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0" />
+            <div className="p-1 px-1.5 bg-[#0C1E1B] border border-emerald-500/30 rounded-lg text-left max-w-[150px]">
+              <div className="flex items-center gap-1 text-[9px] font-black text-emerald-400 leading-none">
+                <CheckCircle className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
                 <span>A receber</span>
               </div>
-              <p className="text-[9px] text-slate-400 leading-tight">
+              <p className="text-[8px] text-slate-400 leading-tight mt-0.5">
                 {trocoValor > 0
-                  ? `Troco p/ ${formatCurrency(order.troco_para || 0)} (Devolver ${formatCurrency(trocoValor)})`
-                  : 'Confirmar com o cliente na entrega.'}
+                  ? `Troco p/ ${formatCurrency(order.troco_para || 0)}`
+                  : 'Confirmar com cliente.'}
               </p>
             </div>
           </div>
         </div>
 
         {/* CARD 4: ITENS DO PEDIDO */}
-        <div className="bg-[#121A24] border border-[#1E293B] rounded-xl p-2 shadow-md shrink-0 space-y-1">
+        <div className="bg-[#121A24] border border-[#1E293B] rounded-xl p-1.5 shadow-md shrink-0 space-y-1">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                <Receipt className="w-3 h-3" />
+            <div className="flex items-center gap-1">
+              <div className="w-4 h-4 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                <Receipt className="w-2.5 h-2.5" />
               </div>
-              <span className="text-[10px] font-black text-white">
+              <span className="text-[9px] font-black text-white">
                 ITENS DO PEDIDO ({activeItens.length})
               </span>
             </div>
@@ -427,30 +427,30 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
             <button
               type="button"
               onClick={() => setShowItensModal(true)}
-              className="text-[10px] font-bold text-slate-400 hover:text-white flex items-center gap-0.5 transition cursor-pointer"
+              className="text-[9px] font-bold text-slate-400 hover:text-white flex items-center gap-0.5 transition cursor-pointer"
             >
               <span>Ver detalhes</span>
-              <ChevronRight className="w-3 h-3" />
+              <ChevronRight className="w-2.5 h-2.5" />
             </button>
           </div>
 
           {firstItem && (
-            <div className="flex items-center justify-between gap-2 p-1.5 bg-[#0B1017] rounded-lg border border-[#1E293B]/70">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded bg-slate-800 shrink-0 border border-slate-700/60 flex items-center justify-center text-sm">
+            <div className="flex items-center justify-between gap-1.5 p-1 bg-[#0B1017] rounded-lg border border-[#1E293B]/70">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="w-6 h-6 rounded bg-slate-800 shrink-0 border border-slate-700/60 flex items-center justify-center text-xs">
                   🍔
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-black text-white truncate leading-tight">
+                  <p className="text-[10px] font-black text-white truncate leading-tight">
                     {firstItem.nome}
                   </p>
-                  <p className="text-[9px] text-slate-400 font-mono leading-none">
+                  <p className="text-[8px] text-slate-400 font-mono leading-none">
                     {firstItem.quantidade}x
                   </p>
                 </div>
               </div>
 
-              <div className="font-mono font-bold text-[11px] text-white shrink-0">
+              <div className="font-mono font-bold text-[10px] text-white shrink-0">
                 {formatCurrency(firstItem.preco_total)}
               </div>
             </div>
@@ -459,39 +459,39 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
 
       </main>
 
-      {/* 3. BARRA INFERIOR COM AÇÕES (FIXA E PROPORCIONAL) */}
-      <footer className="px-3.5 pt-1.5 pb-2.5 bg-[#0B1017] border-t border-[#1E293B]/80 space-y-1.5 shrink-0">
+      {/* 3. BARRA INFERIOR COM AS DUAS AÇÕES 100% VISÍVEIS ACIMA DA BARRA DO NAVEGADOR */}
+      <footer className="px-3 pt-1.5 pb-2 bg-[#0B1017] border-t border-[#1E293B]/80 space-y-1.5 shrink-0">
         
         {/* Ação 1: Chegou ao local? */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-              <MapPin className="w-3 h-3" />
+            <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+              <MapPin className="w-2.5 h-2.5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-black text-white leading-none">Chegou no local?</p>
-              <p className="text-[9px] text-slate-400 leading-none mt-0.5">Confirme no endereço do cliente.</p>
+              <p className="text-[10px] font-black text-white leading-none">Chegou no local?</p>
+              <p className="text-[8px] text-slate-400 leading-none mt-0.5">Confirme no endereço.</p>
             </div>
           </div>
 
           <button
             type="button"
             onClick={() => setChegouAoLocal(!chegouAoLocal)}
-            className={`py-1 px-2.5 rounded-lg font-bold text-[10px] flex items-center gap-1 transition shrink-0 cursor-pointer ${
+            className={`py-1 px-2 rounded-lg font-bold text-[9px] flex items-center gap-1 transition shrink-0 cursor-pointer ${
               chegouAoLocal
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'bg-[#122E26] text-emerald-400 border border-emerald-500/40 hover:bg-[#173b30]'
             }`}
           >
-            <Check className="w-3 h-3" />
+            <Check className="w-2.5 h-2.5" />
             <span>{chegouAoLocal ? 'No endereço' : 'Cheguei ao endereço'}</span>
           </button>
         </div>
 
-        {/* Ação 2: Confirmar Entrega */}
+        {/* Ação 2: Confirmar Entrega (Grande Botão Verde Oficial) */}
         {isEntregue ? (
-          <div className="w-full py-2.5 px-3 bg-emerald-500/10 border border-emerald-500/40 rounded-xl text-center text-emerald-400 text-[11px] font-black flex items-center justify-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <div className="w-full py-2 px-3 bg-emerald-500/10 border border-emerald-500/40 rounded-xl text-center text-emerald-400 text-[10px] font-black flex items-center justify-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>ENTREGA CONFIRMADA COM SUCESSO!</span>
           </div>
         ) : (
@@ -499,24 +499,24 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
             type="button"
             disabled={isFinishing}
             onClick={handleFinalizarEntrega}
-            className="w-full py-2.5 px-3 bg-[#00A859] hover:bg-[#00914c] active:scale-[0.98] disabled:opacity-50 text-white rounded-xl font-black text-xs flex items-center justify-between transition shadow-md shadow-[#00A859]/25 cursor-pointer"
+            className="w-full py-2 px-3 bg-[#00A859] hover:bg-[#00914c] active:scale-[0.98] disabled:opacity-50 text-white rounded-xl font-black text-xs flex items-center justify-between transition shadow-md shadow-[#00A859]/25 cursor-pointer"
           >
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-                <Bike className="w-4 h-4 text-white" />
+              <div className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center shrink-0">
+                <Bike className="w-3.5 h-3.5 text-white" />
               </div>
               <div className="text-left">
-                <div className="text-xs font-black leading-tight">Confirmar entrega</div>
-                <div className="text-[9px] text-emerald-100 font-normal leading-none">
+                <div className="text-[11px] font-black leading-tight">Confirmar entrega</div>
+                <div className="text-[8px] text-emerald-100 font-normal leading-none">
                   Finalize apenas ao entregar o pedido.
                 </div>
               </div>
             </div>
 
             {isFinishing ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-3.5 h-3.5" />
             )}
           </button>
         )}
@@ -526,22 +526,22 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
       {/* MODAL DE DETALHES DOS ITENS */}
       {showItensModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-150">
-          <div className="max-w-xs w-full bg-[#121A24] border border-[#1E293B] rounded-2xl p-3.5 shadow-2xl max-h-[80vh] flex flex-col space-y-2.5">
+          <div className="max-w-xs w-full bg-[#121A24] border border-[#1E293B] rounded-2xl p-3 shadow-2xl max-h-[80vh] flex flex-col space-y-2">
             <div className="flex items-center justify-between border-b border-[#1E293B] pb-1.5">
               <h3 className="text-xs font-black text-white flex items-center gap-1.5">
-                <Receipt className="w-3.5 h-3.5 text-purple-400" />
+                <Receipt className="w-3 h-3 text-purple-400" />
                 <span>Itens do Pedido #{order.id}</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setShowItensModal(false)}
-                className="w-6 h-6 rounded-full bg-[#1E293B] text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold cursor-pointer"
+                className="w-5 h-5 rounded-full bg-[#1E293B] text-slate-300 hover:text-white flex items-center justify-center text-xs font-bold cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-2 overflow-y-auto pr-1 flex-1 text-[11px] divide-y divide-[#1E293B]">
+            <div className="space-y-1.5 overflow-y-auto pr-1 flex-1 text-[10px] divide-y divide-[#1E293B]">
               {activeItens.map((item, idx) => (
                 <div key={item.id || idx} className="pt-1.5 first:pt-0">
                   <div className="flex justify-between items-start font-bold text-white">
@@ -553,7 +553,7 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
                   </div>
 
                   {(item.tamanho || item.borda_recheada || item.tipo_massa) && (
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-[9px] text-slate-400 mt-0.5">
                       {[
                         item.tamanho ? `Tam: ${item.tamanho}` : null,
                         item.borda_recheada ? `Borda: ${item.borda_recheada}` : null,
@@ -563,13 +563,13 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
                   )}
 
                   {item.sabores && item.sabores.length > 0 && (
-                    <p className="text-[10px] text-purple-300 font-semibold mt-0.5">
+                    <p className="text-[9px] text-purple-300 font-semibold mt-0.5">
                       Sabores: {item.sabores.map((s) => s.nome).join(' / ')}
                     </p>
                   )}
 
                   {item.observacao && (
-                    <p className="text-[10px] text-amber-300 bg-amber-500/10 p-1 rounded mt-0.5 italic border border-amber-500/20">
+                    <p className="text-[9px] text-amber-300 bg-amber-500/10 p-1 rounded mt-0.5 italic border border-amber-500/20">
                       Obs: "{item.observacao}"
                     </p>
                   )}
@@ -577,7 +577,7 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
               ))}
 
               {order.observacao && (
-                <div className="pt-2 mt-1.5 border-t border-dashed border-[#1E293B] text-[10px] text-amber-300 bg-amber-500/10 p-2 rounded-lg">
+                <div className="pt-1.5 mt-1 border-t border-dashed border-[#1E293B] text-[9px] text-amber-300 bg-amber-500/10 p-1.5 rounded-lg">
                   <strong>Observação:</strong> {order.observacao}
                 </div>
               )}
@@ -586,7 +586,7 @@ export const MotoboyDeliveryView: React.FC<MotoboyDeliveryViewProps> = ({
             <button
               type="button"
               onClick={() => setShowItensModal(false)}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs cursor-pointer transition"
+              className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs cursor-pointer transition"
             >
               Fechar Detalhes
             </button>
