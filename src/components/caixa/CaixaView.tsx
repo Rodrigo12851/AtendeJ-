@@ -1155,10 +1155,10 @@ export const CaixaView: React.FC = () => {
                             .filter((it) => it.status === 'ativo')
                             .map((it, idx) => (
                               <div key={idx} className="flex justify-between items-baseline text-[11px]">
-                                <span className="truncate text-stone-800 dark:text-slate-200">
+                                <span className="truncate text-stone-800 dark:text-slate-200 font-medium">
                                   {it.quantidade}x {it.nome}
                                 </span>
-                                <span className="font-mono text-stone-600 dark:text-slate-400 text-[10px] ml-1">
+                                <span className="font-mono font-bold text-stone-900 dark:text-slate-100 text-[11px] ml-1 shrink-0">
                                   {formatCurrency(it.preco_total)}
                                 </span>
                               </div>
@@ -1166,15 +1166,20 @@ export const CaixaView: React.FC = () => {
                         </div>
 
                         {/* Total & Action Buttons */}
-                        <div className="pt-1.5 border-t border-emerald-200/80 dark:border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
-                          <span className="font-mono font-bold text-xs text-emerald-800 dark:text-emerald-400">
-                            {formatCurrency(orderTotal)}
+                        <div className="pt-2 border-t border-emerald-200/80 dark:border-slate-800/80 flex items-center justify-between gap-1.5 flex-wrap">
+                          <div className="inline-flex flex-col bg-emerald-100/90 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800/80 px-2.5 py-1 rounded-xl shadow-2xs">
+                            <span className="text-[9px] uppercase tracking-wider font-extrabold text-emerald-800 dark:text-emerald-400">
+                              Total
+                            </span>
+                            <span className="font-mono font-black text-sm sm:text-base text-emerald-950 dark:text-emerald-200 leading-tight">
+                              {formatCurrency(orderTotal)}
+                            </span>
                             {order.taxa_entrega ? (
-                              <span className="text-[9px] text-stone-500 dark:text-slate-400 block font-normal font-sans">
-                                (+ {formatCurrency(order.taxa_entrega)} taxa)
+                              <span className="text-[9px] font-semibold text-emerald-800 dark:text-emerald-300 font-mono">
+                                (+{formatCurrency(order.taxa_entrega)} taxa)
                               </span>
                             ) : null}
-                          </span>
+                          </div>
 
                           <div className="flex items-center gap-1">
                             <button
@@ -1474,10 +1479,10 @@ export const CaixaView: React.FC = () => {
                             .filter((it) => it.status === 'ativo')
                             .map((it, idx) => (
                               <div key={idx} className="flex justify-between items-baseline text-[11px]">
-                                <span className="truncate text-stone-800 dark:text-slate-200">
+                                <span className="truncate text-stone-800 dark:text-slate-200 font-medium">
                                   {it.quantidade}x {it.nome}
                                 </span>
-                                <span className="font-mono text-stone-600 dark:text-slate-400 text-[10px] ml-1">
+                                <span className="font-mono font-bold text-stone-900 dark:text-slate-100 text-[11px] ml-1 shrink-0">
                                   {formatCurrency(it.preco_total)}
                                 </span>
                               </div>
@@ -1485,13 +1490,18 @@ export const CaixaView: React.FC = () => {
                         </div>
 
                         {/* Total & Action Buttons */}
-                        <div className="pt-1.5 border-t border-amber-200/80 dark:border-slate-800/80 flex items-center justify-between gap-1 flex-wrap">
-                          <span className="font-mono font-bold text-xs text-amber-800 dark:text-amber-400">
-                            {formatCurrency(orderTotal)}
-                            <span className="text-[9px] text-stone-500 dark:text-slate-400 block font-normal font-sans">
-                              (Sem taxa de entrega)
+                        <div className="pt-2 border-t border-amber-200/80 dark:border-slate-800/80 flex items-center justify-between gap-1.5 flex-wrap">
+                          <div className="inline-flex flex-col bg-amber-100/90 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800/80 px-2.5 py-1 rounded-xl shadow-2xs">
+                            <span className="text-[9px] uppercase tracking-wider font-extrabold text-amber-800 dark:text-amber-400">
+                              Total
                             </span>
-                          </span>
+                            <span className="font-mono font-black text-sm sm:text-base text-amber-950 dark:text-amber-200 leading-tight">
+                              {formatCurrency(orderTotal)}
+                            </span>
+                            <span className="text-[9px] font-semibold text-amber-800 dark:text-amber-300 font-mono">
+                              Sem taxa
+                            </span>
+                          </div>
 
                           <div className="flex items-center gap-1">
                             <button
@@ -1690,18 +1700,21 @@ export const CaixaView: React.FC = () => {
                             </span>
                           </div>
 
-                          <div className="text-right">
-                            <span className={`text-xs font-mono font-bold block ${
+                          <div className="text-right shrink-0">
+                            <div className={`px-2.5 py-1 rounded-xl border text-right font-mono transition shadow-2xs ${
                               isSelected
-                                ? 'text-white'
+                                ? 'bg-sky-500 text-white border-sky-400'
                                 : isWaitingClose
-                                ? 'text-amber-600 dark:text-amber-400'
-                                : 'text-stone-900 dark:text-white'
+                                ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                                : 'bg-stone-100 dark:bg-slate-800 text-stone-900 dark:text-white border-stone-300 dark:border-slate-700'
                             }`}>
-                              {formatCurrency(cmd.total)}
-                            </span>
-                            <span className={`text-[10px] font-mono ${isSelected ? 'text-stone-300 font-medium' : 'opacity-60 text-stone-500 dark:text-slate-400'}`}>
-                              {cmd.pedidos_ids.length} pedidos
+                              <span className="text-[9px] uppercase tracking-wider block font-black opacity-75">Total</span>
+                              <span className="text-xs sm:text-sm font-black block leading-none">
+                                {formatCurrency(cmd.total)}
+                              </span>
+                            </div>
+                            <span className={`text-[10px] font-mono block mt-1 ${isSelected ? 'text-sky-200' : 'text-stone-500 dark:text-slate-400'}`}>
+                              {cmd.pedidos_ids.length} {cmd.pedidos_ids.length === 1 ? 'pedido' : 'pedidos'}
                             </span>
                           </div>
                         </button>
@@ -1713,33 +1726,33 @@ export const CaixaView: React.FC = () => {
               {/* Resumo do Caixa Widget */}
               <div className="pt-2 border-t border-sky-200/80 dark:border-slate-800 space-y-1.5">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-bold uppercase tracking-wider text-sky-950 dark:text-slate-300 text-[10px]">Resumo do Caixa</span>
-                  <span className="text-[10px] text-stone-600 dark:text-slate-400 font-mono">
-                    Abertura: <strong>{formatCurrency(cashRegister.valor_inicial)}</strong>
+                  <span className="font-extrabold uppercase tracking-wider text-sky-950 dark:text-slate-300 text-[10px]">Resumo do Caixa</span>
+                  <span className="text-[11px] text-stone-700 dark:text-slate-300 font-mono">
+                    Abertura: <strong className="font-black text-stone-950 dark:text-white">{formatCurrency(cashRegister.valor_inicial)}</strong>
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5 text-center text-[11px]">
-                  <div className="p-1.5 bg-stone-50 dark:bg-slate-950 rounded-lg border border-stone-200 dark:border-slate-800">
-                    <span className="text-[9px] text-stone-500 block uppercase font-medium">Dinheiro</span>
-                    <span className="font-bold text-stone-900 dark:text-white font-mono text-[11px] block">
+                  <div className="p-2 bg-stone-100/90 dark:bg-slate-950 rounded-xl border border-stone-300/80 dark:border-slate-800 shadow-2xs">
+                    <span className="text-[9px] text-stone-600 dark:text-slate-400 block uppercase font-bold">Dinheiro</span>
+                    <span className="font-black text-stone-950 dark:text-white font-mono text-xs sm:text-sm block">
                       {formatCurrency(paymentBreakdown.dinheiro)}
                     </span>
                   </div>
-                  <div className="p-1.5 bg-emerald-50/70 dark:bg-slate-950 rounded-lg border border-emerald-200/70 dark:border-emerald-800/60">
-                    <span className="text-[9px] text-emerald-700 dark:text-emerald-400 block uppercase font-medium">PIX</span>
-                    <span className="font-bold text-emerald-950 dark:text-emerald-300 font-mono text-[11px] block">
+                  <div className="p-2 bg-emerald-100/80 dark:bg-slate-950 rounded-xl border border-emerald-300/90 dark:border-emerald-800/80 shadow-2xs">
+                    <span className="text-[9px] text-emerald-800 dark:text-emerald-400 block uppercase font-bold">PIX</span>
+                    <span className="font-black text-emerald-950 dark:text-emerald-300 font-mono text-xs sm:text-sm block">
                       {formatCurrency(paymentBreakdown.pix)}
                     </span>
                   </div>
-                  <div className="p-1.5 bg-sky-50/70 dark:bg-slate-950 rounded-lg border border-sky-200/70 dark:border-sky-800/60">
-                    <span className="text-[9px] text-sky-700 dark:text-sky-400 block uppercase font-medium">Débito</span>
-                    <span className="font-bold text-sky-950 dark:text-sky-300 font-mono text-[11px] block">
+                  <div className="p-2 bg-sky-100/80 dark:bg-slate-950 rounded-xl border border-sky-300/90 dark:border-sky-800/80 shadow-2xs">
+                    <span className="text-[9px] text-sky-800 dark:text-sky-400 block uppercase font-bold">Débito</span>
+                    <span className="font-black text-sky-950 dark:text-sky-300 font-mono text-xs sm:text-sm block">
                       {formatCurrency(paymentBreakdown.debito)}
                     </span>
                   </div>
-                  <div className="p-1.5 bg-purple-50/70 dark:bg-slate-950 rounded-lg border border-purple-200/70 dark:border-purple-800/60">
-                    <span className="text-[9px] text-purple-700 dark:text-purple-400 block uppercase font-medium">Crédito</span>
-                    <span className="font-bold text-purple-950 dark:text-purple-300 font-mono text-[11px] block">
+                  <div className="p-2 bg-purple-100/80 dark:bg-slate-950 rounded-xl border border-purple-300/90 dark:border-purple-800/80 shadow-2xs">
+                    <span className="text-[9px] text-purple-800 dark:text-purple-400 block uppercase font-bold">Crédito</span>
+                    <span className="font-black text-purple-950 dark:text-purple-300 font-mono text-xs sm:text-sm block">
                       {formatCurrency(paymentBreakdown.credito)}
                     </span>
                   </div>
@@ -1879,7 +1892,7 @@ export const CaixaView: React.FC = () => {
                         <p className="text-[11px] text-stone-500 dark:text-slate-400">{item.borda.nome}</p>
                       )}
                     </div>
-                    <span className="font-bold text-stone-900 dark:text-slate-100 font-mono">
+                    <span className="font-black text-stone-950 dark:text-white font-mono text-xs sm:text-sm shrink-0">
                       {formatCurrency(item.preco_total)}
                     </span>
                   </div>
@@ -1887,36 +1900,42 @@ export const CaixaView: React.FC = () => {
               </div>
 
               {/* Financial Totals Summary Bar */}
-              <div className="bg-stone-50/90 dark:bg-slate-950 p-4 rounded-xl border border-stone-200 dark:border-slate-800 space-y-1.5 text-xs">
-                <div className="flex justify-between text-stone-600 dark:text-slate-400">
-                  <span>Subtotal dos produtos:</span>
-                  <span className="font-semibold font-mono text-stone-900 dark:text-slate-200">{formatCurrency(activeComanda.subtotal)}</span>
+              <div className="bg-stone-50/90 dark:bg-slate-950 p-4 rounded-xl border border-stone-200 dark:border-slate-800 space-y-2 text-xs">
+                <div className="flex justify-between items-center text-stone-700 dark:text-slate-300">
+                  <span className="font-medium">Subtotal dos produtos:</span>
+                  <span className="font-bold font-mono text-stone-950 dark:text-slate-100 text-xs sm:text-sm">{formatCurrency(activeComanda.subtotal)}</span>
                 </div>
                 {isOrderCheckout && activeOrder?.taxa_entrega && activeOrder.taxa_entrega > 0 ? (
-                  <div className="flex justify-between text-purple-700 dark:text-purple-400 font-semibold">
+                  <div className="flex justify-between items-center text-purple-700 dark:text-purple-300 font-bold">
                     <span>Taxa de Entrega:</span>
-                    <span className="font-mono">+ {formatCurrency(activeOrder.taxa_entrega)}</span>
+                    <span className="font-mono text-xs sm:text-sm">+ {formatCurrency(activeOrder.taxa_entrega)}</span>
                   </div>
                 ) : null}
                 {activeComanda.desconto > 0 && (
-                  <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-semibold">
+                  <div className="flex justify-between items-center text-emerald-700 dark:text-emerald-400 font-bold">
                     <span>Desconto:</span>
-                    <span className="font-mono">- {formatCurrency(activeComanda.desconto)}</span>
+                    <span className="font-mono text-xs sm:text-sm">- {formatCurrency(activeComanda.desconto)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-baseline font-bold text-sm pt-2 border-t border-stone-200 dark:border-slate-800 text-stone-900 dark:text-slate-100">
-                  <span>Total da Conta:</span>
-                  <span className="text-base font-bold font-mono text-stone-900 dark:text-white">{formatCurrency(activeComanda.total)}</span>
+                <div className="flex justify-between items-center pt-2.5 border-t-2 border-stone-300 dark:border-slate-700">
+                  <span className="font-black text-stone-950 dark:text-white text-sm sm:text-base">Total da Conta:</span>
+                  <span className="text-lg sm:text-xl font-black font-mono text-stone-950 dark:text-emerald-300 bg-stone-200/80 dark:bg-slate-800 px-3 py-1 rounded-xl border border-stone-300 dark:border-slate-700">
+                    {formatCurrency(activeComanda.total)}
+                  </span>
                 </div>
                 {totalPaid > 0 && (
-                  <div className="flex justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-400 pt-1">
+                  <div className="flex justify-between items-center text-xs font-bold text-emerald-800 dark:text-emerald-400 pt-1">
                     <span>Total Pago até agora:</span>
-                    <span className="font-mono">{formatCurrency(totalPaid)}</span>
+                    <span className="font-mono font-black text-xs sm:text-sm bg-emerald-100/80 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-300 dark:border-emerald-800">
+                      {formatCurrency(totalPaid)}
+                    </span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm font-bold text-red-600 dark:text-red-400 pt-1 border-t border-stone-200/60 dark:border-slate-800">
-                  <span>Saldo Restante a Receber:</span>
-                  <span className="font-bold font-mono">{formatCurrency(remainingBalance)}</span>
+                <div className="flex justify-between items-center pt-2 border-t border-dashed border-red-200 dark:border-red-900/40">
+                  <span className="font-black uppercase tracking-wide text-xs sm:text-sm text-red-700 dark:text-red-400">Saldo Restante:</span>
+                  <span className="text-base sm:text-lg font-black font-mono bg-red-100 dark:bg-red-950/70 text-red-700 dark:text-red-300 px-3 py-1 rounded-xl border border-red-300 dark:border-red-800">
+                    {formatCurrency(remainingBalance)}
+                  </span>
                 </div>
               </div>
 
@@ -1999,7 +2018,7 @@ export const CaixaView: React.FC = () => {
 
                     <div className="p-2.5 bg-stone-50 dark:bg-slate-950 rounded-lg border border-stone-200 dark:border-slate-800 flex items-center justify-between font-semibold text-stone-800 dark:text-slate-200">
                       <span>{formatCurrency(remainingBalance)} ÷ {splitPeopleCount} pessoas:</span>
-                      <span className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">
+                      <span className="text-base font-black text-red-600 dark:text-red-400 font-mono">
                         {formatCurrency(remainingBalance / splitPeopleCount)} / pessoa
                       </span>
                     </div>
@@ -2047,7 +2066,7 @@ export const CaixaView: React.FC = () => {
                                 {item.quantidade}x {item.nome}
                               </span>
                             </div>
-                            <span className="font-mono font-bold">{formatCurrency(item.preco_total)}</span>
+                            <span className="font-mono font-bold text-stone-900 dark:text-white">{formatCurrency(item.preco_total)}</span>
                           </label>
                         );
                       })}
@@ -2055,7 +2074,7 @@ export const CaixaView: React.FC = () => {
 
                     <div className="p-2.5 bg-stone-50 dark:bg-slate-950 rounded-lg border border-stone-200 dark:border-slate-800 flex items-center justify-between font-semibold text-stone-800 dark:text-slate-200">
                       <span>Total dos itens selecionados:</span>
-                      <span className="text-sm font-bold text-red-600 dark:text-red-400 font-mono">
+                      <span className="text-base font-black text-red-600 dark:text-red-400 font-mono">
                         {formatCurrency(splitItemsTotal)}
                       </span>
                     </div>
@@ -2199,15 +2218,17 @@ export const CaixaView: React.FC = () => {
                         {trocoParaInput &&
                           parseFloat(trocoParaInput.replace(',', '.')) >
                             parseFloat(paymentAmountInput.replace(',', '.') || '0') && (
-                            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 block mt-1">
-                              Troco a devolver:{' '}
-                              <strong className="font-mono">
+                            <div className="mt-2 p-2 bg-emerald-100/80 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 rounded-xl flex items-center justify-between shadow-2xs">
+                              <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                                Troco a devolver:
+                              </span>
+                              <span className="text-sm font-black font-mono text-emerald-950 dark:text-emerald-200">
                                 {formatCurrency(
                                   parseFloat(trocoParaInput.replace(',', '.')) -
                                     parseFloat(paymentAmountInput.replace(',', '.'))
                                 )}
-                              </strong>
-                            </span>
+                              </span>
+                            </div>
                           )}
                       </div>
                     )}
@@ -2263,11 +2284,11 @@ export const CaixaView: React.FC = () => {
                           • {pag.forma_pagamento} {pag.pagador_nome ? `(${pag.pagador_nome})` : ''}
                         </span>
                         <div className="text-right">
-                          <span className="font-bold text-emerald-700 dark:text-emerald-400 font-mono">
+                          <span className="font-black text-emerald-800 dark:text-emerald-300 font-mono text-xs sm:text-sm">
                             {formatCurrency(pag.valor)}
                           </span>
                           {pag.troco && pag.troco > 0 ? (
-                            <span className="text-[11px] text-stone-500 dark:text-slate-400 block font-mono">
+                            <span className="text-[11px] font-semibold text-stone-600 dark:text-slate-400 block font-mono">
                               (Troco: {formatCurrency(pag.troco)})
                             </span>
                           ) : null}
@@ -3182,14 +3203,18 @@ export const CaixaView: React.FC = () => {
                             <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
                               {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
                                 <div key={idx} className="pt-1 first:pt-0 flex justify-between text-[11px]">
-                                  <span>{it.quantidade}x {it.nome}</span>
-                                  <span className="font-mono text-stone-600 dark:text-slate-400">{formatCurrency(it.preco_total)}</span>
+                                  <span className="font-medium text-stone-800 dark:text-slate-200">{it.quantidade}x {it.nome}</span>
+                                  <span className="font-mono font-bold text-stone-900 dark:text-slate-100 text-[11px] shrink-0">{formatCurrency(it.preco_total)}</span>
                                 </div>
                               ))}
                             </div>
                           </div>
                           <div className="p-3 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap">
-                            <span className="font-mono font-bold text-xs text-emerald-800 dark:text-emerald-400">{formatCurrency(totalOrder)}</span>
+                            <div className="inline-flex bg-emerald-100/90 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-800/80 px-2 py-0.5 rounded-lg shadow-2xs">
+                              <span className="font-mono font-black text-xs sm:text-sm text-emerald-950 dark:text-emerald-200 leading-tight">
+                                {formatCurrency(totalOrder)}
+                              </span>
+                            </div>
                             <div className="flex items-center gap-1">
                               <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" /></button>
                               {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Confirmar</button>}
@@ -3312,14 +3337,18 @@ export const CaixaView: React.FC = () => {
                             <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
                               {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
                                 <div key={idx} className="pt-1 first:pt-0 flex justify-between text-[11px]">
-                                  <span>{it.quantidade}x {it.nome}</span>
-                                  <span className="font-mono text-stone-600 dark:text-slate-400">{formatCurrency(it.preco_total)}</span>
+                                  <span className="font-medium text-stone-800 dark:text-slate-200">{it.quantidade}x {it.nome}</span>
+                                  <span className="font-mono font-bold text-stone-900 dark:text-slate-100 text-[11px] shrink-0">{formatCurrency(it.preco_total)}</span>
                                 </div>
                               ))}
                             </div>
                           </div>
                           <div className="p-3 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap">
-                            <span className="font-mono font-bold text-xs text-amber-800 dark:text-amber-400">{formatCurrency(totalOrder)}</span>
+                            <div className="inline-flex bg-amber-100/90 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800/80 px-2 py-0.5 rounded-lg shadow-2xs">
+                              <span className="font-mono font-black text-xs sm:text-sm text-amber-950 dark:text-amber-200 leading-tight">
+                                {formatCurrency(totalOrder)}
+                              </span>
+                            </div>
                             <div className="flex items-center gap-1">
                               <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /></button>
                               {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Confirmar</button>}
@@ -3421,14 +3450,18 @@ export const CaixaView: React.FC = () => {
                             <div className="space-y-1 max-h-32 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
                               {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
                                 <div key={idx} className="pt-1 first:pt-0 flex justify-between text-[11px]">
-                                  <span>{it.quantidade}x {it.nome}</span>
-                                  <span className="font-mono text-stone-600 dark:text-slate-400">{formatCurrency(it.preco_total)}</span>
+                                  <span className="font-medium text-stone-800 dark:text-slate-200">{it.quantidade}x {it.nome}</span>
+                                  <span className="font-mono font-bold text-stone-900 dark:text-slate-100 text-[11px] shrink-0">{formatCurrency(it.preco_total)}</span>
                                 </div>
                               ))}
                             </div>
                           </div>
                           <div className="p-3 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-1 flex-wrap">
-                            <span className="font-mono font-bold text-xs text-stone-900 dark:text-white">{formatCurrency(totalOrder)}</span>
+                            <div className="inline-flex bg-sky-100/90 dark:bg-sky-950/80 border border-sky-300 dark:border-sky-800/80 px-2 py-0.5 rounded-lg shadow-2xs">
+                              <span className="font-mono font-black text-xs sm:text-sm text-sky-950 dark:text-sky-200 leading-tight">
+                                {formatCurrency(totalOrder)}
+                              </span>
+                            </div>
                             <div className="flex items-center gap-1">
                               <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="p-1.5 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-lg text-xs cursor-pointer shadow-2xs" title="Imprimir"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
                               {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer shadow-2xs">Confirmar</button>}
@@ -3529,15 +3562,19 @@ export const CaixaView: React.FC = () => {
                       </div>
                       <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 divide-y divide-stone-100 dark:divide-slate-800/80">
                         {order.itens.filter((it) => it.status === 'ativo').map((it, idx) => (
-                          <div key={idx} className="pt-1.5 first:pt-0 flex items-center justify-between font-semibold text-stone-900 dark:text-white">
-                            <span>{it.quantidade}x {it.nome}</span>
-                            <span className="font-mono text-stone-700 dark:text-slate-300">{formatCurrency(it.preco_total)}</span>
+                          <div key={idx} className="pt-1.5 first:pt-0 flex items-center justify-between text-xs">
+                            <span className="font-semibold text-stone-900 dark:text-white">{it.quantidade}x {it.nome}</span>
+                            <span className="font-mono font-bold text-stone-950 dark:text-slate-100 text-xs shrink-0">{formatCurrency(it.preco_total)}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                     <div className="p-3.5 bg-stone-50 dark:bg-slate-950 border-t border-stone-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
-                      <span className="text-sm font-bold font-mono text-stone-900 dark:text-white">{formatCurrency(totalOrder)}</span>
+                      <div className="inline-flex bg-stone-200/90 dark:bg-slate-800 border border-stone-300 dark:border-slate-700 px-3 py-1 rounded-xl shadow-2xs">
+                        <span className="text-sm sm:text-base font-black font-mono text-stone-950 dark:text-white leading-tight">
+                          {formatCurrency(totalOrder)}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="px-3 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-semibold cursor-pointer shadow-2xs"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
                         {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">Confirmar 🖨️</button>}
