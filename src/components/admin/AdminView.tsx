@@ -614,18 +614,27 @@ export const AdminView: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20">
       {/* Top Header */}
       <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-red-700 text-white flex items-center justify-center shadow-xs shrink-0">
-              <TrendingUp className="w-5 h-5" />
+        <div className="max-w-7xl mx-auto px-4 py-2.5 space-y-2.5">
+          {/* Top Row: Title, Store Info & Mode Badge */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-red-700 text-white flex items-center justify-center shadow-xs shrink-0">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight truncate">
+                  Painel do Administrador & Gestão
+                </h1>
+                <p className="text-[11px] text-stone-400 font-medium truncate">
+                  📍 {currentLojaId === 'todas' ? 'Visão Consolidada (Todas as Lojas)' : `Filial: ${currentLoja?.nome}`} • BI • Cardápio • Mesas • Equipe
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight">
-                Painel do Administrador & Gestão
-              </h1>
-              <p className="text-[11px] text-stone-400 font-medium">
-                📍 {currentLojaId === 'todas' ? 'Visão Consolidada (Todas as Lojas)' : `Filial: ${currentLoja?.nome}`} • BI • Cardápio • Mesas • Equipe
-              </p>
+
+            {/* Test / Developer Mode Indicator */}
+            <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+              <span>Modo Teste / Desenvolvedor</span>
             </div>
           </div>
 
@@ -649,7 +658,7 @@ export const AdminView: React.FC = () => {
           </div>
 
           {/* Desktop / Tablet Horizontal Scrollable Tab Bar */}
-          <div className="hidden md:flex items-center gap-1.5 bg-stone-950/80 p-1 sm:p-1.5 rounded-2xl border border-stone-800 overflow-x-auto text-xs font-semibold scrollbar-none max-w-full">
+          <div className="hidden md:flex items-center gap-1.5 bg-stone-950/90 p-1 sm:p-1.5 rounded-2xl border border-stone-800 overflow-x-auto text-xs font-semibold scrollbar-none w-full shadow-inner">
             <button
               onClick={() => setActiveTab('graficos')}
               className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shrink-0 ${

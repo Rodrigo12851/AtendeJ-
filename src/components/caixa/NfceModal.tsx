@@ -132,6 +132,24 @@ export const NfceModal: React.FC<NfceModalProps> = ({
         </div>
 
         <div className="p-4 sm:p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+          {/* Banner de Modo Desenvolvedor / Homologação */}
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="text-base">🧪</span>
+              <div>
+                <span className="font-bold text-amber-950 dark:text-amber-200 block text-xs">
+                  Modo de Desenvolvedor / Testes Ativo
+                </span>
+                <span className="text-[11px] text-amber-800 dark:text-amber-400">
+                  Emissão simulada com Chave SEFAZ de 44 dígitos e QR Code para testar cupom e impressão física. Sem valor fiscal.
+                </span>
+              </div>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 shrink-0">
+              Homologação
+            </span>
+          </div>
+
           {/* Mensagem de Erro / Rejeição se houver */}
           {errorMessage && (
             <div className="p-3.5 bg-red-50 dark:bg-red-950/50 border border-red-300 dark:border-red-800 rounded-2xl text-xs text-red-900 dark:text-red-200 flex items-start gap-2.5">
