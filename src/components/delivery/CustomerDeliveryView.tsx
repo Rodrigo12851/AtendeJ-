@@ -465,9 +465,13 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   };
 
   // Validação de disponibilidade de produto (estoque zerado ou pausado pelo admin)
-  const isProductOutOfStock = (p: Product) => !!(p.controlar_estoque && (p.estoque === undefined || p.estoque <= 0));
-  const isProductSuspended = (p: Product) => p.ativo === false;
-  const isProductUnavailable = (p: Product) => isProductSuspended(p) || isProductOutOfStock(p);
+  const isOutOfStock = (p: Product) => !!(p.controlar_estoque && (p.estoque === undefined || p.estoque <= 0));
+  const isSuspended = (p: Product) => p.ativo === false;
+  const isUnavailable = (p: Product) => isSuspended(p) || isOutOfStock(p);
+
+  const isProductOutOfStock = isOutOfStock;
+  const isProductSuspended = isSuspended;
+  const isProductUnavailable = isUnavailable;
 
   // Filter products by active category & search query
   const filteredProducts = useMemo(() => {
@@ -899,9 +903,9 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   const headerBgClass = isDarkMode ? 'bg-[#181820] border-stone-800' : 'bg-stone-900 text-white border-stone-800';
 
   // Check if store is suspended
-  const isSuspended = !targetLoja.ativa || targetLoja.status_assinatura === 'suspenso';
+  const isStoreSuspended = !targetLoja.ativa || targetLoja.status_assinatura === 'suspenso';
 
-  if (isSuspended) {
+  if (isStoreSuspended) {
     return (
       <div className={`min-h-screen font-sans flex flex-col items-center justify-center p-4 transition-colors duration-200 ${bgClass}`}>
         <div className={`max-w-md w-full p-6 sm:p-8 rounded-3xl border shadow-xl text-center space-y-6 ${cardBgClass} border-red-500/30`}>
