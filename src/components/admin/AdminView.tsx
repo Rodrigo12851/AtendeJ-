@@ -2856,62 +2856,6 @@ export const AdminView: React.FC = () => {
                 </div>
               </div>
 
-                {/* Seção de Promoção e Destaque no Cardápio */}
-                <div className="p-3 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800/50 space-y-2.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">
-                    <span>🔥 Promoção & Destaques no Cardápio</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <label className="flex items-center gap-2 text-xs text-stone-800 dark:text-slate-200 cursor-pointer p-2 bg-white dark:bg-slate-800 rounded-lg border border-amber-100 dark:border-amber-900/50">
-                      <input
-                        type="checkbox"
-                        checked={prodDestaque}
-                        onChange={(e) => setProdDestaque(e.target.checked)}
-                        className="accent-amber-600 w-4 h-4 cursor-pointer"
-                      />
-                      <div>
-                        <span className="font-bold block">Produto em Destaque</span>
-                        <span className="text-[10px] text-stone-500 block">Aparece nos "Mais Pedidos"</span>
-                      </div>
-                    </label>
-
-                    <label className="flex items-center gap-2 text-xs text-stone-800 dark:text-slate-200 cursor-pointer p-2 bg-white dark:bg-slate-800 rounded-lg border border-amber-100 dark:border-amber-900/50">
-                      <input
-                        type="checkbox"
-                        checked={prodEmPromocao}
-                        onChange={(e) => {
-                          setProdEmPromocao(e.target.checked);
-                          if (!e.target.checked) setProdPrecoPromocional('');
-                        }}
-                        className="accent-amber-600 w-4 h-4 cursor-pointer"
-                      />
-                      <div>
-                        <span className="font-bold block">Ativar Promoção</span>
-                        <span className="text-[10px] text-stone-500 block">Exibe no banner carrossel</span>
-                      </div>
-                    </label>
-                  </div>
-
-                  {prodEmPromocao && (
-                    <div className="pt-1.5 border-t border-amber-200/60 dark:border-amber-800/40">
-                      <label className="block text-xs font-semibold text-amber-900 dark:text-amber-300 mb-1">
-                        Preço Promocional Especial (R$):
-                      </label>
-                      <input
-                        type="text"
-                        value={prodPrecoPromocional}
-                        onChange={(e) => setProdPrecoPromocional(e.target.value)}
-                        placeholder="Ex: 27,90 (Deixe em branco para usar o preço normal)"
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 rounded-xl text-xs font-bold font-mono text-stone-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
-                      />
-                      <p className="text-[10px] text-amber-800 dark:text-amber-400 mt-1">
-                        No cardápio, o preço original aparecerá riscado e o preço promocional receberá o selo de oferta!
-                      </p>
-                    </div>
-                  )}
-                </div>
-
                 <label className="flex items-center gap-2 text-xs text-stone-700 dark:text-slate-300 cursor-pointer pt-1">
                   <input
                     type="checkbox"
