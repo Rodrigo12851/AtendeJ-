@@ -47,6 +47,8 @@ import {
   Package,
   Menu,
   ChevronLeft,
+  Link2,
+  MessageCircle,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, Table, User, Category } from '../../types';
@@ -60,6 +62,7 @@ import { FiscalSettingsTab } from './FiscalSettingsTab';
 
 export const AdminView: React.FC = () => {
   const {
+    lojas,
     products,
     categories,
     tables,
@@ -202,6 +205,58 @@ export const AdminView: React.FC = () => {
   const [passwordModalUser, setPasswordModalUser] = useState<User | null>(null);
   const [quickNewPassword, setQuickNewPassword] = useState('');
   const [showQuickPassword, setShowQuickPassword] = useState(false);
+
+  // Copiar link de acesso individual de cada colaborador
+  const [copiedUserLinkId, setCopiedUserLinkId] = useState<string | null>(null);
+
+  const getUserAccessUrl = (u: User) => {
+    const userLoja = (u.loja_id ? lojas.find((l) => l.id === u.loja_id) : null) || currentLoja || lojas[0];
+    const token =
+      u.perfil === 'admin'
+        ? userLoja?.token_admin
+        : u.perfil === 'garcom'
+        ? userLoja?.token_garcom
+        : u.perfil === 'cozinha'
+        ? userLoja?.token_cozinha
+        : userLoja?.token_caixa;
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${origin}/?loja=${userLoja?.slug || 'loja-centro'}&painel=${u.perfil}&token=${token || ''}`;
+  };
+
+  const handleCopyUserAccessLink = (u: User) => {
+    const url = getUserAccessUrl(u);
+    navigator.clipboard.writeText(url);
+    setCopiedUserLinkId(u.id);
+    setTimeout(() => setCopiedUserLinkId(null), 2500);
+  };
+
+  const handleSendWhatsAppAccess = (u: User) => {
+    const url = getUserAccessUrl(u);
+    const userLoja = (u.loja_id ? lojas.find((l) => l.id === u.loja_id) : null) || currentLoja || lojas[0];
+    const roleName =
+      u.perfil === 'admin'
+        ? 'Administrador'
+        : u.perfil === 'garcom'
+        ? 'Garçom'
+        : u.perfil === 'cozinha'
+        ? 'Cozinha (KDS)'
+        : 'Caixa (PDV)';
+
+    const text = `🍕 *Acesso ao Sistema — ${userLoja?.nome || 'Estabelecimento'}*\n\n` +
+      `Olá, *${u.nome}*!\n` +
+      `Segue o seu link de acesso exclusivo para o *Painel de ${roleName}*:\n\n` +
+      `🔗 *Link do Painel:* ${url}\n` +
+      `👤 *Usuário:* ${u.usuario}\n\n` +
+      `_Salve este link nos seus favoritos para acessar seus turnos de trabalho._`;
+
+    const cleanPhone = (u.telefone || '').replace(/\D/g, '');
+    const waUrl = cleanPhone
+      ? `https://api.whatsapp.com/send?phone=55${cleanPhone}&text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+    window.open(waUrl, '_blank');
+  };
 
   // Store-filtered users (avoids leaking staff between different stores)
   const storeUsers = useMemo(() => {
@@ -2064,8 +2119,8 @@ export const AdminView: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* Middle: Login & Senha Display */}
-                      <div className="bg-stone-50 dark:bg-stone-800/60 p-2.5 rounded-xl border border-stone-200/80 dark:border-stone-700/60 text-xs font-mono space-y-1">
+                      {/* Middle: Login, Senha & Link de Acesso Exclusivo */}
+                      <div className="bg-stone-50 dark:bg-stone-800/60 p-2.5 rounded-xl border border-stone-200/80 dark:border-stone-700/60 text-xs font-mono space-y-2">
                         <div className="flex items-center justify-between text-stone-600 dark:text-stone-300">
                           <span className="font-sans text-[11px] text-stone-500">Login:</span>
                           <div className="flex items-center gap-1.5">
@@ -2084,6 +2139,7 @@ export const AdminView: React.FC = () => {
                             </button>
                           </div>
                         </div>
+
                         <div className="flex items-center justify-between text-stone-600 dark:text-stone-300">
                           <span className="font-sans text-[11px] text-stone-500">Senha:</span>
                           <div className="flex items-center gap-1.5" title="Senha protegida por criptografia SHA-256 + Salt">
@@ -2092,6 +2148,54 @@ export const AdminView: React.FC = () => {
                               <ShieldCheck className="w-3 h-3" />
                               <span>Criptografada</span>
                             </span>
+                          </div>
+                        </div>
+
+                        {/* Link de Acesso Exclusivo do Responsável */}
+                        <div className="pt-2 border-t border-stone-200/80 dark:border-stone-700/80 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-sans text-[11px] font-bold text-stone-700 dark:text-stone-200 flex items-center gap-1">
+                              <Link2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                              <span>Link de Acesso:</span>
+                            </span>
+                            <span className="text-[9px] font-sans font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+                              Token Seguro
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyUserAccessLink(u)}
+                              className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+                                copiedUserLinkId === u.id
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-purple-600 hover:bg-purple-700 text-white dark:bg-purple-700 dark:hover:bg-purple-600'
+                              }`}
+                              title="Copiar link de acesso exclusivo deste responsável"
+                            >
+                              {copiedUserLinkId === u.id ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Link Copiado!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Copiar Link de Acesso</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleSendWhatsAppAccess(u)}
+                              className="py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center justify-center gap-1 shrink-0 cursor-pointer shadow-2xs"
+                              title="Enviar link e credenciais diretamente no WhatsApp do responsável"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span className="text-[11px]">WhatsApp</span>
+                            </button>
                           </div>
                         </div>
                       </div>
