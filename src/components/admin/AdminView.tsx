@@ -45,6 +45,8 @@ import {
   Eye,
   EyeOff,
   Package,
+  Menu,
+  ChevronLeft,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, Table, User, Category } from '../../types';
@@ -104,6 +106,7 @@ export const AdminView: React.FC = () => {
   >('graficos');
   const [metricasSubView, setMetricasSubView] = useState<'graficos' | 'tabelas'>('graficos');
   const [periodFilter, setPeriodFilter] = useState<'hoje' | '7dias' | 'mes'>('hoje');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Modals for CRUD
   const [showAddProductModal, setShowAddProductModal] = useState(false);
@@ -802,8 +805,19 @@ export const AdminView: React.FC = () => {
       {/* Top Header */}
       <header className="sticky top-0 md:top-[53px] z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md">
         <div className="w-full px-4 sm:px-6 py-2 flex items-center justify-between gap-3 bg-stone-900">
-          {/* Left: Title & Store Info */}
+          {/* Left: Menu Toggle + Title & Store Info */}
           <div className="flex items-center gap-3 min-w-0">
+            {/* Botão Hambúrguer (3 traços) para abrir / fechar menu lateral no desktop */}
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen((prev) => !prev)}
+              className="p-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 active:scale-95 text-stone-200 hover:text-white border border-stone-700/80 transition cursor-pointer shadow-xs shrink-0 flex items-center justify-center"
+              title={isSidebarOpen ? 'Ocultar menu lateral' : 'Mostrar menu lateral'}
+              aria-label="Alternar menu lateral"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+
             <div className="w-8 h-8 rounded-xl bg-red-700 text-white flex items-center justify-center shadow-xs shrink-0">
               <TrendingUp className="w-4 h-4" />
             </div>
@@ -873,12 +887,37 @@ export const AdminView: React.FC = () => {
 
       {/* Main Layout Container: Left Sidebar + Content */}
       <div className="flex-1 w-full relative bg-[#FAF7F2] dark:bg-stone-950">
-        {/* Left Vertical Sidebar (Desktop / Tablet - FIXED no viewport: nunca desaparece ao rolar a página para baixo) */}
-        <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-stone-900 border-r border-stone-800 text-white fixed left-0 top-[106px] bottom-0 overflow-y-auto z-20 shadow-xl scrollbar-none">
-          <div className="p-3 border-b border-stone-800/80 shrink-0 bg-stone-900 sticky top-0 z-10">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 py-1">
-              Módulos Administrativos
-            </p>
+        {/* Left Vertical Sidebar (Desktop / Tablet - FIXED no viewport: abre e fecha com transição suave) */}
+        <aside
+          className={`hidden md:flex flex-col w-64 lg:w-72 bg-stone-900 border-r border-stone-800 text-white fixed left-0 top-[106px] bottom-0 overflow-y-auto z-20 shadow-xl scrollbar-none transition-transform duration-300 ease-in-out ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <div className="p-3 border-b border-stone-800/80 shrink-0 bg-stone-900 sticky top-0 z-10 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {/* Botão de 3 traços no cabeçalho da barra lateral exatamente no local demarcado em vermelho */}
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen((prev) => !prev)}
+                className="p-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white transition cursor-pointer flex items-center justify-center shrink-0"
+                title="Fechar / ocultar menu lateral"
+                aria-label="Fechar menu lateral"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 py-1 select-none">
+                Módulos Administrativos
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-1 rounded-lg text-stone-500 hover:text-white hover:bg-stone-800 transition cursor-pointer"
+              title="Recolher menu lateral"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
           </div>
 
           <nav className="p-3 space-y-1.5 flex-1">
@@ -1034,8 +1073,12 @@ export const AdminView: React.FC = () => {
           </nav>
         </aside>
 
-        {/* Main Content Area (md:pl-64 lg:pl-72 para acomodar o menu lateral fixo sem sobreposição) */}
-        <main className="w-full md:pl-64 lg:pl-72 p-4 sm:p-6 lg:p-8 space-y-5 overflow-x-hidden min-w-0">
+        {/* Main Content Area (Ajusta o padding lateral conforme o menu está aberto ou recolhido) */}
+        <main
+          className={`w-full p-4 sm:p-6 lg:p-8 space-y-5 overflow-x-hidden min-w-0 transition-all duration-300 ease-in-out ${
+            isSidebarOpen ? 'md:pl-64 lg:pl-72' : 'md:pl-0'
+          }`}
+        >
           {/* ================= TAB 0: GRAFICOS DE VENDAS (BI) ================= */}
           {activeTab === 'graficos' && (
           <GraficosVendasPanel
