@@ -801,158 +801,216 @@ export const AdminView: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20">
       {/* Top Header */}
       <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-2.5 space-y-2.5">
-          {/* Top Row: Title, Store Info & Mode Badge */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-red-700 text-white flex items-center justify-center shadow-xs shrink-0">
-                <TrendingUp className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight truncate">
-                  Painel do Administrador & Gestão
-                </h1>
-                <p className="text-[11px] text-stone-400 font-medium truncate">
-                  📍 {currentLojaId === 'todas' ? 'Visão Consolidada (Todas as Lojas)' : `Filial: ${currentLoja?.nome}`} • BI • Cardápio • Mesas • Equipe
-                </p>
-              </div>
+        <div className="w-full px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
+          {/* Title, Store Info */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-red-700 text-white flex items-center justify-center shadow-xs shrink-0">
+              <TrendingUp className="w-4 h-4" />
             </div>
-
-            {/* Test / Developer Mode Indicator */}
-            <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-              <span>Modo Teste / Desenvolvedor</span>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight truncate">
+                Painel do Administrador & Gestão
+              </h1>
+              <p className="text-[11px] text-stone-400 font-medium truncate">
+                📍 {currentLojaId === 'todas' ? 'Visão Consolidada (Todas as Lojas)' : `Filial: ${currentLoja?.nome}`} • BI • Cardápio • Mesas • Equipe
+              </p>
             </div>
           </div>
 
-          {/* Mobile Tab Selector (Visible on mobile screens) */}
-          <div className="md:hidden w-full">
-            <select
-              value={activeTab}
-              onChange={(e) => setActiveTab(e.target.value as any)}
-              className="w-full px-3.5 py-2.5 bg-stone-950 border-2 border-stone-700 text-white text-xs font-bold rounded-xl focus:outline-hidden focus:border-red-500 cursor-pointer shadow-xs"
-            >
-              <option value="graficos">📊 Gráficos de Vendas (BI)</option>
-              <option value="metricas">📈 Métricas & Vendas Tabulares</option>
-              <option value="produtos">🍕 Cardápio ({products.length} produtos)</option>
-              <option value="opcoes">📦 Opções & Bordas</option>
-              <option value="mesas">🪑 Mesas ({tables.length} mesas)</option>
-              <option value="usuarios">👥 Equipe ({storeUsers.length} membros)</option>
-              <option value="cancelamentos">📋 Auditoria ({cancellationAuditList.length} registros)</option>
-              <option value="configuracoes">⚙️ Configurações & Taxas da Loja</option>
-              <option value="fiscal">🏛️ Fiscal & Emissão NFC-e</option>
-            </select>
+          {/* Test / Developer Mode Indicator */}
+          <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>Modo Teste / Desenvolvedor</span>
+          </div>
+        </div>
+
+        {/* Mobile Tab Selector (Visible on small screens) */}
+        <div className="md:hidden px-4 pb-2.5 w-full">
+          <select
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value as any)}
+            className="w-full px-3.5 py-2.5 bg-stone-950 border-2 border-stone-700 text-white text-xs font-bold rounded-xl focus:outline-hidden focus:border-red-500 cursor-pointer shadow-xs"
+          >
+            <option value="graficos">📊 Gráficos de Vendas (BI)</option>
+            <option value="metricas">📈 Métricas & Vendas Tabulares</option>
+            <option value="produtos">🍕 Cardápio ({products.length} produtos)</option>
+            <option value="opcoes">📦 Opções & Bordas</option>
+            <option value="mesas">🪑 Mesas ({tables.length} mesas)</option>
+            <option value="usuarios">👥 Equipe ({storeUsers.length} membros)</option>
+            <option value="cancelamentos">📋 Auditoria ({cancellationAuditList.length} registros)</option>
+            <option value="configuracoes">⚙️ Configurações & Taxas da Loja</option>
+            <option value="fiscal">🏛️ Fiscal & Emissão NFC-e</option>
+          </select>
+        </div>
+      </header>
+
+      {/* Main Layout Container: Left Sidebar + Content */}
+      <div className="flex-1 flex flex-col md:flex-row w-full">
+        {/* Left Vertical Sidebar (Desktop / Tablet) */}
+        <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-stone-900 border-r border-stone-800 text-white shrink-0 sticky top-[53px] h-[calc(100vh-53px)] overflow-y-auto z-20 shadow-lg">
+          <div className="p-3 border-b border-stone-800/80">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 py-1">
+              Módulos Administrativos
+            </p>
           </div>
 
-          {/* Desktop / Tablet Horizontal Scrollable Tab Bar */}
-          <div className="hidden md:flex items-center gap-1.5 bg-stone-950/90 p-1 sm:p-1.5 rounded-2xl border border-stone-800 overflow-x-auto text-xs font-semibold scrollbar-none w-full shadow-inner">
+          <nav className="p-3 space-y-1.5 flex-1">
             <button
               onClick={() => setActiveTab('graficos')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              className={`w-full px-3.5 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-between text-xs font-semibold text-left ${
                 activeTab === 'graficos'
-                  ? 'bg-red-700 text-white shadow-xs'
+                  ? 'bg-red-700 text-white shadow-xs font-bold'
                   : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>Gráficos (BI)</span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <BarChart3 className="w-4 h-4 shrink-0" />
+                <span className="truncate">Gráficos (BI)</span>
+              </div>
             </button>
+
             <button
               onClick={() => setActiveTab('metricas')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer shrink-0 ${
+              className={`w-full px-3.5 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-between text-xs font-semibold text-left ${
                 activeTab === 'metricas'
-                  ? 'bg-red-700 text-white shadow-xs'
+                  ? 'bg-red-700 text-white shadow-xs font-bold'
                   : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              Métricas
+              <div className="flex items-center gap-2.5 min-w-0">
+                <TrendingUp className="w-4 h-4 shrink-0" />
+                <span className="truncate">Métricas de Vendas</span>
+              </div>
             </button>
+
             <button
               onClick={() => setActiveTab('produtos')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer shrink-0 ${
+              className={`w-full px-3.5 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-between text-xs font-semibold text-left ${
                 activeTab === 'produtos'
-                  ? 'bg-red-700 text-white shadow-xs'
+                  ? 'bg-red-700 text-white shadow-xs font-bold'
                   : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              Cardápio ({products.length})
+              <div className="flex items-center gap-2.5 min-w-0">
+                <UtensilsCrossed className="w-4 h-4 shrink-0" />
+                <span className="truncate">Cardápio</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                activeTab === 'produtos' ? 'bg-red-900/80 text-white' : 'bg-stone-800 text-stone-400'
+              }`}>
+                {products.length}
+              </span>
             </button>
+
             <button
               onClick={() => setActiveTab('opcoes')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              className={`w-full px-3.5 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-between text-xs font-semibold text-left ${
                 activeTab === 'opcoes'
-                  ? 'bg-red-700 text-white shadow-xs'
+                  ? 'bg-red-700 text-white shadow-xs font-bold'
                   : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <Boxes className="w-3.5 h-3.5" />
-              <span>Opções & Bordas</span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Boxes className="w-4 h-4 shrink-0" />
+                <span className="truncate">Opções & Bordas</span>
+              </div>
             </button>
+
             <button
               onClick={() => setActiveTab('mesas')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer shrink-0 ${
+              className={`w-full px-3.5 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-between text-xs font-semibold text-left ${
                 activeTab === 'mesas'
-                  ? 'bg-red-700 text-white shadow-xs'
+                  ? 'bg-red-700 text-white shadow-xs font-bold'
                   : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              Mesas ({tables.length})
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Layers className="w-4 h-4 shrink-0" />
+                <span className="truncate">Mesas</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                activeTab === 'mesas' ? 'bg-red-900/80 text-white' : 'bg-stone-800 text-stone-400'
+              }`}>
+                {tables.length}
+              </span>
             </button>
+
             <button
               onClick={() => setActiveTab('usuarios')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer shrink-0 ${
+              className={`w-full px-3.5 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-between text-xs font-semibold text-left ${
                 activeTab === 'usuarios'
-                  ? 'bg-red-700 text-white shadow-xs'
+                  ? 'bg-red-700 text-white shadow-xs font-bold'
                   : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              Equipe ({storeUsers.length})
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Users className="w-4 h-4 shrink-0" />
+                <span className="truncate">Equipe & Acessos</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                activeTab === 'usuarios' ? 'bg-red-900/80 text-white' : 'bg-stone-800 text-stone-400'
+              }`}>
+                {storeUsers.length}
+              </span>
             </button>
+
             <button
               onClick={() => setActiveTab('cancelamentos')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
+              className={`w-full px-3.5 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-between text-xs font-semibold text-left ${
                 activeTab === 'cancelamentos'
-                  ? 'bg-red-700 text-white shadow-xs'
+                  ? 'bg-red-700 text-white shadow-xs font-bold'
                   : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <span>Auditoria</span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                <span className="truncate">Auditoria</span>
+              </div>
               {cancellationAuditList.length > 0 && (
-                <span className="bg-red-950 text-amber-300 px-1.5 py-0.2 text-[10px] rounded-full border border-amber-400/40 font-mono">
+                <span className="bg-amber-500/20 text-amber-300 px-2 py-0.5 text-[10px] rounded-full border border-amber-400/40 font-mono font-bold">
                   {cancellationAuditList.length}
                 </span>
               )}
             </button>
+
+            <div className="pt-2 pb-1">
+              <hr className="border-stone-800" />
+            </div>
+
             <button
               onClick={() => setActiveTab('configuracoes')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              className={`w-full px-3.5 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-between text-xs font-semibold text-left ${
                 activeTab === 'configuracoes'
-                  ? 'bg-red-700 text-white shadow-xs'
+                  ? 'bg-red-700 text-white shadow-xs font-bold'
                   : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <Settings className="w-3.5 h-3.5" />
-              <span>Configurações & Taxas</span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Settings className="w-4 h-4 shrink-0" />
+                <span className="truncate">Configurações & Taxas</span>
+              </div>
             </button>
+
             <button
               onClick={() => setActiveTab('fiscal')}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+              className={`w-full px-3.5 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-between text-xs font-semibold text-left ${
                 activeTab === 'fiscal'
-                  ? 'bg-red-700 text-white shadow-xs'
+                  ? 'bg-red-700 text-white shadow-xs font-bold'
                   : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Fiscal & NFC-e</span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="truncate">Fiscal & NFC-e</span>
+              </div>
             </button>
-          </div>
-        </div>
-      </header>
+          </nav>
+        </aside>
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 space-y-5 flex-1">
-        {/* ================= TAB 0: GRAFICOS DE VENDAS (BI) ================= */}
-        {activeTab === 'graficos' && (
+        {/* Main Content Area */}
+        <main className="flex-1 w-full p-4 sm:p-6 lg:p-8 space-y-5 overflow-x-hidden min-w-0">
+          {/* ================= TAB 0: GRAFICOS DE VENDAS (BI) ================= */}
+          {activeTab === 'graficos' && (
           <GraficosVendasPanel
             orders={orders}
             comandas={comandas}
@@ -2703,6 +2761,7 @@ export const AdminView: React.FC = () => {
           />
         )}
       </main>
+      </div>
 
       {/* Add / Edit Product Modal */}
       {showAddProductModal && (
