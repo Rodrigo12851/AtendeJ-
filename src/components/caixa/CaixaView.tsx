@@ -2603,8 +2603,8 @@ export const CaixaView: React.FC = () => {
                             : 'border-stone-200/90 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500'
                         }`}
                       >
-                        {/* Foto generosa à esquerda (um pouco maior) */}
-                        <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden shrink-0 bg-stone-100 dark:bg-slate-950 border border-stone-200/60 dark:border-slate-800">
+                        {/* Foto generosa e destacada à esquerda (estilo cardápio do cliente só que maior) */}
+                        <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-2xl overflow-hidden shrink-0 bg-stone-100 dark:bg-slate-950 border border-stone-200/60 dark:border-slate-800">
                           <img
                             src={prod.imagem || DEFAULT_FOOD_IMG}
                             alt={prod.nome}
@@ -2631,11 +2631,11 @@ export const CaixaView: React.FC = () => {
                           )}
                         </div>
 
-                        {/* Informações à direita */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                        {/* Informações à direita com excelente respiro */}
+                        <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
                           <div>
                             <div className="flex items-start justify-between gap-1.5">
-                              <h4 className="font-black text-sm sm:text-base text-stone-900 dark:text-white leading-tight line-clamp-1 flex items-center gap-1.5">
+                              <h4 className="font-black text-sm sm:text-base text-stone-900 dark:text-white leading-tight line-clamp-2 flex items-center gap-1.5">
                                 <span className="truncate">{prod.nome}</span>
                                 {prod.destaque && <span className="shrink-0 text-sm">🔥</span>}
                               </h4>
@@ -2646,7 +2646,7 @@ export const CaixaView: React.FC = () => {
                               )}
                             </div>
 
-                            <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 mt-1 leading-snug">
+                            <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 sm:line-clamp-3 mt-1.5 leading-relaxed">
                               {prod.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
                             </p>
                           </div>

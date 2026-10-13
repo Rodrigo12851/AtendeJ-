@@ -74,9 +74,9 @@ export const CozinhaView: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-[#FAF7F2] text-stone-900 dark:text-slate-100 pb-20">
       {/* KDS Trattoria Header */}
-      <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md px-4 py-2 sm:py-2.5">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md px-3 sm:px-4 py-2 sm:py-2.5">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <div className="p-2 bg-red-600 text-white rounded-xl shadow-xs flex items-center justify-center">
               <ChefHat className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
@@ -90,15 +90,15 @@ export const CozinhaView: React.FC = () => {
                   Ao Vivo
                 </span>
               </div>
-              <p className="text-xs text-stone-400">
+              <p className="text-xs text-stone-400 hidden xs:block">
                 Organizado por ordem de chegada • Atualização em tempo real
               </p>
             </div>
           </div>
 
-          {/* Center (Desktop): Vendas do Dia, Mesas Ocupadas, Ticket Médio (quando Admin) */}
+          {/* Center: Vendas do Dia, Mesas Ocupadas, Ticket Médio (quando Admin) */}
           {currentUser?.perfil === 'admin' && (
-            <div className="hidden xl:flex items-center gap-6 px-4 py-1 rounded-xl bg-stone-950/70 border border-stone-800">
+            <div className="hidden lg:flex items-center gap-4 sm:gap-6 px-3.5 py-1.5 rounded-xl bg-stone-950/70 border border-stone-800 shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Vendas do Dia:</span>
                 <span className="text-xs sm:text-sm font-mono font-bold text-white">{formatCurrency(adminTotalSales)}</span>
@@ -116,17 +116,17 @@ export const CozinhaView: React.FC = () => {
             </div>
           )}
 
-          {/* Sound toggle & Filter Tabs */}
-          <div className="flex items-center gap-2">
+          {/* Sound toggle, Online status & Filter Tabs */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {currentUser?.perfil === 'admin' && (
-              <span className="hidden sm:flex px-2.5 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold rounded-full items-center gap-1.5 shadow-2xs mr-1">
+              <span className="hidden sm:flex px-2.5 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold rounded-full items-center gap-1.5 shadow-2xs shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span>Sistema Online</span>
               </span>
             )}
             <button
               onClick={() => setAudioEnabled(!audioEnabled)}
-              className={`px-3 py-2 rounded-xl border text-xs font-semibold tracking-wide transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 sm:py-2 rounded-xl border text-xs font-semibold tracking-wide transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
                 audioEnabled
                   ? 'border-emerald-600 bg-emerald-950/60 text-emerald-300'
                   : 'border-stone-700 bg-stone-800 text-stone-400 hover:text-white'
@@ -138,10 +138,10 @@ export const CozinhaView: React.FC = () => {
             </button>
 
             {/* Filter Tabs */}
-            <div className="flex bg-stone-800/90 p-1 rounded-xl border border-stone-700/70 overflow-x-auto text-xs font-semibold">
+            <div className="flex bg-stone-800/90 p-1 rounded-xl border border-stone-700/70 overflow-x-auto text-xs font-semibold shrink-0">
               <button
                 onClick={() => setFilterTab('ativos')}
-                className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition whitespace-nowrap cursor-pointer ${
                   filterTab === 'ativos'
                     ? 'bg-red-600 text-white shadow-xs'
                     : 'text-stone-300 hover:text-white'
