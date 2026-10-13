@@ -470,11 +470,12 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenAddonCustomizer(product)}
-                        className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-black rounded-xl shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                        className="relative w-8 h-8 rounded-xl bg-[#FF8A00] hover:bg-[#E07A00] text-white font-bold flex items-center justify-center transition shadow-xs active:scale-90 cursor-pointer"
+                        title="Personalizar adicionais"
                       >
-                        <span>Personalizar</span>
+                        <Plus className="w-4 h-4 stroke-[3]" />
                         {cartInfo.inCart && (
-                          <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
+                          <span className="absolute -top-1.5 -right-1.5 bg-stone-950 text-white text-[10px] min-w-4 h-4 px-1 rounded-full font-mono font-bold flex items-center justify-center border border-white dark:border-stone-900 shadow-xs">
                             {cartInfo.totalQty}
                           </span>
                         )}
@@ -627,11 +628,12 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                             e.stopPropagation();
                             handleOpenAddonCustomizer(product);
                           }}
-                          className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-black rounded-xl shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0"
+                          className="relative w-8 h-8 rounded-xl bg-[#FF8A00] hover:bg-[#E07A00] text-white font-bold flex items-center justify-center transition shadow-xs active:scale-90 cursor-pointer shrink-0"
+                          title="Personalizar adicionais"
                         >
-                          <span>Personalizar</span>
+                          <Plus className="w-4 h-4 stroke-[3]" />
                           {cartInfo.inCart && (
-                            <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
+                            <span className="absolute -top-1.5 -right-1.5 bg-stone-950 text-white text-[10px] min-w-4 h-4 px-1 rounded-full font-mono font-bold flex items-center justify-center border border-white dark:border-stone-900 shadow-xs">
                               {cartInfo.totalQty}
                             </span>
                           )}

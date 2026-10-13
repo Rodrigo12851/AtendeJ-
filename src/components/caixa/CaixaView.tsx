@@ -2699,11 +2699,12 @@ export const CaixaView: React.FC = () => {
                                   e.stopPropagation();
                                   handleOpenItemCustomizerBalcao(prod);
                                 }}
-                                className="px-3 py-2 bg-[#FF8A00] hover:bg-[#E07A00] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 shrink-0"
+                                className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#FF8A00] hover:bg-[#E07A00] text-white font-bold flex items-center justify-center transition shadow-xs active:scale-90 cursor-pointer shrink-0"
+                                title="Personalizar adicionais"
                               >
-                                <span>Personalizar</span>
+                                <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
                                 {inCartCount > 0 && (
-                                  <span className="ml-0.5 px-1.5 py-0.2 text-[10px] bg-stone-950 text-white rounded-full font-mono font-bold">
+                                  <span className="absolute -top-1.5 -right-1.5 bg-stone-950 text-white text-[10px] min-w-4 h-4 px-1 rounded-full font-mono font-bold flex items-center justify-center border border-white dark:border-slate-900 shadow-xs">
                                     {inCartCount}
                                   </span>
                                 )}
