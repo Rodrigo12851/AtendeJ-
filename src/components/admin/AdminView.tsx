@@ -179,13 +179,6 @@ export const AdminView: React.FC = () => {
   const [quickNewPassword, setQuickNewPassword] = useState('');
   const [showQuickPassword, setShowQuickPassword] = useState(false);
 
-  // Visibilidade de senhas dos colaboradores no painel (para o admin consultar e passar ao funcionário)
-  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
-
-  const togglePasswordVisibility = (userId: string) => {
-    setVisiblePasswords((prev) => ({ ...prev, [userId]: !prev[userId] }));
-  };
-
   // Store-filtered users (avoids leaking staff between different stores)
   const storeUsers = useMemo(() => {
     const lojaId = currentLoja?.id || currentLojaId;
@@ -664,7 +657,7 @@ export const AdminView: React.FC = () => {
     addUser({
       nome: cleanNome,
       usuario: cleanLogin,
-      senha: cleanSenha,
+      senha: '',
       senhaHash: hash,
       salt,
       pin: '',
@@ -673,7 +666,7 @@ export const AdminView: React.FC = () => {
       loja_id: targetLojaId,
     });
 
-    alert(`Colaborador cadastrado com sucesso!\n\nNome: ${cleanNome}\nLogin: ${cleanLogin}\nFunção: ${userRole}\nSenha: ${cleanSenha}`);
+    alert(`Colaborador cadastrado com sucesso!\n\nNome: ${cleanNome}\nLogin: ${cleanLogin}\nFunção: ${userRole}\nSenha definida com criptografia segura!`);
     setUserName('');
     setUserLogin('');
     setUserSenha('');
@@ -686,7 +679,7 @@ export const AdminView: React.FC = () => {
     setEditUserName(u.nome);
     setEditUserLogin(u.usuario);
     setEditUserRole((u.perfil === 'super_admin' ? 'admin' : u.perfil) as any);
-    setEditUserSenha(u.senha || '');
+    setEditUserSenha('');
     setEditUserAtivo(u.ativo !== false);
     setShowEditUserPassword(false);
   };
@@ -726,10 +719,11 @@ export const AdminView: React.FC = () => {
       usuario: cleanLogin,
       perfil: editUserRole,
       ativo: editUserAtivo,
+      senha: '', // Nunca armazena senha em texto puro
     };
 
-    // Se forneceu nova senha, atualiza o hash SHA-256 + salt e mantém o texto para consulta do admin
-    if (cleanSenha && cleanSenha !== editingUser.senha) {
+    // Se forneceu nova senha, atualiza o hash SHA-256 + salt criptografado
+    if (cleanSenha) {
       if (cleanSenha.length < 6) {
         alert('A nova senha deve conter no mínimo 6 caracteres.');
         return;
@@ -737,7 +731,7 @@ export const AdminView: React.FC = () => {
       const { hash, salt } = await hashPassword(cleanSenha);
       updatedUser = {
         ...updatedUser,
-        senha: cleanSenha,
+        senha: '',
         senhaHash: hash,
         salt,
       };
@@ -760,11 +754,11 @@ export const AdminView: React.FC = () => {
     const { hash, salt } = await hashPassword(cleanPass);
     updateUser({
       ...passwordModalUser,
-      senha: cleanPass,
+      senha: '', // Nunca armazena senha em texto puro
       senhaHash: hash,
       salt,
     });
-    alert(`Senha de ${passwordModalUser.nome} atualizada com sucesso!`);
+    alert(`Nova senha de ${passwordModalUser.nome} cadastrada com criptografia segura!`);
     setPasswordModalUser(null);
     setQuickNewPassword('');
   };
@@ -1827,31 +1821,12 @@ export const AdminView: React.FC = () => {
                         </div>
                         <div className="flex items-center justify-between text-stone-600 dark:text-stone-300">
                           <span className="font-sans text-[11px] text-stone-500">Senha:</span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-stone-900 dark:text-white font-mono text-xs bg-white dark:bg-stone-900 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-700">
-                              {visiblePasswords[u.id] ? (u.senha || '••••••••') : '••••••••'}
+                          <div className="flex items-center gap-1.5" title="Senha protegida por criptografia SHA-256 + Salt">
+                            <span className="text-stone-400 font-sans tracking-widest text-xs">••••••••</span>
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                              <ShieldCheck className="w-3 h-3" />
+                              <span>Criptografada</span>
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => togglePasswordVisibility(u.id)}
-                              title={visiblePasswords[u.id] ? 'Ocultar Senha' : 'Ver Senha para passar ao colaborador'}
-                              className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer rounded"
-                            >
-                              {visiblePasswords[u.id] ? <EyeOff className="w-3.5 h-3.5 text-amber-600" /> : <Eye className="w-3.5 h-3.5" />}
-                            </button>
-                            {u.senha && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(u.senha || '');
-                                  alert(`Senha de ${u.nome} copiada!`);
-                                }}
-                                title="Copiar Senha"
-                                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer rounded"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -3365,9 +3340,9 @@ export const AdminView: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
-                    Senha de Acesso:
+                    Nova Senha (Opcional):
                   </label>
-                  <span className="text-[10px] text-stone-400">Mínimo 6 caracteres</span>
+                  <span className="text-[10px] text-stone-400">Deixe em branco para manter a atual</span>
                 </div>
                 <div className="relative">
                   <input
@@ -3375,35 +3350,21 @@ export const AdminView: React.FC = () => {
                     minLength={6}
                     value={editUserSenha}
                     onChange={(e) => setEditUserSenha(e.target.value)}
-                    placeholder="Digite a senha (mín. 6 chars)"
-                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-mono text-stone-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition pr-16"
+                    placeholder="Deixe em branco ou digite nova senha (mín. 6 chars)"
+                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-mono text-stone-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition pr-10"
                   />
-                  <div className="absolute right-2 top-2 flex items-center gap-1">
-                    {editUserSenha && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(editUserSenha);
-                          alert(`Senha copiada para passar ao colaborador!`);
-                        }}
-                        title="Copiar Senha"
-                        className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer rounded"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setShowEditUserPassword(!showEditUserPassword)}
-                      title={showEditUserPassword ? 'Ocultar Senha' : 'Ver Senha'}
-                      className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer rounded"
-                    >
-                      {showEditUserPassword ? <EyeOff className="w-4 h-4 text-amber-600" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditUserPassword(!showEditUserPassword)}
+                    title={showEditUserPassword ? 'Ocultar Senha' : 'Ver Nova Senha Digitada'}
+                    className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
+                  >
+                    {showEditUserPassword ? <EyeOff className="w-4 h-4 text-amber-600" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-                <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-1">
-                  O administrador pode verificar a senha atual clicando no olho para informar ao funcionário caso ele tenha esquecido, ou alterá-la digitando uma nova.
+                <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-1 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Por segurança (padrão bancário), as senhas são gravadas com criptografia irreversível (hash SHA-256 + Salt). Se o colaborador esquecer, digite uma nova senha aqui para ele.</span>
                 </p>
               </div>
 
