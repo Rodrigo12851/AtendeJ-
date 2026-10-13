@@ -87,8 +87,67 @@ export const MesasGrid: React.FC<MesasGridProps> = ({
     }
   };
 
+  const adminTotalSales = useMemo(() => {
+    return comandas
+      .filter((c) => c.status === 'fechada')
+      .reduce((sum, c) => sum + (c.total_pago || c.total - (c.desconto || 0)), 0);
+  }, [comandas]);
+
+  const adminClosedCount = useMemo(() => {
+    return comandas.filter((c) => c.status === 'fechada').length;
+  }, [comandas]);
+
+  const adminTicketMedio = useMemo(() => {
+    return adminClosedCount > 0 ? adminTotalSales / adminClosedCount : 0;
+  }, [adminTotalSales, adminClosedCount]);
+
   return (
     <div className="max-w-7xl mx-auto w-full p-3 sm:p-6 space-y-4">
+      {/* Top Admin Subheader (quando logado como Admin, padronizado com Imagem 2) */}
+      {currentUser?.perfil === 'admin' && (
+        <div className="bg-stone-900 text-white border-b border-stone-800 shadow-md px-4 py-2 sm:py-2.5 -mx-3 sm:-mx-6 -mt-3 sm:-mt-6 mb-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-600 text-white rounded-xl shadow-xs flex items-center justify-center">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div>
+                <h1 className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight">
+                  Gestão do Salão — Mapa de Mesas
+                </h1>
+                <p className="text-xs text-stone-400">
+                  Salão Principal • Monitoramento em tempo real
+                </p>
+              </div>
+            </div>
+
+            <div className="hidden xl:flex items-center gap-6 px-4 py-1 rounded-xl bg-stone-950/70 border border-stone-800">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Vendas do Dia:</span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-white">{formatCurrency(adminTotalSales)}</span>
+              </div>
+              <div className="w-px h-4 bg-stone-800" />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Mesas Ocupadas:</span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-white">{occupiedCount} / {totalTables}</span>
+              </div>
+              <div className="w-px h-4 bg-stone-800" />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Ticket Médio:</span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-white">{formatCurrency(adminTicketMedio)}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              <span className="hidden sm:flex px-2.5 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold rounded-full items-center gap-1.5 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Sistema Online</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Refined Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 border border-stone-200 rounded-xl shadow-xs">
         {/* Status Count Pills */}

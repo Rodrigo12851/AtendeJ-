@@ -585,49 +585,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
         )}
       </div>
 
-      {/* Desktop Metric & Status Bar - Exclusivo para ADMIN da loja quando NÃO estiver no painel ADMIN */}
-      {currentUser?.perfil === 'admin' && currentModule !== 'admin' && (
-        <div className="hidden md:block bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm border-b border-stone-200/90 dark:border-stone-800 px-4 sm:px-6 py-2.5 shadow-xs">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-6 sm:gap-10">
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-stone-400 dark:text-stone-400 tracking-wider">
-                  Vendas do Dia
-                </span>
-                <span className="text-base sm:text-xl font-mono font-bold tracking-tight text-stone-900 dark:text-stone-100">
-                  {formatCurrency(totalSales)}
-                </span>
-              </div>
-
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-stone-400 dark:text-stone-400 tracking-wider">
-                  Mesas Ocupadas
-                </span>
-                <span className="text-base sm:text-xl font-mono font-bold tracking-tight text-stone-900 dark:text-stone-100">
-                  {occupiedCount} / {tables.length}
-                </span>
-              </div>
-
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-stone-400 dark:text-stone-400 tracking-wider">
-                  Ticket Médio
-                </span>
-                <span className="text-base sm:text-xl font-mono font-bold tracking-tight text-stone-900 dark:text-stone-100">
-                  {formatCurrency(ticketMedio)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold rounded-full flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Sistema Online
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showStoresModal && <SuperAdminStoresModal onClose={() => setShowStoresModal(false)} />}
     </div>
   );

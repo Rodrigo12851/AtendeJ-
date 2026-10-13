@@ -7,13 +7,32 @@ import {
   Sparkles,
   ArrowLeft,
   Check,
+  LayoutGrid,
+  List,
+  X,
 } from 'lucide-react';
-import { Product, OrderItem, Category } from '../../types';
+import { Product, OrderItem, Category, ItemAddon } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { playAddPop } from '../../utils/audio';
 import { PizzaCustomizerModal } from './PizzaCustomizerModal';
 
 const DEFAULT_FOOD_IMG = 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80';
+
+const DEFAULT_BURGER_ADDONS: ItemAddon[] = [
+  { id: 'add_bacon', nome: 'Bacon Crocante Extra', preco: 5.0 },
+  { id: 'add_cheddar', nome: 'Cheddar Cremoso Melt', preco: 4.5 },
+  { id: 'add_smash', nome: 'Smash Burger 90g Extra', preco: 8.5 },
+  { id: 'add_cebola', nome: 'Cebola Caramelizada', preco: 3.5 },
+  { id: 'add_maionese', nome: 'Maionese Especial da Casa', preco: 3.0 },
+  { id: 'add_ovo', nome: 'Ovo Frito na Manteiga', preco: 3.0 },
+];
+
+const DEFAULT_PORTION_ADDONS: ItemAddon[] = [
+  { id: 'add_queijo', nome: 'Queijo Parmesão / Ralado Extra', preco: 5.0 },
+  { id: 'add_bacon_cubos', nome: 'Farofa de Bacon Crocante', preco: 6.0 },
+  { id: 'add_cheddar_dose', nome: 'Dose Extra de Cheddar Cremoso', preco: 5.0 },
+  { id: 'add_molho_especial', nome: 'Pote de Molho Especial (Gourmet)', preco: 4.0 },
+];
 
 interface CardapioGarcomProps {
   mesaNumero: number;
@@ -42,7 +61,15 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('todas');
   const [searchTerm, setSearchTerm] = useState('');
+  const [layoutMode, setLayoutMode] = useState<'cards' | 'compact'>('cards');
   const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
+  
+  // Customization of burgers, snacks and portions with addons
+  const [customizingAddonProduct, setCustomizingAddonProduct] = useState<Product | null>(null);
+  const [selectedAddons, setSelectedAddons] = useState<ItemAddon[]>([]);
+  const [customObs, setCustomObs] = useState('');
+  const [customQty, setCustomQty] = useState(1);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -50,6 +77,78 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
     setTimeout(() => {
       setToastMessage((current) => (current === msg ? null : current));
     }, 1500);
+  };
+
+  // Check if product allows addons (burgers, lanches, porções)
+  const productHasAddons = (prod: Product) => {
+    if (prod.isPizza) return false;
+    const cat = categories.find((c) => c.id === prod.categoria_id);
+    const catName = (cat?.nome || '').toLowerCase();
+    const prodCat = (prod.categoria_id || '').toLowerCase();
+    const prodName = prod.nome.toLowerCase();
+    return (
+      prodCat.includes('hamburg') ||
+      prodCat.includes('burger') ||
+      prodCat.includes('lanche') ||
+      prodCat.includes('porco') ||
+      prodCat.includes('porção') ||
+      catName.includes('hamburg') ||
+      catName.includes('burger') ||
+      catName.includes('lanche') ||
+      catName.includes('porç') ||
+      prodName.includes('burger') ||
+      prodName.includes('burguer') ||
+      prodName.includes('lanche') ||
+      prodName.includes('batata') ||
+      prodName.includes('porção')
+    );
+  };
+
+  const getAvailableAddonsForProduct = (prod: Product): ItemAddon[] => {
+    const cat = categories.find((c) => c.id === prod.categoria_id);
+    const catName = (cat?.nome || '').toLowerCase();
+    const prodCat = (prod.categoria_id || '').toLowerCase();
+    if (prodCat.includes('porco') || prodCat.includes('porção') || catName.includes('porç')) {
+      return DEFAULT_PORTION_ADDONS;
+    }
+    return DEFAULT_BURGER_ADDONS;
+  };
+
+  const handleOpenAddonCustomizer = (prod: Product) => {
+    setCustomizingAddonProduct(prod);
+    setSelectedAddons([]);
+    setCustomObs('');
+    setCustomQty(1);
+  };
+
+  const handleConfirmCustomAddonItem = () => {
+    if (!customizingAddonProduct) return;
+    const extrasTotal = selectedAddons.reduce((acc, curr) => acc + curr.preco, 0);
+    const precoBase = customizingAddonProduct.em_promocao && customizingAddonProduct.preco_promocional
+      ? customizingAddonProduct.preco_promocional
+      : customizingAddonProduct.preco;
+    const precoUnitarioTotal = precoBase + extrasTotal;
+    const precoTotal = precoUnitarioTotal * customQty;
+
+    const newItem: OrderItem = {
+      id: `item_custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      produto_id: customizingAddonProduct.id,
+      nome: customizingAddonProduct.nome,
+      quantidade: customQty,
+      preco_unitario: precoUnitarioTotal,
+      preco_total: precoTotal,
+      adicionais: selectedAddons.length > 0 ? selectedAddons : undefined,
+      observacao: customObs.trim() || undefined,
+      status: 'ativo',
+    };
+
+    onAddToCart(newItem);
+    playAddPop();
+    showToast(`${customQty}x ${customizingAddonProduct.nome} adicionado!`);
+    setCustomizingAddonProduct(null);
+    setSelectedAddons([]);
+    setCustomObs('');
+    setCustomQty(1);
   };
 
   // Filter products based on search term or category
@@ -70,7 +169,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
     return products.filter((p) => p.ativo && p.categoria_id === activeCategory);
   }, [products, activeCategory, searchTerm]);
 
-  // Helper to find simple items in cart (not customized pizzas)
+  // Helper to find simple items in cart (not customized pizzas/addons)
   const getCartInfoForProduct = (productId: string) => {
     const matchingIndices: number[] = [];
     let totalQty = 0;
@@ -90,6 +189,11 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
   const handleQuickAdd = (product: Product) => {
     if (product.isPizza) {
       setCustomizingProduct(product);
+      return;
+    }
+
+    if (productHasAddons(product)) {
+      handleOpenAddonCustomizer(product);
       return;
     }
 
@@ -173,6 +277,34 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* View Mode Toggle: Cards vs Compact */}
+            <div className="flex items-center bg-stone-800 p-0.5 rounded-lg border border-stone-700">
+              <button
+                type="button"
+                onClick={() => setLayoutMode('compact')}
+                className={`p-1.5 rounded-md transition cursor-pointer ${
+                  layoutMode === 'compact'
+                    ? 'bg-[#FF8A00] text-white shadow-xs'
+                    : 'text-stone-400 hover:text-stone-200'
+                }`}
+                title="Visualização Compacta (Lista Rápida)"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('cards')}
+                className={`p-1.5 rounded-md transition cursor-pointer ${
+                  layoutMode === 'cards'
+                    ? 'bg-[#FF8A00] text-white shadow-xs'
+                    : 'text-stone-400 hover:text-stone-200'
+                }`}
+                title="Visualização em Cards"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {/* Cart Button with Counter */}
             <button
               onClick={onOpenCart}
@@ -246,18 +378,153 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
         )}
       </header>
 
-      {/* Main Content Area (Layout idêntico ao cardápio do cliente, otimizado para celular do garçom) */}
+      {/* Main Content Area: Cards Mode vs Compact List Mode */}
       <main className="p-3 sm:p-4 max-w-5xl mx-auto w-full flex-1">
         {filteredProducts.length === 0 ? (
           <div className="py-16 text-center text-stone-500 space-y-2 p-6 rounded-3xl border border-dashed border-stone-300 dark:border-stone-800">
             <p className="text-sm font-bold text-stone-700 dark:text-stone-300">Nenhum produto encontrado.</p>
             <p className="text-xs text-stone-400">Tente pesquisar outro termo ou categoria.</p>
           </div>
+        ) : layoutMode === 'compact' ? (
+          /* ========================================================== */
+          /* MODO COMPACTO (LISTA RÁPIDA PARA GARÇOM)                   */
+          /* ========================================================== */
+          <div className="bg-white dark:bg-[#1E1E28] rounded-2xl border border-stone-200/90 dark:border-stone-800 shadow-xs divide-y divide-stone-100 dark:divide-stone-800/80 overflow-hidden">
+            {filteredProducts.map((product) => {
+              const cartInfo = getCartInfoForProduct(product.id);
+              const finalPrice = product.em_promocao && product.preco_promocional ? product.preco_promocional : product.preco;
+              const hasAddons = productHasAddons(product);
+
+              return (
+                <div
+                  key={product.id}
+                  onClick={() => handleQuickAdd(product)}
+                  className={`p-2.5 sm:p-3 flex items-center justify-between gap-2.5 hover:bg-stone-50/80 dark:hover:bg-stone-800/50 transition cursor-pointer ${
+                    cartInfo.inCart ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''
+                  }`}
+                >
+                  {/* Foto Mini e Nome */}
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700">
+                      <img
+                        src={product.imagem || DEFAULT_FOOD_IMG}
+                        alt={product.nome}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
+                        }}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white truncate">
+                          {product.nome}
+                        </span>
+                        {product.destaque && <span className="text-xs">🔥</span>}
+                        {product.isPizza && (
+                          <span className="text-[9px] font-black bg-[#FF8A00] text-white px-1.5 py-0.2 rounded-md uppercase">
+                            🍕 Pizza
+                          </span>
+                        )}
+                        {hasAddons && (
+                          <span className="text-[9px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-400/40 px-1.5 py-0.2 rounded-md uppercase">
+                            ✨ Adicionais
+                          </span>
+                        )}
+                        {product.codigo_interno && (
+                          <span className="text-[9px] font-mono text-stone-400">
+                            #{product.codigo_interno}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="font-mono font-black text-xs sm:text-sm text-[#FF8A00]">
+                          {formatCurrency(finalPrice)}
+                        </span>
+                        {product.em_promocao && product.preco_promocional && (
+                          <span className="font-mono text-[10px] line-through text-stone-400">
+                            {formatCurrency(product.preco)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Ações Rápidas no Modo Compacto */}
+                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {product.isPizza ? (
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdd(product)}
+                        className="px-2.5 py-1.5 bg-[#FF8A00] hover:bg-[#E07A00] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Montar</span>
+                        {cartInfo.inCart && (
+                          <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
+                            {cartInfo.totalQty}
+                          </span>
+                        )}
+                      </button>
+                    ) : hasAddons ? (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAddonCustomizer(product)}
+                        className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-black rounded-xl shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-stone-950" />
+                        <span>Personalizar</span>
+                        {cartInfo.inCart && (
+                          <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
+                            {cartInfo.totalQty}
+                          </span>
+                        )}
+                      </button>
+                    ) : cartInfo.inCart ? (
+                      <div className="flex items-center bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl p-0.5 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickDecrease(product)}
+                          className="w-7 h-7 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 rounded-lg flex items-center justify-center font-bold text-xs hover:bg-stone-50 active:scale-95 transition cursor-pointer"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-6 text-center font-mono font-bold text-xs text-stone-900 dark:text-white">
+                          {cartInfo.totalQty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickAdd(product)}
+                          className="w-7 h-7 bg-[#FF8A00] text-white rounded-lg flex items-center justify-center font-bold text-xs hover:bg-[#E07A00] active:scale-95 transition cursor-pointer shadow-xs"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdd(product)}
+                        className="w-8 h-8 rounded-xl bg-[#FF8A00] hover:bg-[#E07A00] text-white font-bold flex items-center justify-center transition shadow-xs active:scale-90 cursor-pointer"
+                        title="Adicionar ao pedido"
+                      >
+                        <Plus className="w-4 h-4 stroke-[3]" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
+          /* ========================================================== */
+          /* MODO CARDS (ESTILO CARDÁPIO DO CLIENTE COM FOTO E DETALHE) */
+          /* ========================================================== */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
             {filteredProducts.map((product) => {
               const cartInfo = getCartInfoForProduct(product.id);
               const finalPrice = product.em_promocao && product.preco_promocional ? product.preco_promocional : product.preco;
+              const hasAddons = productHasAddons(product);
 
               return (
                 <div
@@ -281,6 +548,11 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                     {product.isPizza && (
                       <span className="absolute bottom-1 left-1 bg-[#FF8A00] text-white font-black text-[9px] px-1.5 py-0.5 rounded-md uppercase shadow-xs">
                         🍕 Pizza
+                      </span>
+                    )}
+                    {hasAddons && (
+                      <span className="absolute bottom-1 left-1 bg-amber-500 text-stone-950 font-black text-[8px] px-1.5 py-0.5 rounded-md uppercase shadow-xs">
+                        ✨ Adicionais
                       </span>
                     )}
                     {product.em_promocao && (
@@ -345,6 +617,23 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                         >
                           <Sparkles className="w-3.5 h-3.5" />
                           <span>Montar</span>
+                          {cartInfo.inCart && (
+                            <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
+                              {cartInfo.totalQty}
+                            </span>
+                          )}
+                        </button>
+                      ) : hasAddons ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAddonCustomizer(product);
+                          }}
+                          className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-black rounded-xl shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-stone-950" />
+                          <span>Personalizar</span>
                           {cartInfo.inCart && (
                             <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
                               {cartInfo.totalQty}
@@ -435,6 +724,170 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
           onClose={() => setCustomizingProduct(null)}
           onConfirm={handleConfirmCustomPizza}
         />
+      )}
+
+      {/* Addon Customizer Modal for Burgers, Snacks and Portions */}
+      {customizingAddonProduct && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/80 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#1A1A22] text-stone-900 dark:text-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-stone-200 dark:border-stone-800 max-w-md w-full overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150">
+            {/* Header com imagem */}
+            <div className="relative h-44 sm:h-48 w-full bg-stone-800 overflow-hidden shrink-0">
+              <img
+                src={customizingAddonProduct.imagem || DEFAULT_FOOD_IMG}
+                alt={customizingAddonProduct.nome}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setCustomizingAddonProduct(null)}
+                className="absolute top-3 right-3 p-2 bg-stone-900/80 hover:bg-stone-900 text-white rounded-full backdrop-blur-xs cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="absolute bottom-2 left-3 bg-stone-900/85 text-amber-400 font-mono font-black text-sm px-3 py-1 rounded-xl backdrop-blur-xs flex items-center gap-1.5">
+                {customizingAddonProduct.em_promocao && customizingAddonProduct.preco_promocional ? (
+                  <>
+                    <span>Base: {formatCurrency(customizingAddonProduct.preco_promocional)}</span>
+                    <span className="text-xs line-through text-stone-400 font-normal">
+                      {formatCurrency(customizingAddonProduct.preco)}
+                    </span>
+                    <span className="px-1 py-0.2 rounded bg-red-500 text-white text-[8px] font-sans uppercase">Promo</span>
+                  </>
+                ) : (
+                  <span>Base: {formatCurrency(customizingAddonProduct.preco)}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+              <div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-stone-900 dark:text-white">
+                  {customizingAddonProduct.nome}
+                </h3>
+                {customizingAddonProduct.descricao && (
+                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-relaxed">
+                    {customizingAddonProduct.descricao}
+                  </p>
+                )}
+              </div>
+
+              {/* Lista de Adicionais */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                  <span>Turbine o pedido (Adicionais)</span>
+                  <span className="text-[10px] text-stone-400 lowercase font-normal">opcional</span>
+                </div>
+
+                <div className="space-y-2">
+                  {getAvailableAddonsForProduct(customizingAddonProduct).map((addon) => {
+                    const isSelected = selectedAddons.some((a) => a.id === addon.id);
+                    return (
+                      <label
+                        key={addon.id}
+                        className={`flex items-center justify-between p-3 rounded-2xl border text-xs cursor-pointer transition select-none ${
+                          isSelected
+                            ? 'bg-amber-500/10 border-amber-500 text-stone-900 dark:text-white font-bold ring-1 ring-amber-500/30'
+                            : 'bg-stone-50 dark:bg-stone-900/70 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:border-stone-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              if (isSelected) {
+                                setSelectedAddons((prev) => prev.filter((a) => a.id !== addon.id));
+                              } else {
+                                setSelectedAddons((prev) => [...prev, addon]);
+                              }
+                            }}
+                            className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 cursor-pointer accent-amber-500"
+                          />
+                          <span>+ {addon.nome}</span>
+                        </div>
+                        <span className="font-mono font-bold text-amber-500">
+                          +{formatCurrency(addon.preco)}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Observações */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block">
+                  Observações do Item
+                </label>
+                <textarea
+                  value={customObs}
+                  onChange={(e) => setCustomObs(e.target.value)}
+                  placeholder="Ex: sem cebola, ponto da carne, sem picles, molho à parte..."
+                  className="w-full p-3 rounded-2xl text-xs bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-slate-800 resize-none h-16 text-stone-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Seletor de Quantidade */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800">
+                <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                  Quantidade:
+                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setCustomQty((q) => Math.max(1, q - 1))}
+                    disabled={customQty <= 1}
+                    className="w-8 h-8 rounded-xl bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-white flex items-center justify-center font-bold text-sm shadow-2xs disabled:opacity-30 cursor-pointer"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono font-bold text-sm text-stone-900 dark:text-white w-6 text-center">
+                    {customQty}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCustomQty((q) => q + 1)}
+                    className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold text-sm shadow-2xs hover:bg-amber-400 cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer com Botão de Confirmação */}
+            <div className="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/80 space-y-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleConfirmCustomAddonItem}
+                className="w-full py-3.5 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl font-black text-sm flex items-center justify-between px-5 shadow-lg shadow-amber-500/20 active:scale-98 transition cursor-pointer"
+              >
+                <span>Adicionar ao Pedido</span>
+                <span className="font-mono">
+                  {formatCurrency(
+                    ((customizingAddonProduct.em_promocao && customizingAddonProduct.preco_promocional
+                      ? customizingAddonProduct.preco_promocional
+                      : customizingAddonProduct.preco) +
+                      selectedAddons.reduce((a, c) => a + c.preco, 0)) *
+                      customQty
+                  )}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCustomizingAddonProduct(null)}
+                className="w-full py-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xs font-semibold cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

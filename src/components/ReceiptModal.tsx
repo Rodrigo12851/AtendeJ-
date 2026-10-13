@@ -289,11 +289,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             </div>
           </div>
 
-          {/* Paper Preview Area */}
-          <div className="p-4 sm:p-6 bg-stone-200 dark:bg-slate-950 flex justify-center max-h-[75vh] overflow-y-auto">
+          {/* Paper Preview Area (Totalmente responsivo em celular e telas pequenas) */}
+          <div className="p-2 sm:p-6 bg-stone-200 dark:bg-slate-950 flex justify-center max-h-[70vh] sm:max-h-[75vh] overflow-y-auto overflow-x-hidden">
             <div
-              className={`bg-white text-black shadow-lg p-4 transition-all duration-200 border border-stone-300 rounded-xs ${
-                paperSize === '58mm' ? 'w-[250px]' : 'w-[330px]'
+              className={`bg-white text-black shadow-lg p-3 sm:p-4 transition-all duration-200 border border-stone-300 rounded-xs w-full overflow-x-hidden break-words ${
+                paperSize === '58mm' ? 'max-w-[260px]' : 'max-w-[340px]'
               }`}
             >
               {renderReceiptContent(false)}

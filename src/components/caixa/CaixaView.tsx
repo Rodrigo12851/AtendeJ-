@@ -812,17 +812,35 @@ export const CaixaView: React.FC = () => {
     setPrintingOrder({ order, autoPrint: true });
   };
 
+  const adminTotalSales = useMemo(() => {
+    return comandas
+      .filter((c) => c.status === 'fechada')
+      .reduce((sum, c) => sum + (c.total_pago || c.total - (c.desconto || 0)), 0);
+  }, [comandas]);
+
+  const adminOccupiedCount = useMemo(() => {
+    return tables.filter((t) => t.status === 'ocupada').length;
+  }, [tables]);
+
+  const adminClosedCount = useMemo(() => {
+    return comandas.filter((c) => c.status === 'fechada').length;
+  }, [comandas]);
+
+  const adminTicketMedio = useMemo(() => {
+    return adminClosedCount > 0 ? adminTotalSales / adminClosedCount : 0;
+  }, [adminTotalSales, adminClosedCount]);
+
   return (
     <div className="flex flex-col min-h-screen bg-[#FAF7F2] text-stone-900 dark:bg-slate-950 dark:text-slate-100 pb-20">
       {/* Top Cashier Bar */}
-      <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md px-4 py-3.5">
+      <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md px-4 py-2 sm:py-2.5">
         <div className="max-w-[1920px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-600 text-white rounded-xl shadow-xs flex items-center justify-center">
-              <Banknote className="w-5 h-5" />
+            <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs flex items-center justify-center">
+              <Banknote className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h1 className="text-base font-bold tracking-tight text-white">
+              <h1 className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight">
                 Painel do Caixa & Pagamentos
               </h1>
               <p className="text-xs text-stone-400">
@@ -838,8 +856,34 @@ export const CaixaView: React.FC = () => {
             </div>
           </div>
 
+          {/* Center (Desktop): Vendas do Dia, Mesas Ocupadas, Ticket Médio (quando Admin) */}
+          {currentUser?.perfil === 'admin' && (
+            <div className="hidden xl:flex items-center gap-6 px-4 py-1 rounded-xl bg-stone-950/70 border border-stone-800">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Vendas do Dia:</span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-white">{formatCurrency(adminTotalSales)}</span>
+              </div>
+              <div className="w-px h-4 bg-stone-800" />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Mesas Ocupadas:</span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-white">{adminOccupiedCount} / {tables.length}</span>
+              </div>
+              <div className="w-px h-4 bg-stone-800" />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Ticket Médio:</span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-white">{formatCurrency(adminTicketMedio)}</span>
+              </div>
+            </div>
+          )}
+
           {/* Cash Register Actions */}
           <div className="flex items-center gap-2 flex-wrap text-xs">
+            {currentUser?.perfil === 'admin' && (
+              <span className="hidden sm:flex px-2.5 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold rounded-full items-center gap-1.5 shadow-2xs mr-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Sistema Online</span>
+              </span>
+            )}
             {cashRegister.status === 'fechado' ? (
               <button
                 onClick={() => setShowOpenRegisterModal(true)}

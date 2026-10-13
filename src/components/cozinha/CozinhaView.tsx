@@ -13,12 +13,12 @@ import {
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Order, OrderStatus } from '../../types';
-import { formatTime, getElapsedMinutes } from '../../utils/formatters';
+import { formatTime, getElapsedMinutes, formatCurrency } from '../../utils/formatters';
 import { KitchenTicketModal } from '../KitchenTicketModal';
 import { sortOrdersNovosFirst } from '../../utils/orderSorting';
 
 export const CozinhaView: React.FC = () => {
-  const { orders, updateOrderStatus, audioEnabled, setAudioEnabled } = useStore();
+  const { orders, updateOrderStatus, audioEnabled, setAudioEnabled, comandas, tables, currentUser } = useStore();
   const [filterTab, setFilterTab] = useState<'ativos' | 'novos' | 'preparo' | 'prontos' | 'todos'>(
     'ativos'
   );
@@ -32,6 +32,25 @@ export const CozinhaView: React.FC = () => {
     }, 15000);
     return () => clearInterval(timer);
   }, []);
+
+  // Admin Metrics Calculation
+  const adminTotalSales = useMemo(() => {
+    return (comandas || [])
+      .filter((c) => c.status === 'fechada')
+      .reduce((sum, c) => sum + (c.total_pago || c.total - (c.desconto || 0)), 0);
+  }, [comandas]);
+
+  const adminOccupiedCount = useMemo(() => {
+    return (tables || []).filter((t) => t.status === 'ocupada').length;
+  }, [tables]);
+
+  const adminClosedCount = useMemo(() => {
+    return (comandas || []).filter((c) => c.status === 'fechada').length;
+  }, [comandas]);
+
+  const adminTicketMedio = useMemo(() => {
+    return adminClosedCount > 0 ? adminTotalSales / adminClosedCount : 0;
+  }, [adminTotalSales, adminClosedCount]);
 
   // Filter orders - Novos constam sempre na frente dos em preparo/prontos
   const filteredOrders = useMemo(() => {
@@ -55,15 +74,15 @@ export const CozinhaView: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-[#FAF7F2] text-stone-900 dark:text-slate-100 pb-20">
       {/* KDS Trattoria Header */}
-      <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md px-4 py-3.5">
+      <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md px-4 py-2 sm:py-2.5">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-red-600 text-white rounded-xl shadow-xs flex items-center justify-center">
-              <ChefHat className="w-5 h-5" />
+            <div className="p-2 bg-red-600 text-white rounded-xl shadow-xs flex items-center justify-center">
+              <ChefHat className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold tracking-tight text-white">
+                <h1 className="text-sm sm:text-base font-bold tracking-tight text-white leading-tight">
                   KDS — Painel da Cozinha
                 </h1>
                 <span className="flex items-center gap-1.5 text-[10px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 px-2.5 py-0.5 rounded-full uppercase">
@@ -77,8 +96,34 @@ export const CozinhaView: React.FC = () => {
             </div>
           </div>
 
+          {/* Center (Desktop): Vendas do Dia, Mesas Ocupadas, Ticket Médio (quando Admin) */}
+          {currentUser?.perfil === 'admin' && (
+            <div className="hidden xl:flex items-center gap-6 px-4 py-1 rounded-xl bg-stone-950/70 border border-stone-800">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Vendas do Dia:</span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-white">{formatCurrency(adminTotalSales)}</span>
+              </div>
+              <div className="w-px h-4 bg-stone-800" />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Mesas Ocupadas:</span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-white">{adminOccupiedCount} / {tables?.length || 0}</span>
+              </div>
+              <div className="w-px h-4 bg-stone-800" />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Ticket Médio:</span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-white">{formatCurrency(adminTicketMedio)}</span>
+              </div>
+            </div>
+          )}
+
           {/* Sound toggle & Filter Tabs */}
           <div className="flex items-center gap-2">
+            {currentUser?.perfil === 'admin' && (
+              <span className="hidden sm:flex px-2.5 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold rounded-full items-center gap-1.5 shadow-2xs mr-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Sistema Online</span>
+              </span>
+            )}
             <button
               onClick={() => setAudioEnabled(!audioEnabled)}
               className={`px-3 py-2 rounded-xl border text-xs font-semibold tracking-wide transition flex items-center gap-1.5 cursor-pointer ${

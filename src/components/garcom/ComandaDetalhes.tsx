@@ -366,15 +366,37 @@ export const ComandaDetalhes: React.FC<ComandaDetalhesProps> = ({
         />
       )}
 
-      {/* Mobile Floating Action Button for Quick Order */}
-      <div className="sm:hidden fixed bottom-5 right-4 z-20">
-        <button
-          onClick={onAddNewOrder}
-          className="py-3 px-4 bg-red-600 active:bg-red-700 text-white font-bold text-xs rounded-2xl shadow-xl flex items-center gap-2 border border-red-500 active:scale-95 cursor-pointer"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>NOVO PEDIDO +</span>
-        </button>
+      {/* Mobile Sticky Floating Bottom Bar (Acompanha a rolagem da tela no celular do garçom) */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 p-2.5 px-3.5 shadow-2xl flex items-center justify-between gap-2.5">
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider leading-none">
+            TOTAL ACUMULADO
+          </span>
+          <span className="text-lg font-mono font-black text-stone-900 dark:text-white leading-tight">
+            {formatCurrency(comanda.total)}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowReceiptModal(true)}
+            className="py-2.5 px-3 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold text-xs rounded-xl flex items-center gap-1.5 border border-stone-300 dark:border-stone-700 transition active:scale-95 cursor-pointer"
+            title="Conferir / Imprimir Conta"
+          >
+            <Printer className="w-3.5 h-3.5 text-amber-500" />
+            <span>Conta</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onAddNewOrder}
+            className="py-2.5 px-3.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/25 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>+ Novo Pedido</span>
+          </button>
+        </div>
       </div>
 
       {/* Receipt / Account Modal */}
