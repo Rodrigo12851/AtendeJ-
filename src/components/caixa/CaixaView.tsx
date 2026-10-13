@@ -2533,7 +2533,7 @@ export const CaixaView: React.FC = () => {
                         : 'bg-stone-100 dark:bg-slate-850 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-slate-800 hover:bg-stone-200 dark:hover:bg-slate-800'
                     }`}
                   >
-                    🍽️ Todas ({products.filter((p) => p.ativo !== false && p.disponivel !== false).length})
+                    Todas ({products.filter((p) => p.ativo !== false && p.disponivel !== false).length})
                   </button>
 
                   {categories
@@ -2616,12 +2616,12 @@ export const CaixaView: React.FC = () => {
                           />
                           {isPizza && (
                             <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-lg text-[10px] font-black bg-[#FF8A00] text-white shadow-xs flex items-center gap-1 uppercase">
-                              🍕 Pizza
+                              Pizza
                             </span>
                           )}
                           {!isPizza && hasAddons && (
                             <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-lg text-[10px] font-black bg-orange-600 text-white shadow-xs flex items-center gap-1 uppercase">
-                              ✨ Adicionais
+                              Adicionais
                             </span>
                           )}
                           {prod.em_promocao && (
@@ -2685,7 +2685,6 @@ export const CaixaView: React.FC = () => {
                                 }}
                                 className="px-3 py-2 bg-[#FF8A00] hover:bg-[#E07A00] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 shrink-0"
                               >
-                                <Sparkles className="w-3.5 h-3.5" />
                                 <span>Montar Pizza</span>
                                 {inCartCount > 0 && (
                                   <span className="ml-0.5 px-1.5 py-0.2 text-[10px] bg-stone-950 text-white rounded-full font-mono font-bold">
@@ -2702,7 +2701,6 @@ export const CaixaView: React.FC = () => {
                                 }}
                                 className="px-3 py-2 bg-[#FF8A00] hover:bg-[#E07A00] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 shrink-0"
                               >
-                                <Sparkles className="w-3.5 h-3.5" />
                                 <span>Personalizar</span>
                                 {inCartCount > 0 && (
                                   <span className="ml-0.5 px-1.5 py-0.2 text-[10px] bg-stone-950 text-white rounded-full font-mono font-bold">

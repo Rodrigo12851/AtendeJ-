@@ -254,7 +254,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
       )}
 
       {/* Sticky Compact Header for Mobile & Desktop */}
-      <header className="sticky top-[50px] md:top-[112px] z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md">
+      <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md">
         {/* Main Header Row */}
         <div className="px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-2">
           <button
@@ -354,7 +354,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                   : 'bg-stone-800 text-stone-300 border-stone-700/80 hover:bg-stone-700'
               }`}
             >
-              🍽️ Todas
+              Todas
             </button>
 
             {categories
@@ -370,7 +370,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                       : 'bg-stone-800 text-stone-300 border-stone-700/80 hover:bg-stone-700'
                   }`}
                 >
-                  <span>{cat.icone || '🍽️'}</span>
+                  {cat.icone && <span>{cat.icone}</span>}
                   <span>{cat.nome}</span>
                 </button>
               ))}
@@ -424,12 +424,12 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                         {product.destaque && <span className="text-xs">🔥</span>}
                         {product.isPizza && (
                           <span className="text-[9px] font-black bg-[#FF8A00] text-white px-1.5 py-0.2 rounded-md uppercase">
-                            🍕 Pizza
+                            Pizza
                           </span>
                         )}
                         {hasAddons && (
                           <span className="text-[9px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-400/40 px-1.5 py-0.2 rounded-md uppercase">
-                            ✨ Adicionais
+                            Adicionais
                           </span>
                         )}
                         {product.codigo_interno && (
@@ -459,7 +459,6 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                         onClick={() => handleQuickAdd(product)}
                         className="px-2.5 py-1.5 bg-[#FF8A00] hover:bg-[#E07A00] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
                       >
-                        <Sparkles className="w-3.5 h-3.5" />
                         <span>Montar</span>
                         {cartInfo.inCart && (
                           <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
@@ -473,7 +472,6 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                         onClick={() => handleOpenAddonCustomizer(product)}
                         className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-black rounded-xl shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
                       >
-                        <Sparkles className="w-3.5 h-3.5 text-stone-950" />
                         <span>Personalizar</span>
                         {cartInfo.inCart && (
                           <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
@@ -547,12 +545,12 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                     />
                     {product.isPizza && (
                       <span className="absolute bottom-1 left-1 bg-[#FF8A00] text-white font-black text-[9px] px-1.5 py-0.5 rounded-md uppercase shadow-xs">
-                        🍕 Pizza
+                        Pizza
                       </span>
                     )}
                     {hasAddons && (
                       <span className="absolute bottom-1 left-1 bg-amber-500 text-stone-950 font-black text-[8px] px-1.5 py-0.5 rounded-md uppercase shadow-xs">
-                        ✨ Adicionais
+                        Adicionais
                       </span>
                     )}
                     {product.em_promocao && (
@@ -615,7 +613,6 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                           }}
                           className="px-2.5 py-1.5 bg-[#FF8A00] hover:bg-[#E07A00] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0"
                         >
-                          <Sparkles className="w-3.5 h-3.5" />
                           <span>Montar</span>
                           {cartInfo.inCart && (
                             <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
@@ -632,7 +629,6 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                           }}
                           className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-black rounded-xl shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0"
                         >
-                          <Sparkles className="w-3.5 h-3.5 text-stone-950" />
                           <span>Personalizar</span>
                           {cartInfo.inCart && (
                             <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">

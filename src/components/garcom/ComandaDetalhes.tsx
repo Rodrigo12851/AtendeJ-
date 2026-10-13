@@ -66,7 +66,7 @@ export const ComandaDetalhes: React.FC<ComandaDetalhesProps> = ({
   return (
     <div className="flex flex-col min-h-screen bg-[#FAF7F2] dark:bg-slate-950 text-stone-900 dark:text-slate-100 pb-24">
       {/* Sticky Refined Subheader */}
-      <header className="sticky top-[50px] md:top-[112px] z-30 bg-stone-900 dark:bg-slate-950 text-white border-b border-stone-800 dark:border-slate-800 shadow-md">
+      <header className="sticky top-0 z-30 bg-stone-900 dark:bg-slate-950 text-white border-b border-stone-800 dark:border-slate-800 shadow-md">
         <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <button
             onClick={onBack}
