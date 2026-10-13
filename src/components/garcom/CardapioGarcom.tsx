@@ -7,13 +7,13 @@ import {
   Sparkles,
   ArrowLeft,
   Check,
-  List,
-  LayoutGrid,
 } from 'lucide-react';
 import { Product, OrderItem, Category } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { playAddPop } from '../../utils/audio';
 import { PizzaCustomizerModal } from './PizzaCustomizerModal';
+
+const DEFAULT_FOOD_IMG = 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&auto=format&fit=crop&q=80';
 
 interface CardapioGarcomProps {
   mesaNumero: number;
@@ -40,8 +40,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
   onRemoveCartItem,
   onOpenCart,
 }) => {
-  const [layoutMode, setLayoutMode] = useState<'compact' | 'cards'>('compact');
-  const [activeCategory, setActiveCategory] = useState<string>('pizzas');
+  const [activeCategory, setActiveCategory] = useState<string>('todas');
   const [searchTerm, setSearchTerm] = useState('');
   const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -61,8 +60,8 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
         (p) =>
           p.ativo &&
           (p.nome.toLowerCase().includes(term) ||
-            p.descricao.toLowerCase().includes(term) ||
-            p.codigo_interno.toLowerCase().includes(term))
+            p.descricao?.toLowerCase().includes(term) ||
+            p.codigo_interno?.toLowerCase().includes(term))
       );
     }
     if (activeCategory === 'todas') {
@@ -104,13 +103,14 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
       return;
     }
 
+    const finalPrice = product.em_promocao && product.preco_promocional ? product.preco_promocional : product.preco;
     const orderItem: OrderItem = {
       id: `item_quick_${Date.now()}_${Math.random()}`,
       produto_id: product.id,
       nome: product.nome,
       quantidade: 1,
-      preco_unitario: product.preco,
-      preco_total: product.preco,
+      preco_unitario: finalPrice,
+      preco_total: finalPrice,
       status: 'ativo',
     };
     onAddToCart(orderItem);
@@ -140,7 +140,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
   const cartItemCount = cartItems.reduce((sum, it) => sum + it.quantidade, 0);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#FAF7F2] text-stone-900 dark:text-slate-100 pb-28">
+    <div className="flex flex-col min-h-screen bg-[#FAF7F2] dark:bg-slate-950 text-stone-900 dark:text-slate-100 pb-28">
       {/* Quick Feedback Toast */}
       {toastMessage && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-stone-900/95 text-white border border-stone-700 px-4 py-2 rounded-full shadow-lg text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
@@ -173,39 +173,11 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Alternador de Modo de Visualização (Compacto vs Cards) */}
-            <div className="flex items-center bg-stone-800 border border-stone-700 rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => setLayoutMode('compact')}
-                className={`p-1.5 rounded cursor-pointer transition ${
-                  layoutMode === 'compact'
-                    ? 'bg-stone-700 text-white shadow-xs'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
-                title="Modo Compacto (ideal para celular)"
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setLayoutMode('cards')}
-                className={`p-1.5 rounded cursor-pointer transition ${
-                  layoutMode === 'cards'
-                    ? 'bg-stone-700 text-white shadow-xs'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
-                title="Modo Cards Expandido"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
             {/* Cart Button with Counter */}
             <button
               onClick={onOpenCart}
               className="relative p-2 border border-stone-700 bg-stone-800 text-white hover:bg-stone-700 rounded-lg transition cursor-pointer"
-              title="Abrir Carrinho"
+              title="Abrir Carrinho da Mesa"
             >
               <ShoppingBag className="w-4 h-4 text-amber-400" />
               {cartItemCount > 0 && (
@@ -239,33 +211,34 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
           </div>
         </div>
 
-        {/* Quick Category Carousel */}
+        {/* Quick Category Carousel (Pílulas arredondadas estilo cardápio do cliente) */}
         {!searchTerm && (
-          <div className="flex gap-1.5 overflow-x-auto px-3 sm:px-4 pb-2 scrollbar-none">
+          <div className="flex gap-1.5 overflow-x-auto px-3 sm:px-4 pb-2.5 no-scrollbar scrollbar-none">
             <button
               onClick={() => setActiveCategory('todas')}
-              className={`px-3 py-1 text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition shrink-0 rounded-lg border cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 border cursor-pointer ${
                 activeCategory === 'todas'
-                  ? 'bg-red-600 text-white border-red-500 shadow-xs'
-                  : 'bg-stone-800/90 text-stone-300 border-stone-700/80 hover:bg-stone-700'
+                  ? 'bg-[#FF8A00] text-white border-[#FF8A00] shadow-xs'
+                  : 'bg-stone-800 text-stone-300 border-stone-700/80 hover:bg-stone-700'
               }`}
             >
               🍽️ Todas
             </button>
 
             {categories
-              .filter((c) => c.ativo)
+              .filter((c) => c.ativo !== false)
+              .sort((a, b) => a.ordem - b.ordem)
               .map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`px-3 py-1 text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition flex items-center gap-1.5 shrink-0 rounded-lg border cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 border cursor-pointer ${
                     activeCategory === cat.id
-                      ? 'bg-red-600 text-white border-red-500 shadow-xs'
-                      : 'bg-stone-800/90 text-stone-300 border-stone-700/80 hover:bg-stone-700'
+                      ? 'bg-[#FF8A00] text-white border-[#FF8A00] shadow-xs'
+                      : 'bg-stone-800 text-stone-300 border-stone-700/80 hover:bg-stone-700'
                   }`}
                 >
-                  <span>{cat.icone}</span>
+                  <span>{cat.icone || '🍽️'}</span>
                   <span>{cat.nome}</span>
                 </button>
               ))}
@@ -273,197 +246,153 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
         )}
       </header>
 
-      {/* Main Content Area */}
-      <main className="p-2.5 sm:p-4 max-w-5xl mx-auto w-full flex-1">
+      {/* Main Content Area (Layout idêntico ao cardápio do cliente, otimizado para celular do garçom) */}
+      <main className="p-3 sm:p-4 max-w-5xl mx-auto w-full flex-1">
         {filteredProducts.length === 0 ? (
-          <div className="py-16 text-center text-stone-500">
-            <p className="text-base font-bold">Nenhum produto encontrado.</p>
-            <p className="text-xs mt-1 text-stone-400">Tente pesquisar outro termo ou categoria.</p>
-          </div>
-        ) : layoutMode === 'compact' ? (
-          /* MODO COMPACTO: Uma linha por item com controle rápido de quantidade */
-          <div className="space-y-1.5">
-            {filteredProducts.map((product) => {
-              const cartInfo = getCartInfoForProduct(product.id);
-              return (
-                <div
-                  key={product.id}
-                  className={`bg-white px-3 py-2 sm:py-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 shadow-2xs hover:border-stone-300 ${
-                    cartInfo.inCart ? 'border-amber-300 bg-amber-50/20' : 'border-stone-200/90'
-                  }`}
-                >
-                  <div className="min-w-0 flex-1 pr-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-mono text-stone-400 font-medium shrink-0 uppercase">
-                        {product.codigo_interno}
-                      </span>
-                      <h3 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-slate-100 truncate">
-                        {product.nome}
-                      </h3>
-                      {product.destaque && (
-                        <span className="text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded-md uppercase shrink-0">
-                          Top
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-stone-500 truncate leading-tight mt-0.5">
-                      {product.descricao}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <div className="text-right">
-                      <span className="text-xs sm:text-sm font-mono font-bold tracking-tight text-stone-900 dark:text-slate-100 whitespace-nowrap">
-                        {formatCurrency(product.preco)}
-                      </span>
-                      {product.isPizza && (
-                        <span className="block text-[9px] text-stone-400 uppercase font-medium">
-                          A partir de
-                        </span>
-                      )}
-                    </div>
-
-                    {product.isPizza ? (
-                      <button
-                        type="button"
-                        onClick={() => handleQuickAdd(product)}
-                        className="py-1.5 px-3 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-xs font-bold rounded-lg shadow-2xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Montar</span>
-                        {cartInfo.inCart && (
-                          <span className="bg-amber-700 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
-                            {cartInfo.totalQty}
-                          </span>
-                        )}
-                      </button>
-                    ) : cartInfo.inCart ? (
-                      <div className="flex items-center bg-stone-100 border border-stone-300 rounded-lg p-0.5 shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => handleQuickDecrease(product)}
-                          className="w-7 h-7 bg-white border border-stone-200 text-stone-800 dark:text-slate-200 rounded-md flex items-center justify-center font-bold text-xs hover:bg-stone-50 active:bg-stone-200 transition cursor-pointer"
-                          title="Diminuir"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="w-6 text-center font-mono font-bold text-xs text-stone-900 dark:text-slate-100">
-                          {cartInfo.totalQty}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickAdd(product)}
-                          className="w-7 h-7 bg-red-600 text-white rounded-md flex items-center justify-center font-bold text-xs hover:bg-red-700 active:bg-red-800 transition cursor-pointer"
-                          title="Aumentar"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleQuickAdd(product)}
-                        className="py-1.5 px-3 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-lg shadow-2xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Adicionar</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="py-16 text-center text-stone-500 space-y-2 p-6 rounded-3xl border border-dashed border-stone-300 dark:border-stone-800">
+            <p className="text-sm font-bold text-stone-700 dark:text-stone-300">Nenhum produto encontrado.</p>
+            <p className="text-xs text-stone-400">Tente pesquisar outro termo ou categoria.</p>
           </div>
         ) : (
-          /* MODO CARDS DETALHADOS: Visualização expandida rica com foto e ingredientes */
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
             {filteredProducts.map((product) => {
               const cartInfo = getCartInfoForProduct(product.id);
+              const finalPrice = product.em_promocao && product.preco_promocional ? product.preco_promocional : product.preco;
 
               return (
                 <div
                   key={product.id}
-                  className={`bg-white p-3.5 border rounded-2xl shadow-2xs flex flex-col justify-between hover:shadow-xs transition-all ${
-                    cartInfo.inCart ? 'border-amber-300 bg-amber-50/15' : 'border-stone-200/90'
+                  onClick={() => handleQuickAdd(product)}
+                  className={`rounded-2xl p-3 sm:p-3.5 border shadow-xs hover:shadow-md transition-all flex gap-3 cursor-pointer group relative bg-white border-stone-200/90 dark:bg-[#1E1E28] dark:border-stone-800 ${
+                    cartInfo.inCart ? 'border-[#FF8A00] ring-2 ring-[#FF8A00]/25' : ''
                   }`}
                 >
-                  <div>
-                    {product.imagem && (
-                      <div className="w-full h-28 mb-2.5 rounded-xl overflow-hidden bg-stone-100 border border-stone-200 shrink-0">
-                        <img src={product.imagem} alt={product.nome} className="w-full h-full object-cover" loading="lazy" />
-                      </div>
-                    )}
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-[10px] font-mono font-medium text-stone-400 uppercase">
-                        {product.codigo_interno}
+                  {/* Foto quadrada à esquerda com cantos arredondados */}
+                  <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700">
+                    <img
+                      src={product.imagem || DEFAULT_FOOD_IMG}
+                      alt={product.nome}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
+                      }}
+                    />
+                    {product.isPizza && (
+                      <span className="absolute bottom-1 left-1 bg-[#FF8A00] text-white font-black text-[9px] px-1.5 py-0.5 rounded-md uppercase shadow-xs">
+                        🍕 Pizza
                       </span>
-                      {product.destaque && (
-                        <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
-                          <Sparkles className="w-2.5 h-2.5 text-amber-600" /> Destaque
-                        </span>
-                      )}
-                    </div>
-
-                    <h3 className="text-sm font-bold text-stone-900 dark:text-slate-100 mt-1">{product.nome}</h3>
-                    <p className="text-xs text-stone-600 mt-1 line-clamp-2 leading-relaxed">
-                      {product.descricao}
-                    </p>
+                    )}
+                    {product.em_promocao && (
+                      <span className="absolute top-1 left-1 bg-red-600 text-white font-black text-[9px] px-1.5 py-0.5 rounded-md uppercase shadow-xs">
+                        PROMO
+                      </span>
+                    )}
                   </div>
 
-                  <div className="mt-3.5 pt-2.5 border-t border-stone-100 flex items-center justify-between">
+                  {/* Informações à direita */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                     <div>
-                      <span className="text-[10px] text-stone-400 block uppercase font-medium">
-                        {product.isPizza ? 'A partir de' : 'Valor'}
-                      </span>
-                      <span className="text-base font-mono font-bold tracking-tight text-stone-900 dark:text-slate-100">
-                        {formatCurrency(product.preco)}
-                      </span>
-                    </div>
-
-                    {product.isPizza ? (
-                      <button
-                        type="button"
-                        onClick={() => handleQuickAdd(product)}
-                        className="py-1.5 px-3 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Montar</span>
-                        {cartInfo.inCart && (
-                          <span className="bg-amber-700 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
-                            {cartInfo.totalQty}
+                      <div className="flex items-start justify-between gap-1">
+                        <h4 className="font-black text-sm text-stone-900 dark:text-white leading-tight line-clamp-1 flex items-center gap-1">
+                          <span className="truncate">{product.nome}</span>
+                          {product.destaque && <span className="shrink-0 text-xs">🔥</span>}
+                        </h4>
+                        {product.codigo_interno && (
+                          <span className="text-[10px] font-mono font-medium text-stone-400 uppercase shrink-0">
+                            {product.codigo_interno}
                           </span>
                         )}
-                      </button>
-                    ) : cartInfo.inCart ? (
-                      <div className="flex items-center bg-stone-100 border border-stone-300 rounded-lg p-0.5 shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => handleQuickDecrease(product)}
-                          className="w-7 h-7 bg-white border border-stone-200 text-stone-800 dark:text-slate-200 rounded-md flex items-center justify-center font-bold text-xs hover:bg-stone-50 cursor-pointer"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="w-6 text-center font-mono font-bold text-xs text-stone-900 dark:text-slate-100">
-                          {cartInfo.totalQty}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickAdd(product)}
-                          className="w-7 h-7 bg-red-600 text-white rounded-md flex items-center justify-center font-bold text-xs hover:bg-red-700 cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
                       </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleQuickAdd(product)}
-                        className="py-1.5 px-3.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Adicionar</span>
-                      </button>
-                    )}
+
+                      <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 mt-1 leading-snug">
+                        {product.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
+                      </p>
+                    </div>
+
+                    {/* Preço e Botão de Ação */}
+                    <div className="flex items-center justify-between pt-2 mt-auto gap-2">
+                      <div className="flex flex-col">
+                        {product.em_promocao && product.preco_promocional ? (
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-[#FF8A00] font-black text-base sm:text-lg font-mono">
+                              {formatCurrency(finalPrice)}
+                            </span>
+                            <span className="text-xs line-through text-stone-400 font-mono">
+                              {formatCurrency(product.preco)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[#FF8A00] font-black text-base sm:text-lg font-mono">
+                            {formatCurrency(finalPrice)}
+                          </span>
+                        )}
+                        {product.isPizza && (
+                          <span className="text-[9px] text-stone-400 uppercase font-medium leading-tight">
+                            A partir de
+                          </span>
+                        )}
+                      </div>
+
+                      {product.isPizza ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickAdd(product);
+                          }}
+                          className="px-2.5 py-1.5 bg-[#FF8A00] hover:bg-[#E07A00] text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Montar</span>
+                          {cartInfo.inCart && (
+                            <span className="bg-stone-950 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ml-0.5">
+                              {cartInfo.totalQty}
+                            </span>
+                          )}
+                        </button>
+                      ) : cartInfo.inCart ? (
+                        <div className="flex items-center bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl p-0.5 shadow-2xs shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickDecrease(product);
+                            }}
+                            className="w-7 h-7 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 rounded-lg flex items-center justify-center font-bold text-xs hover:bg-stone-50 active:scale-95 transition cursor-pointer"
+                            title="Diminuir"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-6 text-center font-mono font-bold text-xs text-stone-900 dark:text-white">
+                            {cartInfo.totalQty}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickAdd(product);
+                            }}
+                            className="w-7 h-7 bg-[#FF8A00] text-white rounded-lg flex items-center justify-center font-bold text-xs hover:bg-[#E07A00] active:scale-95 transition cursor-pointer shadow-xs"
+                            title="Aumentar"
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickAdd(product);
+                          }}
+                          className="w-8 h-8 rounded-xl bg-[#FF8A00] hover:bg-[#E07A00] text-white font-bold flex items-center justify-center transition shadow-xs active:scale-90 cursor-pointer shrink-0"
+                          title="Adicionar ao pedido"
+                        >
+                          <Plus className="w-4 h-4 stroke-[3]" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -472,9 +401,9 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
         )}
       </main>
 
-      {/* Floating Bottom Action Bar (Thumb Zone) */}
+      {/* Floating Bottom Action Bar (Thumb Zone para Celular do Garçom) */}
       {cartItemCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 p-2.5 sm:p-3.5 bg-white/95 backdrop-blur-sm border-t border-stone-200 shadow-xl rounded-t-2xl">
+        <div className="fixed bottom-0 left-0 right-0 z-40 p-2.5 sm:p-3.5 bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm border-t border-stone-200 dark:border-stone-800 shadow-xl rounded-t-2xl">
           <div className="max-w-xl mx-auto flex items-center justify-between gap-3">
             <div className="pl-1">
               <div className="flex items-baseline gap-1.5">
@@ -483,7 +412,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                   {formatCurrency(cartTotal)}
                 </span>
               </div>
-              <span className="text-[11px] font-semibold text-emerald-700">
+              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
                 {cartItemCount} {cartItemCount === 1 ? 'item selecionado' : 'itens selecionados'}
               </span>
             </div>

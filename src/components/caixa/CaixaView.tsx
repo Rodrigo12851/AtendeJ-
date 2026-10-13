@@ -2483,13 +2483,13 @@ export const CaixaView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setBalcaoCategoryFilter('todas')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition cursor-pointer border ${
                       balcaoCategoryFilter === 'todas'
-                        ? 'bg-amber-600 text-white shadow-2xs'
-                        : 'bg-stone-100 dark:bg-slate-850 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-slate-800'
+                        ? 'bg-[#FF8A00] text-white border-[#FF8A00] shadow-xs'
+                        : 'bg-stone-100 dark:bg-slate-850 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-slate-800 hover:bg-stone-200 dark:hover:bg-slate-800'
                     }`}
                   >
-                    Todas ({products.filter((p) => p.ativo !== false && p.disponivel !== false).length})
+                    🍽️ Todas ({products.filter((p) => p.ativo !== false && p.disponivel !== false).length})
                   </button>
 
                   {categories
@@ -2509,22 +2509,22 @@ export const CaixaView: React.FC = () => {
                           key={cat.id}
                           type="button"
                           onClick={() => setBalcaoCategoryFilter(cat.id)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1.5 cursor-pointer ${
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition flex items-center gap-1.5 cursor-pointer border ${
                             balcaoCategoryFilter === cat.id
-                              ? 'bg-amber-600 text-white shadow-2xs'
-                              : 'bg-stone-100 dark:bg-slate-850 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-slate-800'
+                              ? 'bg-[#FF8A00] text-white border-[#FF8A00] shadow-xs'
+                              : 'bg-stone-100 dark:bg-slate-850 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-slate-800 hover:bg-stone-200 dark:hover:bg-slate-800'
                           }`}
                         >
                           <span>{cat.icone || '🍽️'}</span>
                           <span>{cat.nome}</span>
-                          <span className="text-[10px] opacity-75 font-mono">({countInCat})</span>
+                          <span className="text-[10px] opacity-80 font-mono">({countInCat})</span>
                         </button>
                       );
                     })}
                 </div>
               </div>
 
-              {/* Grid de Produtos */}
+              {/* Grid de Produtos Balcão (Estilo Cardápio Delivery, só que um pouco maior) */}
               {balcaoProducts.length === 0 ? (
                 <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl p-10 text-center space-y-2">
                   <div className="text-3xl">🔍</div>
@@ -2536,7 +2536,7 @@ export const CaixaView: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3.5 sm:gap-4">
                   {balcaoProducts.map((prod) => {
                     const isPizza = isPizzaProduct(prod);
                     const hasAddons = hasProductAddons(prod);
@@ -2551,118 +2551,170 @@ export const CaixaView: React.FC = () => {
                         onClick={() => {
                           if (isPizza) setCustomizingProduct(prod);
                           else if (hasAddons) handleOpenItemCustomizerBalcao(prod);
+                          else handleAddSimpleProductToBalcao(prod);
                         }}
-                        className={`bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-2xl p-3 flex flex-col justify-between shadow-2xs hover:shadow-xs transition group ${
-                          isPizza || hasAddons ? 'cursor-pointer hover:border-amber-400 dark:hover:border-amber-500' : ''
+                        className={`bg-white dark:bg-slate-900 border rounded-2xl p-3.5 sm:p-4 flex gap-3.5 sm:gap-4 shadow-2xs hover:shadow-md transition-all cursor-pointer group relative ${
+                          inCartCount > 0
+                            ? 'border-[#FF8A00] ring-2 ring-[#FF8A00]/30 shadow-xs'
+                            : 'border-stone-200/90 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500'
                         }`}
                       >
-                        <div className="space-y-2">
-                          <div className="relative h-28 w-full rounded-xl overflow-hidden bg-stone-100 dark:bg-slate-950">
-                            <img
-                              src={prod.imagem || DEFAULT_FOOD_IMG}
-                              alt={prod.nome}
-                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
-                              }}
-                            />
-                            {isPizza && (
-                              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500 text-stone-950 shadow-xs flex items-center gap-1">
-                                🍕 Pizza
-                              </span>
-                            )}
-                            {!isPizza && hasAddons && (
-                              <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-black bg-orange-600 text-white shadow-xs flex items-center gap-1">
-                                ✨ Adicionais
-                              </span>
-                            )}
-                            {prod.em_promocao && (
-                              <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md text-[10px] font-black bg-red-600 text-white shadow-xs">
-                                Promoção
-                              </span>
-                            )}
-                          </div>
-
-                          <div>
-                            <h4 className="text-xs font-bold text-stone-900 dark:text-white line-clamp-1">
-                              {prod.nome}
-                            </h4>
-                            {prod.descricao && (
-                              <p className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-2 mt-0.5">
-                                {prod.descricao}
-                              </p>
-                            )}
-                          </div>
+                        {/* Foto generosa à esquerda (um pouco maior) */}
+                        <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden shrink-0 bg-stone-100 dark:bg-slate-950 border border-stone-200/60 dark:border-slate-800">
+                          <img
+                            src={prod.imagem || DEFAULT_FOOD_IMG}
+                            alt={prod.nome}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
+                            }}
+                          />
+                          {isPizza && (
+                            <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-lg text-[10px] font-black bg-[#FF8A00] text-white shadow-xs flex items-center gap-1 uppercase">
+                              🍕 Pizza
+                            </span>
+                          )}
+                          {!isPizza && hasAddons && (
+                            <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-lg text-[10px] font-black bg-orange-600 text-white shadow-xs flex items-center gap-1 uppercase">
+                              ✨ Adicionais
+                            </span>
+                          )}
+                          {prod.em_promocao && (
+                            <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-lg text-[10px] font-black bg-red-600 text-white shadow-xs uppercase">
+                              Promoção
+                            </span>
+                          )}
                         </div>
 
-                        <div className="pt-2.5 mt-2 border-t border-stone-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                        {/* Informações à direita */}
+                        <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                           <div>
-                            <span className="text-[10px] text-stone-400 block leading-tight">Preço</span>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">
-                                {formatCurrency(finalPrice)}
-                              </span>
-                              {prod.em_promocao && prod.preco_promocional && (
-                                <span className="text-[10px] line-through text-stone-400 font-mono">
-                                  {formatCurrency(prod.preco)}
+                            <div className="flex items-start justify-between gap-1.5">
+                              <h4 className="font-black text-sm sm:text-base text-stone-900 dark:text-white leading-tight line-clamp-1 flex items-center gap-1.5">
+                                <span className="truncate">{prod.nome}</span>
+                                {prod.destaque && <span className="shrink-0 text-sm">🔥</span>}
+                              </h4>
+                              {prod.codigo_interno && (
+                                <span className="text-[10px] font-mono font-bold text-stone-400 dark:text-slate-500 uppercase shrink-0">
+                                  {prod.codigo_interno}
                                 </span>
                               )}
                             </div>
+
+                            <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 mt-1 leading-snug">
+                              {prod.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
+                            </p>
                           </div>
 
-                          {isPizza ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCustomizingProduct(prod);
-                              }}
-                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                            >
-                              <Sparkles className="w-3.5 h-3.5" />
-                              <span>Montar Pizza</span>
-                              {inCartCount > 0 && (
-                                <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-stone-950 text-white rounded-full">
-                                  {inCartCount}
+                          {/* Linha inferior: Preço e Botão de Ação */}
+                          <div className="flex items-center justify-between pt-2.5 mt-auto gap-2">
+                            <div className="flex flex-col">
+                              {prod.em_promocao && prod.preco_promocional ? (
+                                <div className="flex items-baseline gap-1.5">
+                                  <span className="text-base sm:text-lg font-black font-mono text-[#FF8A00]">
+                                    {formatCurrency(finalPrice)}
+                                  </span>
+                                  <span className="text-xs line-through text-stone-400 font-mono">
+                                    {formatCurrency(prod.preco)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-base sm:text-lg font-black font-mono text-[#FF8A00]">
+                                  {formatCurrency(finalPrice)}
                                 </span>
                               )}
-                            </button>
-                          ) : hasAddons ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenItemCustomizerBalcao(prod);
-                              }}
-                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                            >
-                              <Sparkles className="w-3.5 h-3.5" />
-                              <span>Personalizar</span>
-                              {inCartCount > 0 && (
-                                <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-stone-950 text-white rounded-full">
-                                  {inCartCount}
+                              {isPizza && (
+                                <span className="text-[10px] text-stone-400 font-medium uppercase leading-tight">
+                                  A partir de
                                 </span>
                               )}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddSimpleProductToBalcao(prod);
-                              }}
-                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>Adicionar</span>
-                              {inCartCount > 0 && (
-                                <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-white text-emerald-900 rounded-full font-black">
-                                  {inCartCount}
-                                </span>
-                              )}
-                            </button>
-                          )}
+                            </div>
+
+                            {/* Botões de Ação */}
+                            {isPizza ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCustomizingProduct(prod);
+                                }}
+                                className="px-3 py-2 bg-[#FF8A00] hover:bg-[#E07A00] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 shrink-0"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>Montar Pizza</span>
+                                {inCartCount > 0 && (
+                                  <span className="ml-0.5 px-1.5 py-0.2 text-[10px] bg-stone-950 text-white rounded-full font-mono font-bold">
+                                    {inCartCount}
+                                  </span>
+                                )}
+                              </button>
+                            ) : hasAddons ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenItemCustomizerBalcao(prod);
+                                }}
+                                className="px-3 py-2 bg-[#FF8A00] hover:bg-[#E07A00] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 shrink-0"
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>Personalizar</span>
+                                {inCartCount > 0 && (
+                                  <span className="ml-0.5 px-1.5 py-0.2 text-[10px] bg-stone-950 text-white rounded-full font-mono font-bold">
+                                    {inCartCount}
+                                  </span>
+                                )}
+                              </button>
+                            ) : (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {inCartCount > 0 ? (
+                                  <div className="flex items-center bg-stone-100 dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl p-0.5 shadow-2xs">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const itemIndex = balcaoCart.findIndex(
+                                          (it) => it.produto_id === prod.id && (!it.sabores || it.sabores.length <= 1) && !it.borda && !it.massa && (!it.adicionais || it.adicionais.length === 0)
+                                        );
+                                        if (itemIndex >= 0) handleUpdateBalcaoItemQuantity(itemIndex, -1);
+                                      }}
+                                      className="w-7 h-7 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 text-stone-800 dark:text-stone-200 rounded-lg flex items-center justify-center font-bold text-xs hover:bg-stone-50 active:scale-95 transition cursor-pointer"
+                                      title="Diminuir"
+                                    >
+                                      <Minus className="w-3.5 h-3.5" />
+                                    </button>
+                                    <span className="w-6 text-center font-mono font-bold text-xs text-stone-900 dark:text-white">
+                                      {inCartCount}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAddSimpleProductToBalcao(prod);
+                                      }}
+                                      className="w-7 h-7 bg-[#FF8A00] text-white rounded-lg flex items-center justify-center font-bold text-xs hover:bg-[#E07A00] active:scale-95 transition cursor-pointer shadow-xs"
+                                      title="Aumentar"
+                                    >
+                                      <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddSimpleProductToBalcao(prod);
+                                    }}
+                                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#FF8A00] hover:bg-[#E07A00] text-white font-bold flex items-center justify-center transition shadow-xs active:scale-90 cursor-pointer shrink-0"
+                                    title="Adicionar ao pedido"
+                                  >
+                                    <Plus className="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
