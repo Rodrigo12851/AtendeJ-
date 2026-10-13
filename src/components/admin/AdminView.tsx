@@ -44,6 +44,7 @@ import {
   ShieldCheck,
   Eye,
   EyeOff,
+  Package,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, Table, User, Category } from '../../types';
@@ -146,6 +147,26 @@ export const AdminView: React.FC = () => {
   const [prodCfop, setProdCfop] = useState('5101');
   const [prodCsosn, setProdCsosn] = useState<'102' | '500' | '900'>('102');
   const [prodOrigem, setProdOrigem] = useState<'0' | '1' | '2'>('0');
+
+  // Controle de Estoque de Bebidas e Produtos
+  const [prodControlarEstoque, setProdControlarEstoque] = useState(false);
+  const [prodEstoque, setProdEstoque] = useState('');
+  const [prodEstoqueMinimoAlerta, setProdEstoqueMinimoAlerta] = useState('5');
+
+  // Produtos esgotados e com estoque baixo para alerta do admin
+  const outOfStockProducts = useMemo(() => {
+    return products.filter((p) => p.controlar_estoque && (p.estoque === undefined || p.estoque <= 0));
+  }, [products]);
+
+  const lowStockProducts = useMemo(() => {
+    return products.filter(
+      (p) =>
+        p.controlar_estoque &&
+        p.estoque !== undefined &&
+        p.estoque > 0 &&
+        p.estoque <= (p.estoque_minimo_alerta ?? 5)
+    );
+  }, [products]);
 
   // Quick Promo Modal State (Botão Rápido de Promoção direto na tabela)
   const [quickPromoProduct, setQuickPromoProduct] = useState<Product | null>(null);
@@ -421,6 +442,8 @@ export const AdminView: React.FC = () => {
     const finalImage = prodImagem.trim() || defaultImg;
 
     const promoPriceNum = prodPrecoPromocional.trim() ? parseFloat(prodPrecoPromocional.replace(',', '.')) : undefined;
+    const estoqueNum = prodControlarEstoque && prodEstoque.trim() !== '' ? parseInt(prodEstoque, 10) : undefined;
+    const estoqueMinNum = prodControlarEstoque && prodEstoqueMinimoAlerta.trim() !== '' ? parseInt(prodEstoqueMinimoAlerta, 10) : 5;
 
     if (editingProduct) {
       updateProduct({
@@ -443,6 +466,10 @@ export const AdminView: React.FC = () => {
         bordas_disponiveis: prodBordasSel,
         massas_disponiveis: prodMassasSel,
         adicionais_disponiveis: prodAdicionaisSel,
+        // Controle de Estoque
+        controlar_estoque: prodControlarEstoque,
+        estoque: prodControlarEstoque ? (isNaN(estoqueNum as number) ? 0 : estoqueNum) : undefined,
+        estoque_minimo_alerta: prodControlarEstoque ? (isNaN(estoqueMinNum as number) ? 5 : estoqueMinNum) : undefined,
         // Fiscal / NFC-e
         ncm: prodNcm.trim() || '19059090',
         cest: prodCest.trim() || undefined,
@@ -475,6 +502,10 @@ export const AdminView: React.FC = () => {
         bordas_disponiveis: prodBordasSel,
         massas_disponiveis: prodMassasSel,
         adicionais_disponiveis: prodAdicionaisSel,
+        // Controle de Estoque
+        controlar_estoque: prodControlarEstoque,
+        estoque: prodControlarEstoque ? (isNaN(estoqueNum as number) ? 0 : estoqueNum) : undefined,
+        estoque_minimo_alerta: prodControlarEstoque ? (isNaN(estoqueMinNum as number) ? 5 : estoqueMinNum) : undefined,
         // Fiscal / NFC-e
         ncm: prodNcm.trim() || '19059090',
         cest: prodCest.trim() || undefined,
@@ -493,6 +524,9 @@ export const AdminView: React.FC = () => {
     setProdDestaque(false);
     setProdEmPromocao(false);
     setProdPrecoPromocional('');
+    setProdControlarEstoque(false);
+    setProdEstoque('');
+    setProdEstoqueMinimoAlerta('5');
     setProdNcm('19059090');
     setProdCest('');
     setProdCodigoBarras('SEM GTIN');
@@ -1193,6 +1227,9 @@ export const AdminView: React.FC = () => {
                   setProdCfop('5102');
                   setProdCsosn('102');
                   setProdOrigem('0');
+                  setProdControlarEstoque(false);
+                  setProdEstoque('');
+                  setProdEstoqueMinimoAlerta('5');
                   setShowAddProductModal(true);
                 }}
                 className="px-4 py-2.5 bg-red-700 hover:bg-red-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
@@ -1201,6 +1238,43 @@ export const AdminView: React.FC = () => {
                 <span>+ Novo Produto</span>
               </button>
             </div>
+
+            {/* Alertas de Estoque de Bebidas e Produtos */}
+            {outOfStockProducts.length > 0 && (
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-between gap-3 text-red-900 text-xs shadow-xs">
+                <div className="flex items-center gap-2.5 font-bold">
+                  <div className="w-7 h-7 rounded-lg bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <span>
+                    {outOfStockProducts.length === 1
+                      ? `Atenção: 1 item com estoque zerado (${outOfStockProducts[0].nome})!`
+                      : `Atenção: ${outOfStockProducts.length} itens com estoque zerado no momento!`}
+                  </span>
+                </div>
+                <span className="text-[11px] font-semibold text-red-700 bg-red-100/80 px-2.5 py-1 rounded-lg">
+                  Consta como ESGOTADO para os clientes
+                </span>
+              </div>
+            )}
+
+            {lowStockProducts.length > 0 && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3 text-amber-900 text-xs shadow-xs">
+                <div className="flex items-center gap-2.5 font-bold">
+                  <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                    <Package className="w-4 h-4" />
+                  </div>
+                  <span>
+                    {lowStockProducts.length === 1
+                      ? `Estoque Baixo: ${lowStockProducts[0].nome} (${lowStockProducts[0].estoque} un restantes)!`
+                      : `Estoque Baixo: ${lowStockProducts.length} produtos/bebidas atingiram o limite de alerta!`}
+                  </span>
+                </div>
+                <span className="text-[11px] font-semibold text-amber-800">
+                  Programe a reposição
+                </span>
+              </div>
+            )}
 
             {/* Products Table */}
             <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
@@ -1214,6 +1288,7 @@ export const AdminView: React.FC = () => {
                       <th className="p-3.5">Categoria</th>
                       <th className="p-3.5">Preço</th>
                       <th className="p-3.5">Promoção</th>
+                      <th className="p-3.5">Estoque</th>
                       <th className="p-3.5">Impressão</th>
                       <th className="p-3.5">Status</th>
                       <th className="p-3.5 text-right">Ações</th>
@@ -1299,6 +1374,60 @@ export const AdminView: React.FC = () => {
                           )}
                         </td>
                         <td className="p-3.5">
+                          {p.controlar_estoque ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase inline-flex items-center gap-1 shadow-2xs ${
+                                    (p.estoque ?? 0) <= 0
+                                      ? 'bg-red-100 text-red-800 border border-red-300'
+                                      : (p.estoque ?? 0) <= (p.estoque_minimo_alerta ?? 5)
+                                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  }`}
+                                >
+                                  <Package className="w-3 h-3" />
+                                  <span>
+                                    {(p.estoque ?? 0) <= 0
+                                      ? 'Esgotado (0 un)'
+                                      : (p.estoque ?? 0) <= (p.estoque_minimo_alerta ?? 5)
+                                      ? `Baixo (${p.estoque} un)`
+                                      : `${p.estoque} un`}
+                                  </span>
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const current = p.estoque ?? 0;
+                                    const updated = Math.max(0, current - 1);
+                                    updateProduct({ ...p, estoque: updated });
+                                  }}
+                                  title="Diminuir 1 un do estoque"
+                                  className="w-5 h-5 rounded bg-stone-100 hover:bg-stone-200 active:scale-90 text-stone-700 flex items-center justify-center font-bold text-xs cursor-pointer border border-stone-200"
+                                >
+                                  -
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const current = p.estoque ?? 0;
+                                    const updated = current + 1;
+                                    updateProduct({ ...p, estoque: updated });
+                                  }}
+                                  title="Adicionar 1 un ao estoque"
+                                  className="w-5 h-5 rounded bg-stone-100 hover:bg-stone-200 active:scale-90 text-stone-700 flex items-center justify-center font-bold text-xs cursor-pointer border border-stone-200"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-stone-400 font-medium">Ilimitado</span>
+                          )}
+                        </td>
+                        <td className="p-3.5">
                           <span
                             className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase ${
                               p.imprime_cozinha
@@ -1310,13 +1439,22 @@ export const AdminView: React.FC = () => {
                           </span>
                         </td>
                         <td className="p-3.5">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              p.ativo ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextStatus = p.ativo === false;
+                              updateProduct({ ...p, ativo: nextStatus });
+                            }}
+                            title={p.ativo !== false ? 'Clique para suspender/pausar este produto no cardápio' : 'Clique para reativar este produto no cardápio'}
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase transition-all duration-150 inline-flex items-center gap-1.5 cursor-pointer shadow-2xs hover:scale-105 active:scale-95 ${
+                              p.ativo !== false
+                                ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300'
+                                : 'bg-stone-200 hover:bg-stone-300 text-stone-700 border border-stone-400'
                             }`}
                           >
-                            {p.ativo ? 'Ativo' : 'Pausado'}
-                          </span>
+                            <span className={`w-2 h-2 rounded-full ${p.ativo !== false ? 'bg-emerald-600 animate-pulse' : 'bg-stone-500'}`} />
+                            <span>{p.ativo !== false ? 'Ativo' : 'Pausado'}</span>
+                          </button>
                         </td>
                         <td className="p-3.5 text-right flex items-center justify-end gap-1">
                           <button
@@ -1340,6 +1478,9 @@ export const AdminView: React.FC = () => {
                               setProdBordasSel(p.bordas_disponiveis || pizzaCrusts.map((c) => c.id));
                               setProdMassasSel(p.massas_disponiveis || pizzaDoughs.map((d) => d.id));
                               setProdAdicionaisSel(p.adicionais_disponiveis || pizzaAddons.map((a) => a.id));
+                              setProdControlarEstoque(!!p.controlar_estoque);
+                              setProdEstoque(p.estoque !== undefined ? p.estoque.toString() : '');
+                              setProdEstoqueMinimoAlerta(p.estoque_minimo_alerta !== undefined ? p.estoque_minimo_alerta.toString() : '5');
                               setProdNcm(p.ncm || '');
                               setProdCest(p.cest || '');
                               setProdCodigoBarras(p.codigo_barras || '');
@@ -2588,7 +2729,16 @@ export const AdminView: React.FC = () => {
                   <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Categoria:</label>
                   <select
                     value={prodCategoria}
-                    onChange={(e) => setProdCategoria(e.target.value)}
+                    onChange={(e) => {
+                      const newCat = e.target.value;
+                      setProdCategoria(newCat);
+                      if (newCat === 'bebidas') {
+                        setProdControlarEstoque(true);
+                        if (!prodEstoque) setProdEstoque('24');
+                        setProdNcm('2202.10.00');
+                        setProdImprimeCozinha(false);
+                      }
+                    }}
                     className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-stone-400 focus:bg-white transition"
                   >
                     {categories.map((c) => (
@@ -2875,6 +3025,74 @@ export const AdminView: React.FC = () => {
                   />
                   <span>Enviar para tela e impressora da cozinha (KDS)</span>
                 </label>
+
+                {/* 📦 Controle de Estoque (Bebidas e Itens com Contagem) */}
+                <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-xs font-bold text-amber-950 dark:text-amber-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={prodControlarEstoque}
+                        onChange={(e) => setProdControlarEstoque(e.target.checked)}
+                        className="accent-amber-600 w-4 h-4 rounded"
+                      />
+                      <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                        <Package className="w-3.5 h-3.5 text-amber-600" />
+                        Controlar Estoque deste Produto (Ex: Bebidas)
+                      </span>
+                    </label>
+                    {prodCategoria === 'bebidas' && !prodControlarEstoque && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProdControlarEstoque(true);
+                          if (!prodEstoque) setProdEstoque('24');
+                        }}
+                        className="text-[10px] text-amber-700 font-bold hover:underline"
+                      >
+                        Recomendado para bebidas
+                      </button>
+                    )}
+                  </div>
+
+                  {prodControlarEstoque && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-amber-200/60 dark:border-amber-800/40">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                          Quantidade Atual em Estoque: *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={prodEstoque}
+                          onChange={(e) => setProdEstoque(e.target.value)}
+                          placeholder="Ex: 24"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-amber-500"
+                        />
+                        <p className="text-[10px] text-stone-500 mt-1">
+                          Ao zerar (0 un), constará como ESGOTADO para os clientes.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-stone-700 dark:text-slate-300 mb-1">
+                          Estoque Mínimo para Alerta:
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={prodEstoqueMinimoAlerta}
+                          onChange={(e) => setProdEstoqueMinimoAlerta(e.target.value)}
+                          placeholder="Ex: 5"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-amber-500"
+                        />
+                        <p className="text-[10px] text-stone-500 mt-1">
+                          Emite alerta para o admin quando atingir este limite.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* 🏛️ Dados Fiscais (NFC-e / SEFAZ) */}
                 <div className="p-3.5 bg-sky-50/70 dark:bg-sky-950/20 rounded-xl border border-sky-200 dark:border-sky-800/50 space-y-3">

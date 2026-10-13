@@ -464,11 +464,19 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     );
   };
 
+  // Validação de disponibilidade de produto (estoque zerado ou pausado pelo admin)
+  const isProductOutOfStock = (p: Product) => !!(p.controlar_estoque && (p.estoque === undefined || p.estoque <= 0));
+  const isProductSuspended = (p: Product) => p.ativo === false;
+  const isProductUnavailable = (p: Product) => isProductSuspended(p) || isProductOutOfStock(p);
+
   // Filter products by active category & search query
   const filteredProducts = useMemo(() => {
     return storeProducts.filter((p) => {
-      if (!p.ativo) return false;
       const hasPromo = isProductPromotionActive(p);
+      const isUnavail = isProductUnavailable(p);
+      // Na aba exclusiva de promoções, não exibe itens indisponíveis/esgotados
+      if (activeCategory === 'promocoes' && isUnavail) return false;
+
       const matchesCategory =
         activeCategory === 'todos' ||
         (activeCategory === 'promocoes' ? (hasPromo || p.destaque) : p.categoria_id === activeCategory);
@@ -550,7 +558,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   // Top 3 Mais Vendidos (com base nas maiores saídas/vendas reais da loja)
   const topSellingProducts = useMemo(() => {
     if (storeProducts.length === 0) return [];
-    const activeProducts = storeProducts.filter((p) => p.ativo);
+    const activeProducts = storeProducts.filter((p) => !isProductUnavailable(p));
     if (activeProducts.length === 0) return [];
 
     return [...activeProducts]
@@ -580,7 +588,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   // Banner Offers Carousel (apenas produtos com PROMOÇÃO ATIVA E VÁLIDA da loja)
   const bannerOffers = useMemo(() => {
-    return storeProducts.filter((p) => isProductPromotionActive(p) && p.ativo);
+    return storeProducts.filter((p) => isProductPromotionActive(p) && !isProductUnavailable(p));
   }, [storeProducts]);
 
   const [bannerIndex, setBannerIndex] = useState(0);
@@ -629,7 +637,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     });
 
     // Se houver produto com promoção ativa, inclui a categoria Promoções
-    const hasActivePromo = storeProducts.some((p) => isProductPromotionActive(p) && p.ativo);
+    const hasActivePromo = storeProducts.some((p) => isProductPromotionActive(p) && !isProductUnavailable(p));
     if (hasActivePromo && !list.some((c) => c.id === 'promocoes')) {
       list.push({ id: 'promocoes', label: 'Promoções', icon: '🔥' });
     }
@@ -638,6 +646,10 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
   }, [availableCategories, storeProducts]);
 
   const handleOpenItemCustomizer = (product: Product) => {
+    if (isUnavailable(product)) {
+      alert(isOutOfStock(product) ? `O produto "${product.nome}" está esgotado no momento!` : `O produto "${product.nome}" está temporariamente indisponível!`);
+      return;
+    }
     if (!storeStatus.isOpen) {
       alert(`O estabelecimento está fechado no momento!\nHorário de atendimento: ${storeStatus.horarioFormatado}.\nNovos pedidos não estão sendo aceitos agora.`);
       return;
@@ -650,6 +662,11 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   const handleConfirmCustomItem = () => {
     if (!selectedBurgerOrItem) return;
+    if (isUnavailable(selectedBurgerOrItem)) {
+      alert(isOutOfStock(selectedBurgerOrItem) ? `O produto "${selectedBurgerOrItem.nome}" está esgotado no momento!` : `O produto "${selectedBurgerOrItem.nome}" está temporariamente indisponível!`);
+      setSelectedBurgerOrItem(null);
+      return;
+    }
     if (!storeStatus.isOpen) {
       alert(`O estabelecimento está fechado no momento!\nHorário de atendimento: ${storeStatus.horarioFormatado}.`);
       setSelectedBurgerOrItem(null);
@@ -682,6 +699,11 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   // Add regular product directly to cart or open customizer
   const handleAddRegularProduct = (product: Product) => {
+    if (isUnavailable(product)) {
+      alert(isOutOfStock(product) ? `O produto "${product.nome}" está esgotado no momento!` : `O produto "${product.nome}" está temporariamente indisponível!`);
+      return;
+    }
+
     if (!storeStatus.isOpen) {
       alert(`O estabelecimento está fechado no momento!\nHorário de funcionamento: ${storeStatus.horarioFormatado}.\nNovos pedidos não estão sendo aceitos agora.`);
       return;
@@ -700,6 +722,15 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
     ) {
       handleOpenItemCustomizer(product);
       return;
+    }
+
+    if (product.controlar_estoque && product.estoque !== undefined) {
+      const existingInCart = cart.find((item) => item.produto_id === product.id && (!item.adicionais || item.adicionais.length === 0));
+      const currentQty = existingInCart ? existingInCart.quantidade : 0;
+      if (currentQty >= product.estoque) {
+        alert(`Quantidade máxima disponível em estoque atingida (${product.estoque} un) para "${product.nome}".`);
+        return;
+      }
     }
 
     const precoEfetivo = getProductEffectivePrice(product);
@@ -752,6 +783,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
   const handleUpdateQuantity = (index: number, newQty: number) => {
     if (newQty < 1) return;
+    const targetItem = cart[index];
+    if (targetItem) {
+      const prod = storeProducts.find((p) => p.id === targetItem.produto_id);
+      if (prod && prod.controlar_estoque && prod.estoque !== undefined && newQty > prod.estoque) {
+        alert(`Quantidade máxima disponível em estoque atingida (${prod.estoque} un) para "${prod.nome}".`);
+        return;
+      }
+    }
     setCart((prev) => {
       const updated = [...prev];
       updated[index] = {
@@ -771,6 +810,25 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
       return;
     }
     if (cart.length === 0 || !clienteNome || !clienteTelefone) return;
+
+    // Validação estrita de estoque e disponibilidade de cada item da sacola
+    for (const item of cart) {
+      const prod = storeProducts.find((p) => p.id === item.produto_id);
+      if (prod) {
+        if (isOutOfStock(prod)) {
+          alert(`O produto "${prod.nome}" está esgotado no momento. Por favor, remova-o da sacola para prosseguir.`);
+          return;
+        }
+        if (isSuspended(prod)) {
+          alert(`O produto "${prod.nome}" está temporariamente pausado. Por favor, remova-o da sacola para prosseguir.`);
+          return;
+        }
+        if (prod.controlar_estoque && prod.estoque !== undefined && item.quantidade > prod.estoque) {
+          alert(`O produto "${prod.nome}" possui apenas ${prod.estoque} unidades disponíveis em estoque.`);
+          return;
+        }
+      }
+    }
     const finalEndereco =
       tipoPedido === 'retirada'
         ? `Retirada na Loja: ${targetLoja.nome}`
@@ -1502,16 +1560,21 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                     {filteredProducts.map((prod) => {
                       const isFav = favorites.includes(prod.id);
                       const isPromo = isProductPromotionActive(prod);
+                      const isOutOfStockItem = isOutOfStock(prod);
+                      const isSuspendedItem = isSuspended(prod);
+                      const isUnavailableItem = isUnavailable(prod);
                       return (
                         <div
                           key={`inicio-prod-${prod.id}`}
                           onClick={() => handleAddRegularProduct(prod)}
                           className={`rounded-2xl p-3 border shadow-xs hover:shadow-md transition-all flex gap-3 cursor-pointer group ${
+                            isUnavailableItem ? 'opacity-80' : ''
+                          } ${
                             isDarkMode ? 'bg-[#1E1E28] border-stone-800' : 'bg-white border-stone-100'
                           }`}
                         >
                           {/* Square Left Image */}
-                          <div className="relative w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800">
+                          <div className={`relative w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800 ${isUnavailableItem ? 'grayscale-75' : ''}`}>
                             <img
                               src={prod.imagem || DEFAULT_FOOD_IMG}
                               alt={prod.nome}
@@ -1521,11 +1584,20 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                                 if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
                               }}
                             />
-                            {prod.isPizza && (
+                            {/* Badges de Estoque / Status */}
+                            {isOutOfStockItem ? (
+                              <span className="absolute top-1 left-1 bg-red-600 text-white font-black text-[8px] px-1.5 py-0.5 rounded shadow-xs uppercase tracking-wider">
+                                Esgotado
+                              </span>
+                            ) : isSuspendedItem ? (
+                              <span className="absolute top-1 left-1 bg-stone-700 text-white font-black text-[8px] px-1.5 py-0.5 rounded shadow-xs uppercase tracking-wider">
+                                Indisponível
+                              </span>
+                            ) : prod.isPizza ? (
                               <span className="absolute bottom-1 left-1 bg-[#FF8A00] text-white font-black text-[8px] px-1 py-0.5 rounded uppercase">
                                 🍕 1/2
                               </span>
-                            )}
+                            ) : null}
                           </div>
 
                           {/* Info on Right */}
@@ -1534,11 +1606,11 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                               <div className="flex items-start justify-between gap-1">
                                 <h4 className="font-bold text-xs sm:text-sm text-stone-900 dark:text-white leading-tight truncate flex items-center gap-1">
                                   <span className="truncate">{prod.nome}</span>
-                                  {isPromo ? (
+                                  {isPromo && !isUnavailableItem ? (
                                     <span className="shrink-0 px-1 py-0.2 rounded bg-red-500 text-white font-black text-[8px] uppercase">
                                       PROMO
                                     </span>
-                                  ) : prod.destaque ? (
+                                  ) : prod.destaque && !isUnavailableItem ? (
                                     <span className="shrink-0">🔥</span>
                                   ) : null}
                                 </h4>
@@ -1553,10 +1625,22 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                                   <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
                                 </button>
                               </div>
-                              <p className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-2 mt-0.5 leading-snug">
-                                {prod.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
-                              </p>
-                              {isPromo && formatPromotionRemaining(prod) && (
+
+                              {isOutOfStockItem ? (
+                                <span className="inline-block mt-0.5 text-[9px] font-bold text-red-600 dark:text-red-400">
+                                  ⚠️ Produto esgotado no momento
+                                </span>
+                              ) : isSuspendedItem ? (
+                                <span className="inline-block mt-0.5 text-[9px] font-bold text-stone-500 dark:text-stone-400">
+                                  Item temporariamente pausado
+                                </span>
+                              ) : (
+                                <p className="text-[11px] text-stone-500 dark:text-stone-400 line-clamp-2 mt-0.5 leading-snug">
+                                  {prod.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
+                                </p>
+                              )}
+
+                              {isPromo && !isUnavailableItem && formatPromotionRemaining(prod) && (
                                 <span className="inline-block mt-0.5 text-[9px] font-bold text-amber-500 font-mono">
                                   ⏱️ {formatPromotionRemaining(prod)}
                                 </span>
@@ -1564,7 +1648,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                             </div>
 
                             <div className="flex items-center justify-between pt-1.5">
-                              {isPromo && prod.preco_promocional ? (
+                              {isPromo && prod.preco_promocional && !isUnavailableItem ? (
                                 <div className="flex items-baseline gap-1">
                                   <span className="text-[#FF8A00] font-black text-sm sm:text-base font-mono">
                                     {formatCurrency(prod.preco_promocional)}
@@ -1579,22 +1663,28 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                                 </span>
                               )}
 
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddRegularProduct(prod);
-                                }}
-                                disabled={!storeStatus.isOpen}
-                                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg font-bold flex items-center justify-center transition shadow-xs active:scale-90 ${
-                                  !storeStatus.isOpen
-                                    ? 'bg-stone-200 dark:bg-stone-700 text-stone-400 cursor-not-allowed'
-                                    : 'bg-[#FF8A00] hover:bg-[#E07A00] text-white cursor-pointer'
-                                }`}
-                                title="Adicionar ao pedido"
-                              >
-                                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                              </button>
+                              {isUnavailableItem ? (
+                                <span className="px-2 py-1 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-400 font-bold text-[10px] uppercase border border-stone-200 dark:border-stone-700 select-none">
+                                  {isOutOfStockItem ? 'Esgotado' : 'Indisponível'}
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddRegularProduct(prod);
+                                  }}
+                                  disabled={!storeStatus.isOpen}
+                                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg font-bold flex items-center justify-center transition shadow-xs active:scale-90 ${
+                                    !storeStatus.isOpen
+                                      ? 'bg-stone-200 dark:bg-stone-700 text-stone-400 cursor-not-allowed'
+                                      : 'bg-[#FF8A00] hover:bg-[#E07A00] text-white cursor-pointer'
+                                  }`}
+                                  title="Adicionar ao pedido"
+                                >
+                                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1666,16 +1756,22 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredProducts.map((prod) => {
                       const isFav = favorites.includes(prod.id);
+                      const isPromo = isProductPromotionActive(prod);
+                      const isOutOfStockItem = isOutOfStock(prod);
+                      const isSuspendedItem = isSuspended(prod);
+                      const isUnavailableItem = isUnavailable(prod);
                       return (
                         <div
                           key={prod.id}
                           onClick={() => handleAddRegularProduct(prod)}
                           className={`rounded-2xl p-3 sm:p-3.5 border shadow-xs hover:shadow-md transition-all flex gap-3 cursor-pointer group ${
+                            isUnavailableItem ? 'opacity-80' : ''
+                          } ${
                             isDarkMode ? 'bg-[#1E1E28] border-stone-800/80' : 'bg-white border-stone-100'
                           }`}
                         >
                           {/* Square Left Image */}
-                          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800">
+                          <div className={`relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800 ${isUnavailableItem ? 'grayscale-75' : ''}`}>
                             <img
                               src={prod.imagem || DEFAULT_FOOD_IMG}
                               alt={prod.nome}
@@ -1685,11 +1781,20 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                                 if (target.src !== DEFAULT_FOOD_IMG) target.src = DEFAULT_FOOD_IMG;
                               }}
                             />
-                            {prod.isPizza && (
+                            {/* Badges de Estoque / Status */}
+                            {isOutOfStockItem ? (
+                              <span className="absolute top-1 left-1 bg-red-600 text-white font-black text-[9px] px-2 py-0.5 rounded-md shadow-xs uppercase tracking-wider">
+                                Esgotado
+                              </span>
+                            ) : isSuspendedItem ? (
+                              <span className="absolute top-1 left-1 bg-stone-700 text-white font-black text-[9px] px-2 py-0.5 rounded-md shadow-xs uppercase tracking-wider">
+                                Indisponível
+                              </span>
+                            ) : prod.isPizza ? (
                               <span className="absolute bottom-1 left-1 bg-[#FF8A00] text-white font-black text-[9px] px-1.5 py-0.5 rounded-md uppercase">
                                 🍕 Meio a Meio
                               </span>
-                            )}
+                            ) : null}
                           </div>
 
                           {/* Info on Right */}
@@ -1698,11 +1803,11 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                               <div className="flex items-start justify-between gap-1">
                                 <h4 className="font-black text-sm text-stone-900 dark:text-white leading-tight line-clamp-1 flex items-center gap-1">
                                   <span className="truncate">{prod.nome}</span>
-                                  {isProductPromotionActive(prod) ? (
+                                  {isPromo && !isUnavailableItem ? (
                                     <span className="shrink-0 px-1.5 py-0.5 rounded bg-red-500 text-white font-black text-[9px] uppercase">
                                       PROMO
                                     </span>
-                                  ) : prod.destaque ? (
+                                  ) : prod.destaque && !isUnavailableItem ? (
                                     <span className="shrink-0">🔥</span>
                                   ) : null}
                                 </h4>
@@ -1717,10 +1822,22 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                                   <Heart className={`w-4 h-4 ${isFav ? 'fill-red-500 text-red-500' : ''}`} />
                                 </button>
                               </div>
-                              <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 mt-1 leading-snug">
-                                {prod.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
-                              </p>
-                              {isProductPromotionActive(prod) && formatPromotionRemaining(prod) && (
+
+                              {isOutOfStockItem ? (
+                                <span className="inline-block mt-1 text-[10px] font-bold text-red-600 dark:text-red-400">
+                                  ⚠️ Produto esgotado no momento
+                                </span>
+                              ) : isSuspendedItem ? (
+                                <span className="inline-block mt-1 text-[10px] font-bold text-stone-500 dark:text-stone-400">
+                                  Item temporariamente pausado
+                                </span>
+                              ) : (
+                                <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 mt-1 leading-snug">
+                                  {prod.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
+                                </p>
+                              )}
+
+                              {isPromo && !isUnavailableItem && formatPromotionRemaining(prod) && (
                                 <span className="inline-block mt-0.5 text-[10px] font-bold text-amber-500 font-mono">
                                   ⏱️ {formatPromotionRemaining(prod)}
                                 </span>
@@ -1728,7 +1845,7 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                             </div>
 
                             <div className="flex items-center justify-between pt-2">
-                              {isProductPromotionActive(prod) && prod.preco_promocional ? (
+                              {isPromo && prod.preco_promocional && !isUnavailableItem ? (
                                 <div className="flex items-baseline gap-1.5">
                                   <span className="text-[#FF8A00] font-black text-base sm:text-lg font-mono">
                                     {formatCurrency(prod.preco_promocional)}
@@ -1743,22 +1860,28 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                                 </span>
                               )}
 
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddRegularProduct(prod);
-                                }}
-                                disabled={!storeStatus.isOpen}
-                                className={`w-8 h-8 rounded-xl font-bold flex items-center justify-center transition shadow-xs active:scale-90 ${
-                                  !storeStatus.isOpen
-                                    ? 'bg-stone-200 dark:bg-stone-700 text-stone-400 cursor-not-allowed'
-                                    : 'bg-[#FF8A00] hover:bg-[#E07A00] text-white cursor-pointer'
-                                }`}
-                                title="Adicionar ao pedido"
-                              >
-                                <Plus className="w-5 h-5" />
-                              </button>
+                              {isUnavailableItem ? (
+                                <span className="px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-400 font-bold text-[11px] uppercase border border-stone-200 dark:border-stone-700 select-none">
+                                  {isOutOfStockItem ? 'Esgotado' : 'Indisponível'}
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddRegularProduct(prod);
+                                  }}
+                                  disabled={!storeStatus.isOpen}
+                                  className={`w-8 h-8 rounded-xl font-bold flex items-center justify-center transition shadow-xs active:scale-90 ${
+                                    !storeStatus.isOpen
+                                      ? 'bg-stone-200 dark:bg-stone-700 text-stone-400 cursor-not-allowed'
+                                      : 'bg-[#FF8A00] hover:bg-[#E07A00] text-white cursor-pointer'
+                                  }`}
+                                  title="Adicionar ao pedido"
+                                >
+                                  <Plus className="w-5 h-5" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

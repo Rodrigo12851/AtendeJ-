@@ -212,6 +212,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     imagem: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&auto=format&fit=crop&q=80',
     ativo: true,
     destaque: true,
+    controlar_estoque: true,
+    estoque: 24,
+    estoque_minimo_alerta: 5,
   },
   {
     id: 'prod_coca_lata',
@@ -222,6 +225,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     preco: 7.0,
     imagem: 'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=600&auto=format&fit=crop&q=80',
     ativo: true,
+    controlar_estoque: true,
+    estoque: 30,
+    estoque_minimo_alerta: 6,
   },
   {
     id: 'prod_guarana_2l',
@@ -232,6 +238,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     preco: 13.0,
     imagem: 'https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?w=600&auto=format&fit=crop&q=80',
     ativo: true,
+    controlar_estoque: true,
+    estoque: 18,
+    estoque_minimo_alerta: 4,
   },
   {
     id: 'prod_agua_sem_gas',
@@ -242,6 +251,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     preco: 4.5,
     imagem: 'https://images.unsplash.com/photo-1560023907-5f313d8750b7?w=600&auto=format&fit=crop&q=80',
     ativo: true,
+    controlar_estoque: true,
+    estoque: 25,
+    estoque_minimo_alerta: 5,
   },
   {
     id: 'prod_agua_com_gas',
@@ -252,6 +264,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     preco: 5.0,
     imagem: 'https://images.unsplash.com/photo-1550505393-fa1972333980?w=600&auto=format&fit=crop&q=80',
     ativo: true,
+    controlar_estoque: true,
+    estoque: 15,
+    estoque_minimo_alerta: 4,
   },
   {
     id: 'prod_heineken',
@@ -262,6 +277,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     preco: 12.0,
     imagem: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=600&auto=format&fit=crop&q=80',
     ativo: true,
+    controlar_estoque: true,
+    estoque: 24,
+    estoque_minimo_alerta: 6,
   },
   {
     id: 'prod_suco_laranja',
@@ -272,6 +290,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     preco: 10.0,
     imagem: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=600&auto=format&fit=crop&q=80',
     ativo: true,
+    controlar_estoque: true,
+    estoque: 12,
+    estoque_minimo_alerta: 3,
   },
 
   // Porções

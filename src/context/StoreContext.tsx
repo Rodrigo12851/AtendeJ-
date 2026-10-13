@@ -1030,6 +1030,28 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const updatedOrders = [newOrder, ...orders].sort(sortOrdersNovosFirst);
 
+    // Deduz estoque para itens com estoque controlado
+    let productsWithStockUpdated = false;
+    const updatedProducts = products.map((p) => {
+      const itemInOrder = preparedItens.find((it) => it.produto_id === p.id);
+      if (p.controlar_estoque && itemInOrder) {
+        const currentStock = p.estoque ?? 0;
+        const newStock = Math.max(0, currentStock - itemInOrder.quantidade);
+        productsWithStockUpdated = true;
+        const prodUpdated = { ...p, estoque: newStock };
+        saveProductToFirestore(prodUpdated);
+        return prodUpdated;
+      }
+      return p;
+    });
+
+    if (productsWithStockUpdated) {
+      setProducts(updatedProducts);
+      try {
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updatedProducts));
+      } catch {}
+    }
+
     const newNotif: SystemNotification = {
       id: `notif_${Date.now()}`,
       tipo: 'novo_pedido',
@@ -1043,6 +1065,38 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const updatedNotifs = [newNotif, ...notifications];
 
+    // Alertas de estoque zerado ou baixo para o admin
+    preparedItens.forEach((it) => {
+      const p = updatedProducts.find((prod) => prod.id === it.produto_id);
+      if (p && p.controlar_estoque) {
+        const stock = p.estoque ?? 0;
+        const minAlert = p.estoque_minimo_alerta ?? 5;
+        if (stock <= 0) {
+          updatedNotifs.unshift({
+            id: `notif_stock_${Date.now()}_${p.id}`,
+            loja_id: activeLojaId,
+            tipo: 'alerta_estoque',
+            titulo: `🚨 Estoque Esgotado: ${p.nome}`,
+            mensagem: `O estoque de "${p.nome}" zerou! O produto foi marcado como esgotado no cardápio.`,
+            data: nowIso,
+            lida: false,
+            pedido_id: nextOrderId,
+          });
+        } else if (stock <= minAlert) {
+          updatedNotifs.unshift({
+            id: `notif_stock_low_${Date.now()}_${p.id}`,
+            loja_id: activeLojaId,
+            tipo: 'alerta_estoque',
+            titulo: `⚠️ Estoque Baixo: ${p.nome}`,
+            mensagem: `Restam apenas ${stock} unidade(s) de "${p.nome}" em estoque.`,
+            data: nowIso,
+            lida: false,
+            pedido_id: nextOrderId,
+          });
+        }
+      }
+    });
+
     setOrders(updatedOrders);
     setComandas(updatedComandas);
     setNotifications(updatedNotifs);
@@ -1054,7 +1108,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       playKitchenBell();
     }
     broadcastSound('kitchen');
-    broadcastSync({ orders: updatedOrders, comandas: updatedComandas, notifications: updatedNotifs });
+    broadcastSync({
+      orders: updatedOrders,
+      comandas: updatedComandas,
+      notifications: updatedNotifs,
+      ...(productsWithStockUpdated ? { products: updatedProducts } : {}),
+    });
 
     return newOrder;
   };
@@ -2108,6 +2167,28 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const updatedOrders = [newOrder, ...orders].sort(sortOrdersNovosFirst);
     const updatedComandas = [newComanda, ...comandas];
 
+    // Deduz estoque para itens com estoque controlado
+    let productsWithStockUpdated = false;
+    const updatedProducts = products.map((p) => {
+      const itemInOrder = preparedItens.find((it) => it.produto_id === p.id);
+      if (p.controlar_estoque && itemInOrder) {
+        const currentStock = p.estoque ?? 0;
+        const newStock = Math.max(0, currentStock - itemInOrder.quantidade);
+        productsWithStockUpdated = true;
+        const prodUpdated = { ...p, estoque: newStock };
+        saveProductToFirestore(prodUpdated);
+        return prodUpdated;
+      }
+      return p;
+    });
+
+    if (productsWithStockUpdated) {
+      setProducts(updatedProducts);
+      try {
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updatedProducts));
+      } catch {}
+    }
+
     const newNotif: SystemNotification = {
       id: `notif_${Date.now()}`,
       loja_id: lojaId,
@@ -2121,6 +2202,38 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const updatedNotifs = [newNotif, ...notifications];
 
+    // Alertas de estoque zerado ou baixo para o admin
+    preparedItens.forEach((it) => {
+      const p = updatedProducts.find((prod) => prod.id === it.produto_id);
+      if (p && p.controlar_estoque) {
+        const stock = p.estoque ?? 0;
+        const minAlert = p.estoque_minimo_alerta ?? 5;
+        if (stock <= 0) {
+          updatedNotifs.unshift({
+            id: `notif_stock_${Date.now()}_${p.id}`,
+            loja_id: lojaId,
+            tipo: 'alerta_estoque',
+            titulo: `🚨 Bebida/Produto Esgotado: ${p.nome}`,
+            mensagem: `O estoque de "${p.nome}" zerou (${stock} un) após o pedido #${nextOrderId}. Consta como esgotado no cardápio!`,
+            data: nowIso,
+            lida: false,
+            pedido_id: nextOrderId,
+          });
+        } else if (stock <= minAlert) {
+          updatedNotifs.unshift({
+            id: `notif_stock_low_${Date.now()}_${p.id}`,
+            loja_id: lojaId,
+            tipo: 'alerta_estoque',
+            titulo: `⚠️ Estoque Baixo: ${p.nome}`,
+            mensagem: `Restam apenas ${stock} unidade(s) de "${p.nome}" em estoque após o pedido #${nextOrderId}.`,
+            data: nowIso,
+            lida: false,
+            pedido_id: nextOrderId,
+          });
+        }
+      }
+    });
+
     setOrders(updatedOrders);
     setComandas(updatedComandas);
     setNotifications(updatedNotifs);
@@ -2131,7 +2244,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       playKitchenBell();
     }
     broadcastSound('kitchen');
-    broadcastSync({ orders: updatedOrders, comandas: updatedComandas, notifications: updatedNotifs });
+    broadcastSync({
+      orders: updatedOrders,
+      comandas: updatedComandas,
+      notifications: updatedNotifs,
+      ...(productsWithStockUpdated ? { products: updatedProducts } : {}),
+    });
 
     return newOrder;
   };

@@ -216,8 +216,11 @@ export interface Product {
   codigo_barras?: string; // EAN/GTIN ou "SEM GTIN"
   cfop?: string;
   origem?: '0' | '1' | '2';
-  csosn?: '102' | '500' | '900';
   unidade_comercial?: string;
+  // Controle de Estoque (Bebidas e Produtos)
+  controlar_estoque?: boolean;
+  estoque?: number;
+  estoque_minimo_alerta?: number;
 }
 
 export interface OrderItem {
@@ -352,7 +355,7 @@ export interface CashRegister {
 export interface SystemNotification {
   id: string;
   loja_id?: string;
-  tipo: 'pedido_pronto' | 'novo_pedido' | 'pedido_novo' | 'pedido_a_caminho' | 'comanda_fechada' | 'alerta_atraso';
+  tipo: 'pedido_pronto' | 'novo_pedido' | 'pedido_novo' | 'pedido_a_caminho' | 'comanda_fechada' | 'alerta_atraso' | 'alerta_estoque';
   titulo: string;
   mensagem: string;
   data: string;
