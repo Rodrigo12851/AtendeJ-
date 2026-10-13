@@ -845,10 +845,10 @@ export const AdminView: React.FC = () => {
       </header>
 
       {/* Main Layout Container: Left Sidebar + Content */}
-      <div className="flex-1 flex flex-col md:flex-row w-full">
-        {/* Left Vertical Sidebar (Desktop / Tablet) */}
-        <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-stone-900 border-r border-stone-800 text-white shrink-0 sticky top-[53px] h-[calc(100vh-53px)] overflow-y-auto z-20 shadow-lg">
-          <div className="p-3 border-b border-stone-800/80">
+      <div className="flex-1 flex flex-col md:flex-row w-full relative">
+        {/* Left Vertical Sidebar (Desktop / Tablet - Fixed on viewport) */}
+        <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-stone-900 border-r border-stone-800 text-white shrink-0 fixed left-0 top-[105px] bottom-0 overflow-y-auto z-30 shadow-2xl">
+          <div className="p-3 border-b border-stone-800/80 shrink-0 bg-stone-900 sticky top-0 z-10">
             <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 py-1">
               Módulos Administrativos
             </p>
@@ -1007,8 +1007,8 @@ export const AdminView: React.FC = () => {
           </nav>
         </aside>
 
-        {/* Main Content Area */}
-        <main className="flex-1 w-full p-4 sm:p-6 lg:p-8 space-y-5 overflow-x-hidden min-w-0">
+        {/* Main Content Area (With left margin on desktop so it doesn't overlap the fixed sidebar) */}
+        <main className="flex-1 w-full md:ml-64 lg:ml-72 p-4 sm:p-6 lg:p-8 space-y-5 overflow-x-hidden min-w-0">
           {/* ================= TAB 0: GRAFICOS DE VENDAS (BI) ================= */}
           {activeTab === 'graficos' && (
           <GraficosVendasPanel
