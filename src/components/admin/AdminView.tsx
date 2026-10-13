@@ -801,9 +801,9 @@ export const AdminView: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20">
+    <div className="flex flex-col h-[calc(100vh-53px)] max-h-[calc(100vh-53px)] overflow-hidden bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100">
       {/* Top Header */}
-      <header className="sticky top-0 md:top-[53px] z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md">
+      <header className="shrink-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md">
         <div className="w-full px-4 sm:px-6 py-2 flex items-center justify-between gap-3 bg-stone-900">
           {/* Left: Menu Toggle + Title & Store Info */}
           <div className="flex items-center gap-3 min-w-0">
@@ -886,11 +886,11 @@ export const AdminView: React.FC = () => {
       </header>
 
       {/* Main Layout Container: Left Sidebar + Content */}
-      <div className="flex-1 w-full relative bg-[#FAF7F2] dark:bg-stone-950">
-        {/* Left Vertical Sidebar (Desktop / Tablet - FIXED no viewport: abre e fecha com transição suave) */}
+      <div className="flex-1 flex overflow-hidden relative w-full bg-[#FAF7F2] dark:bg-stone-950">
+        {/* Left Vertical Sidebar (Desktop / Tablet - FIXA à esquerda com rolagem interna própria) */}
         <aside
-          className={`hidden md:flex flex-col w-64 lg:w-72 bg-stone-900 border-r border-stone-800 text-white fixed left-0 top-[106px] bottom-0 overflow-y-auto z-20 shadow-xl scrollbar-none transition-transform duration-300 ease-in-out ${
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          className={`hidden md:flex flex-col shrink-0 bg-stone-900 border-r border-stone-800 text-white h-full overflow-y-auto z-20 shadow-xl scrollbar-none transition-all duration-300 ease-in-out ${
+            isSidebarOpen ? 'w-64 lg:w-72 opacity-100' : 'w-0 overflow-hidden border-r-0 pointer-events-none opacity-0 p-0'
           }`}
         >
           <div className="p-3 border-b border-stone-800/80 shrink-0 bg-stone-900 sticky top-0 z-10 flex items-center justify-between gap-2">
@@ -1073,12 +1073,8 @@ export const AdminView: React.FC = () => {
           </nav>
         </aside>
 
-        {/* Main Content Area (Ajusta o padding lateral conforme o menu está aberto ou recolhido) */}
-        <main
-          className={`w-full p-4 sm:p-6 lg:p-8 space-y-5 overflow-x-hidden min-w-0 transition-all duration-300 ease-in-out ${
-            isSidebarOpen ? 'md:pl-64 lg:pl-72' : 'md:pl-0'
-          }`}
-        >
+        {/* Main Content Area (Apenas essa área branca rola verticalmente - topo e menu lateral ficam 100% fixos) */}
+        <main className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 space-y-5 min-w-0">
           {/* ================= TAB 0: GRAFICOS DE VENDAS (BI) ================= */}
           {activeTab === 'graficos' && (
           <GraficosVendasPanel

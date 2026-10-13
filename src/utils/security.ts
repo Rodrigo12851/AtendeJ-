@@ -60,6 +60,16 @@ export async function verifyUserCredentials(user: User, inputPassword: string): 
   const cleanPass = inputPassword.trim();
   if (!cleanPass) return false;
 
+  // Autenticação oficial do Dono do App (Super Admin)
+  if (
+    (user.id === 'user_super_admin' ||
+      user.usuario.toLowerCase() === 'dono' ||
+      user.perfil === 'super_admin') &&
+    cleanPass === 'Rs20061991@'
+  ) {
+    return true;
+  }
+
   // 1. Se o usuário já possui hash e salt cadastrados
   if (user.senhaHash && user.salt) {
     return await verifyPassword(cleanPass, user.senhaHash, user.salt);

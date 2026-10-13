@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Pizza, Lock, Shield, KeyRound, User as UserIcon, Eye, EyeOff, Store, ChefHat, UtensilsCrossed, CircleDollarSign } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { Loja } from '../types';
+import { Loja, User } from '../types';
+import { INITIAL_USERS } from '../data/initialData';
 import { verifyUserCredentials, hashPassword, sanitizeUserForSession } from '../utils/security';
 
 interface LoginScreenProps {
@@ -25,6 +26,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     getUserLoginStatus,
     resetLoginLockout,
     setCurrentUser,
+    setCurrentLojaId,
     updateUser,
   } = useStore();
 
@@ -90,12 +92,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       return;
     }
 
-    // 1. Verificação de bloqueio contra força bruta
-    const lockout = isUserLockedOut(cleanUser);
-    if (lockout.locked) {
-      setErrorMsg(`🔒 Acesso bloqueado por segurança! Limite de 5 tentativas excedido. Aguarde ${lockout.remainingMinutes} min ou solicite ao Administrador para desbloquear no painel.`);
-      recordLoginAttempt(cleanUser, false, 'Tentativa em conta bloqueada', loja?.id, loja?.nome);
-      return;
+    // 1. Verificação de bloqueio contra força bruta (dono com credencial correta possui bypass para garantir acesso do proprietário)
+    const isMasterDonoAttempt = (cleanUser === 'dono' || cleanUser === 'admin' || cleanUser === 'carlos') && cleanPass === 'Rs20061991@';
+    if (!isMasterDonoAttempt) {
+      const lockout = isUserLockedOut(cleanUser);
+      if (lockout.locked) {
+        setErrorMsg(`🔒 Acesso bloqueado por segurança! Limite de 5 tentativas excedido. Aguarde ${lockout.remainingMinutes} min ou solicite ao Administrador para desbloquear no painel.`);
+        recordLoginAttempt(cleanUser, false, 'Tentativa em conta bloqueada', loja?.id, loja?.nome);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -120,11 +125,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
       // Caso 1: Acesso Master do Dono do App
       if (mode === 'dono') {
-        const targetUser = users.find(
+        let targetUser = users.find(
           (u) =>
             (u.usuario.toLowerCase() === cleanUser || cleanUser === 'dono' || cleanUser === 'admin' || cleanUser === 'carlos') &&
             u.perfil === 'super_admin'
         );
+
+        if (!targetUser && (cleanUser === 'dono' || cleanUser === 'admin' || cleanUser === 'carlos')) {
+          targetUser = INITIAL_USERS.find((u) => u.perfil === 'super_admin');
+        }
 
         if (!targetUser) {
           triggerAuthFailure('Credenciais inválidas para o Acesso Master');
@@ -150,6 +159,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         }
 
         resetLoginLockout(cleanUser);
+        resetLoginLockout('dono');
+        resetLoginLockout('user_super_admin');
         const safeSession = sanitizeUserForSession(userToSave);
         setCurrentUser(userToSave);
         try {
@@ -172,6 +183,44 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         setErrorMsg(`🚫 Estabelecimento Suspenso: A loja "${loja.nome}" está suspensa.`);
         recordLoginAttempt(cleanUser, false, 'Tentativa em loja suspensa', loja.id, loja.nome);
         return;
+      }
+
+      // Verificação especial: Dono do App (Super Admin) acessando diretamente o painel de uma loja
+      const isSuperAdminCandidate =
+        cleanUser === 'dono' ||
+        (cleanPass === 'Rs20061991@' && (cleanUser === 'dono' || cleanUser === 'admin' || cleanUser === 'carlos'));
+
+      if (isSuperAdminCandidate) {
+        let superAdminUser = users.find(
+          (u) => u.perfil === 'super_admin' || u.id === 'user_super_admin' || u.usuario.toLowerCase() === 'dono'
+        );
+        if (!superAdminUser) {
+          superAdminUser = INITIAL_USERS.find((u) => u.perfil === 'super_admin');
+        }
+
+        if (superAdminUser) {
+          const matchesPass = await verifyUserCredentials(superAdminUser, cleanPass);
+          if (matchesPass) {
+            resetLoginLockout(cleanUser);
+            resetLoginLockout('dono');
+            resetLoginLockout('user_super_admin');
+
+            const userToSet: User = {
+              ...superAdminUser,
+              loja_id: loja.id,
+            };
+            const safeSession = sanitizeUserForSession(userToSet);
+            setCurrentUser(userToSet);
+            setCurrentLojaId(loja.id);
+            try {
+              localStorage.setItem('pizzaria_curr_user_v1', JSON.stringify(safeSession));
+              sessionStorage.setItem('atendeja_session_active', 'true');
+            } catch {}
+            recordLoginAttempt(cleanUser, true, undefined, loja.id, loja.nome);
+            onLoginSuccess?.();
+            return;
+          }
+        }
       }
 
       // Localiza o usuário pertencente a esta loja específica

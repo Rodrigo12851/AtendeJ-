@@ -51,15 +51,21 @@ const MainApp: React.FC = () => {
         return true;
       }
 
-      // 2. If URL targets an exclusive staff panel: session role must match panelParam exactly
+      // 2. If URL targets an exclusive staff panel: session role must match panelParam exactly OR user is super_admin
       if (publicLojaSlug && painelParam) {
+        const isSuperAdmin = parsedUser.perfil === 'super_admin';
         if (targetLoja) {
           const belongsToLoja =
-            parsedUser.loja_id === targetLoja.id || (!parsedUser.loja_id && targetLoja.id === 'loja_centro');
-          if (!belongsToLoja || parsedUser.perfil !== painelParam) {
+            isSuperAdmin ||
+            parsedUser.loja_id === targetLoja.id ||
+            (!parsedUser.loja_id && targetLoja.id === 'loja_centro');
+          const isAllowedRole =
+            isSuperAdmin ||
+            parsedUser.perfil === painelParam;
+          if (!belongsToLoja || !isAllowedRole) {
             return true;
           }
-        } else if (parsedUser.perfil !== painelParam) {
+        } else if (!isSuperAdmin && parsedUser.perfil !== painelParam) {
           return true;
         }
       }
@@ -82,11 +88,15 @@ const MainApp: React.FC = () => {
       }
 
       if (publicLojaSlug && painelParam) {
+        const isSuperAdmin = currentUser.perfil === 'super_admin';
         const belongsToLoja =
+          isSuperAdmin ||
           !targetLoja ||
           currentUser.loja_id === targetLoja.id ||
           (!currentUser.loja_id && targetLoja.id === 'loja_centro');
-        const matchesRole = currentUser.perfil === painelParam;
+        const matchesRole =
+          isSuperAdmin ||
+          currentUser.perfil === painelParam;
 
         if (!belongsToLoja || !matchesRole) {
           setIsLoggedOut(true);
@@ -99,7 +109,11 @@ const MainApp: React.FC = () => {
 
       // Lock current module strictly to role
       if (currentUser.perfil === 'super_admin') {
-        setCurrentModule('super_admin');
+        if (publicLojaSlug && painelParam && ['admin', 'garcom', 'cozinha', 'caixa'].includes(painelParam)) {
+          setCurrentModule(painelParam as UserRole);
+        } else {
+          setCurrentModule('super_admin');
+        }
       } else if (currentUser.perfil === 'garcom') {
         setCurrentModule('garcom');
       } else if (currentUser.perfil === 'cozinha') {
@@ -280,6 +294,12 @@ const MainApp: React.FC = () => {
 
     // Super Admin: Dono do App (SaaS Platform Dashboard)
     if (role === 'super_admin') {
+      if ((publicLojaSlug && painelParam === 'admin') || currentModule === 'admin') {
+        return <AdminView />;
+      }
+      if (currentModule === 'garcom') return <GarcomView />;
+      if (currentModule === 'cozinha') return <CozinhaView />;
+      if (currentModule === 'caixa') return <CaixaView />;
       return <SuperAdminView />;
     }
 
@@ -301,7 +321,7 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans transition-colors duration-200">
+    <div className={`min-h-screen flex flex-col bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans transition-colors duration-200 ${currentModule === 'admin' ? 'h-screen overflow-hidden' : ''}`}>
       <Navbar
         currentModule={currentModule}
         onChangeModule={(mod) => setCurrentModule(mod)}
@@ -311,7 +331,7 @@ const MainApp: React.FC = () => {
         }}
       />
 
-      <div className="flex-1 w-full">
+      <div className={`flex-1 w-full ${currentModule === 'admin' ? 'overflow-hidden flex flex-col' : ''}`}>
         {renderAllowedModule()}
       </div>
     </div>
