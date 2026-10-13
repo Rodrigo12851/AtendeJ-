@@ -100,6 +100,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
     setIsSubmitting(true);
     try {
+      // Helper para mensagem padronizada contra enumeração de usuários (OWASP)
+      const triggerAuthFailure = (motivo: string) => {
+        recordLoginAttempt(cleanUser, false, motivo, loja?.id, loja?.nome);
+        const status = getUserLoginStatus(cleanUser);
+        const newFailCount = status.failedAttempts + 1;
+        const attemptsLeft = Math.max(0, 5 - newFailCount);
+
+        if (newFailCount >= 5) {
+          setErrorMsg(
+            '🔒 Acesso temporariamente bloqueado por segurança! Limite de 5 tentativas atingido. Aguarde 15 minutos ou solicite ao Administrador para desbloquear no painel.'
+          );
+        } else {
+          setErrorMsg(
+            `Usuário ou senha incorretos. Tentativa ${newFailCount} de 5 (${attemptsLeft} tentativa${attemptsLeft > 1 ? 's' : ''} restante${attemptsLeft > 1 ? 's' : ''} antes do bloqueio temporário).`
+          );
+        }
+      };
+
       // Caso 1: Acesso Master do Dono do App
       if (mode === 'dono') {
         const targetUser = users.find(
@@ -109,23 +127,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         );
 
         if (!targetUser) {
-          setErrorMsg('Credenciais inválidas para o Acesso Master.');
-          recordLoginAttempt(cleanUser, false, 'Usuário master inexistente');
+          triggerAuthFailure('Credenciais inválidas para o Acesso Master');
           return;
         }
 
         const matchesPass = await verifyUserCredentials(targetUser, cleanPass);
 
         if (!matchesPass) {
-          recordLoginAttempt(cleanUser, false, 'Senha master incorreta');
-          const status = getUserLoginStatus(cleanUser);
-          const newFailCount = status.failedAttempts + 1;
-          const attemptsLeft = Math.max(0, 5 - newFailCount);
-          if (newFailCount >= 5) {
-            setErrorMsg('🔒 Acesso Master temporariamente bloqueado por 15 minutos (5 tentativas incorretas).');
-          } else {
-            setErrorMsg(`Senha incorreta para o Acesso Master. Tentativa ${newFailCount} de 5 (${attemptsLeft} restante${attemptsLeft > 1 ? 's' : ''}).`);
-          }
+          triggerAuthFailure('Credenciais inválidas para o Acesso Master');
           return;
         }
 
@@ -191,15 +200,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           }
         }
 
-        // Se nenhum conferiu com a senha, seleciona o primeiro para fins de auditoria e mensagem
+        // Se nenhum conferiu com a senha, seleciona o primeiro para fins de auditoria
         if (!matchedUser && roleCandidates.length > 0) {
           matchedUser = roleCandidates[0];
         }
       }
 
+      // Se usuário não existe ou senha não confere, retorna a mesma mensagem neutra para evitar enumeração de contas
       if (!matchedUser) {
-        setErrorMsg('Usuário não encontrado ou não pertence a esta loja.');
-        recordLoginAttempt(cleanUser, false, 'Usuário não encontrado na loja', loja.id, loja.nome);
+        triggerAuthFailure('Credenciais incorretas (usuário inexistente)');
         return;
       }
 
@@ -228,20 +237,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       const matchesPass = await verifyUserCredentials(matchedUser, cleanPass);
 
       if (!matchesPass) {
-        recordLoginAttempt(cleanUser, false, 'Senha incorreta', loja.id, loja.nome);
-        const status = getUserLoginStatus(cleanUser);
-        const newFailCount = status.failedAttempts + 1;
-        const attemptsLeft = Math.max(0, 5 - newFailCount);
-
-        if (newFailCount >= 5) {
-          setErrorMsg(
-            '🔒 Conta temporariamente bloqueada por segurança! Limite de 5 tentativas atingido. Aguarde 15 minutos ou solicite ao Administrador para desbloquear no painel.'
-          );
-        } else {
-          setErrorMsg(
-            `Senha incorreta. Tentativa ${newFailCount} de 5 (${attemptsLeft} tentativa${attemptsLeft > 1 ? 's' : ''} restante${attemptsLeft > 1 ? 's' : ''} antes do bloqueio da conta).`
-          );
-        }
+        triggerAuthFailure('Credenciais incorretas (senha incorreta)');
         return;
       }
 
