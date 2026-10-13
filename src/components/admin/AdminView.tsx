@@ -801,8 +801,8 @@ export const AdminView: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20">
       {/* Top Header */}
       <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md">
-        <div className="w-full px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
-          {/* Title, Store Info */}
+        <div className="w-full px-4 sm:px-6 py-2 flex items-center justify-between gap-3">
+          {/* Left: Title & Store Info */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-red-700 text-white flex items-center justify-center shadow-xs shrink-0">
               <TrendingUp className="w-4 h-4" />
@@ -817,10 +817,37 @@ export const AdminView: React.FC = () => {
             </div>
           </div>
 
-          {/* Test / Developer Mode Indicator */}
-          <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-            <span>Modo Teste / Desenvolvedor</span>
+          {/* Center (Desktop): Vendas do Dia, Mesas Ocupadas, Ticket Médio */}
+          <div className="hidden xl:flex items-center gap-6 px-4 py-1 rounded-xl bg-stone-950/70 border border-stone-800">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Vendas do Dia:</span>
+              <span className="text-xs sm:text-sm font-mono font-bold text-white">{formatCurrency(totalSales)}</span>
+            </div>
+            <div className="w-px h-4 bg-stone-800" />
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Mesas Ocupadas:</span>
+              <span className="text-xs sm:text-sm font-mono font-bold text-white">{tables.filter(t => t.status === 'ocupada').length} / {tables.length}</span>
+            </div>
+            <div className="w-px h-4 bg-stone-800" />
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-stone-400 tracking-wider">Ticket Médio:</span>
+              <span className="text-xs sm:text-sm font-mono font-bold text-white">{formatCurrency(ticketMedio)}</span>
+            </div>
+          </div>
+
+          {/* Right: Sistema Online Badge & Mode Indicator */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {/* Sistema Online Badge */}
+            <span className="hidden sm:flex px-2.5 py-1 bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold rounded-full items-center gap-1.5 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Sistema Online</span>
+            </span>
+
+            {/* Test / Developer Mode Indicator */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+              <span>Modo Teste / Desenvolvedor</span>
+            </div>
           </div>
         </div>
 
@@ -847,7 +874,7 @@ export const AdminView: React.FC = () => {
       {/* Main Layout Container: Left Sidebar + Content */}
       <div className="flex-1 flex flex-col md:flex-row w-full relative">
         {/* Left Vertical Sidebar (Desktop / Tablet - Fixed on viewport) */}
-        <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-stone-900 border-r border-stone-800 text-white shrink-0 fixed left-0 top-[105px] bottom-0 overflow-y-auto z-30 shadow-2xl">
+        <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-stone-900 border-r border-stone-800 text-white shrink-0 fixed left-0 top-[53px] bottom-0 overflow-y-auto z-30 shadow-2xl">
           <div className="p-3 border-b border-stone-800/80 shrink-0 bg-stone-900 sticky top-0 z-10">
             <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 py-1">
               Módulos Administrativos

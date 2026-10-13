@@ -585,8 +585,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentModule, onChangeModule, o
         )}
       </div>
 
-      {/* Desktop Metric & Status Bar - Exclusivo para ADMIN da loja */}
-      {currentUser?.perfil === 'admin' && (
+      {/* Desktop Metric & Status Bar - Exclusivo para ADMIN da loja quando NÃO estiver no painel ADMIN */}
+      {currentUser?.perfil === 'admin' && currentModule !== 'admin' && (
         <div className="hidden md:block bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm border-b border-stone-200/90 dark:border-stone-800 px-4 sm:px-6 py-2.5 shadow-xs">
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-6 sm:gap-10">
