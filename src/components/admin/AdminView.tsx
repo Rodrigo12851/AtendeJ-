@@ -800,8 +800,8 @@ export const AdminView: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-[#FAF7F2] dark:bg-stone-950 text-stone-900 dark:text-stone-100 pb-20">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md">
-        <div className="w-full px-4 sm:px-6 py-2 flex items-center justify-between gap-3">
+      <header className="sticky top-0 md:top-[53px] z-30 bg-stone-900 text-white border-b border-stone-800 shadow-md">
+        <div className="w-full px-4 sm:px-6 py-2 flex items-center justify-between gap-3 bg-stone-900">
           {/* Left: Title & Store Info */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-red-700 text-white flex items-center justify-center shadow-xs shrink-0">
@@ -852,7 +852,7 @@ export const AdminView: React.FC = () => {
         </div>
 
         {/* Mobile Tab Selector (Visible on small screens) */}
-        <div className="md:hidden px-4 pb-2.5 w-full">
+        <div className="md:hidden px-4 pb-2.5 w-full bg-stone-900">
           <select
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value as any)}
@@ -872,9 +872,9 @@ export const AdminView: React.FC = () => {
       </header>
 
       {/* Main Layout Container: Left Sidebar + Content */}
-      <div className="flex-1 flex flex-col md:flex-row w-full items-start">
-        {/* Left Vertical Sidebar (Desktop / Tablet - Sticky, flows seamlessly with header) */}
-        <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-stone-900 border-r border-stone-800 text-white shrink-0 sticky top-[53px] h-[calc(100vh-53px)] overflow-y-auto z-20 shadow-xl scrollbar-none">
+      <div className="flex-1 flex flex-col md:flex-row w-full items-start bg-[#FAF7F2] dark:bg-stone-950">
+        {/* Left Vertical Sidebar (Desktop / Tablet - Sticky top-[106px] h-[calc(100vh-106px)] - seamlessly fixed on scroll) */}
+        <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-stone-900 border-r border-stone-800 text-white shrink-0 sticky top-[106px] h-[calc(100vh-106px)] overflow-y-auto z-20 shadow-xl scrollbar-none">
           <div className="p-3 border-b border-stone-800/80 shrink-0 bg-stone-900 sticky top-0 z-10">
             <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 px-3 py-1">
               Módulos Administrativos
