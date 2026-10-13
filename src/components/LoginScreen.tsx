@@ -139,10 +139,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         }
 
         let userToSave = targetUser;
-        // Migração automática de senha pura para hash SHA-256 + salt
-        if (!targetUser.senhaHash || targetUser.senha) {
+        // Migração automática de senha pura para hash SHA-256 + salt (mantendo senha legível para o admin)
+        if (!targetUser.senhaHash || !targetUser.salt) {
           const { hash, salt } = await hashPassword(cleanPass);
-          userToSave = { ...targetUser, senhaHash: hash, salt, senha: '' };
+          userToSave = { ...targetUser, senha: cleanPass, senhaHash: hash, salt };
+          updateUser(userToSave);
+        } else if (!targetUser.senha) {
+          userToSave = { ...targetUser, senha: cleanPass };
           updateUser(userToSave);
         }
 
@@ -247,11 +250,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         resetLoginLockout(matchedUser.usuario);
       }
 
-      // Migração automática de senha legada para hash SHA-256 + salt
+      // Migração automática de senha legada para hash SHA-256 + salt (mantendo senha legível para o admin consultar)
       let userToSet = matchedUser;
-      if (!matchedUser.senhaHash || matchedUser.senha) {
+      if (!matchedUser.senhaHash || !matchedUser.salt) {
         const { hash, salt } = await hashPassword(cleanPass);
-        userToSet = { ...matchedUser, senhaHash: hash, salt, senha: '' };
+        userToSet = { ...matchedUser, senha: cleanPass, senhaHash: hash, salt };
+        updateUser(userToSet);
+      } else if (!matchedUser.senha) {
+        userToSet = { ...matchedUser, senha: cleanPass };
         updateUser(userToSet);
       }
 
