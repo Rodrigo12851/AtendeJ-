@@ -17,7 +17,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   painelAlvo = 'admin',
   onLoginSuccess,
 }) => {
-  const { users, lojas, recordLoginAttempt, isUserLockedOut, setCurrentUser, updateUser } = useStore();
+  const {
+    users,
+    lojas,
+    recordLoginAttempt,
+    isUserLockedOut,
+    getUserLoginStatus,
+    resetLoginLockout,
+    setCurrentUser,
+    updateUser,
+  } = useStore();
 
   // Credenciais de Usuário e Senha
   const [usernameInput, setUsernameInput] = useState('');
@@ -84,7 +93,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     // 1. Verificação de bloqueio contra força bruta
     const lockout = isUserLockedOut(cleanUser);
     if (lockout.locked) {
-      setErrorMsg(`🔒 Acesso bloqueado por segurança! Aguarde ${lockout.remainingMinutes} min.`);
+      setErrorMsg(`🔒 Acesso bloqueado por segurança! Limite de 5 tentativas excedido. Aguarde ${lockout.remainingMinutes} min ou solicite ao Administrador para desbloquear no painel.`);
       recordLoginAttempt(cleanUser, false, 'Tentativa em conta bloqueada', loja?.id, loja?.nome);
       return;
     }
@@ -108,8 +117,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         const matchesPass = await verifyUserCredentials(targetUser, cleanPass);
 
         if (!matchesPass) {
-          setErrorMsg('Senha incorreta para o Acesso Master.');
           recordLoginAttempt(cleanUser, false, 'Senha master incorreta');
+          const status = getUserLoginStatus(cleanUser);
+          const newFailCount = status.failedAttempts + 1;
+          const attemptsLeft = Math.max(0, 5 - newFailCount);
+          if (newFailCount >= 5) {
+            setErrorMsg('🔒 Acesso Master temporariamente bloqueado por 15 minutos (5 tentativas incorretas).');
+          } else {
+            setErrorMsg(`Senha incorreta para o Acesso Master. Tentativa ${newFailCount} de 5 (${attemptsLeft} restante${attemptsLeft > 1 ? 's' : ''}).`);
+          }
           return;
         }
 
@@ -121,6 +137,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           updateUser(userToSave);
         }
 
+        resetLoginLockout(cleanUser);
         const safeSession = sanitizeUserForSession(userToSave);
         setCurrentUser(userToSave);
         try {
@@ -146,17 +163,39 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       }
 
       // Localiza o usuário pertencente a esta loja específica
-      const matchedUser = users.find((u) => {
+      // 1. Busca primeiro por correspondência EXATA de usuário (ou nome)
+      let matchedUser = users.find((u) => {
         const belongsToLoja = u.loja_id === loja.id || (!u.loja_id && loja.id === 'loja_centro');
         if (!belongsToLoja || u.ativo === false) return false;
 
-        if (u.usuario.toLowerCase() === cleanUser) return true;
-        if (cleanUser === 'garcom' && u.perfil === 'garcom') return true;
-        if (cleanUser === 'cozinha' && u.perfil === 'cozinha') return true;
-        if (cleanUser === 'caixa' && u.perfil === 'caixa') return true;
-        if (cleanUser === 'admin' && u.perfil === 'admin') return true;
-        return false;
+        return (
+          u.usuario.toLowerCase() === cleanUser ||
+          u.nome.toLowerCase() === cleanUser ||
+          u.nome.toLowerCase().replace(/\s+/g, '.') === cleanUser
+        );
       });
+
+      // 2. Se não encontrou por username exato e digitou um perfil ('admin', 'garcom', 'cozinha', 'caixa'),
+      // procura entre os colaboradores da loja com esse perfil qual confere com a senha digitada!
+      if (!matchedUser && ['admin', 'garcom', 'cozinha', 'caixa'].includes(cleanUser)) {
+        const roleCandidates = users.filter((u) => {
+          const belongsToLoja = u.loja_id === loja.id || (!u.loja_id && loja.id === 'loja_centro');
+          return belongsToLoja && u.ativo !== false && u.perfil === cleanUser;
+        });
+
+        for (const candidate of roleCandidates) {
+          const ok = await verifyUserCredentials(candidate, cleanPass);
+          if (ok) {
+            matchedUser = candidate;
+            break;
+          }
+        }
+
+        // Se nenhum conferiu com a senha, seleciona o primeiro para fins de auditoria e mensagem
+        if (!matchedUser && roleCandidates.length > 0) {
+          matchedUser = roleCandidates[0];
+        }
+      }
 
       if (!matchedUser) {
         setErrorMsg('Usuário não encontrado ou não pertence a esta loja.');
@@ -189,12 +228,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       const matchesPass = await verifyUserCredentials(matchedUser, cleanPass);
 
       if (!matchesPass) {
-        setErrorMsg('Senha incorreta.');
         recordLoginAttempt(cleanUser, false, 'Senha incorreta', loja.id, loja.nome);
+        const status = getUserLoginStatus(cleanUser);
+        const newFailCount = status.failedAttempts + 1;
+        const attemptsLeft = Math.max(0, 5 - newFailCount);
+
+        if (newFailCount >= 5) {
+          setErrorMsg(
+            '🔒 Conta temporariamente bloqueada por segurança! Limite de 5 tentativas atingido. Aguarde 15 minutos ou solicite ao Administrador para desbloquear no painel.'
+          );
+        } else {
+          setErrorMsg(
+            `Senha incorreta. Tentativa ${newFailCount} de 5 (${attemptsLeft} tentativa${attemptsLeft > 1 ? 's' : ''} restante${attemptsLeft > 1 ? 's' : ''} antes do bloqueio da conta).`
+          );
+        }
         return;
       }
 
-      // Migração automática de senha pura para hash SHA-256 + salt
+      // Login bem-sucedido: limpa o contador de tentativas falhas
+      resetLoginLockout(cleanUser);
+      if (matchedUser.usuario.toLowerCase() !== cleanUser) {
+        resetLoginLockout(matchedUser.usuario);
+      }
+
+      // Migração automática de senha legada para hash SHA-256 + salt
       let userToSet = matchedUser;
       if (!matchedUser.senhaHash || matchedUser.senha) {
         const { hash, salt } = await hashPassword(cleanPass);

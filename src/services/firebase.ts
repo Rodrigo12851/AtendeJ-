@@ -21,7 +21,7 @@ import {
   User as FirebaseUser,
 } from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
-import { Loja, Table, Comanda, Order, Product, Category, LoginAttempt } from '../types';
+import { Loja, Table, Comanda, Order, Product, Category, LoginAttempt, User } from '../types';
 
 // Configuração padrão de fallback para garantir funcionamento em ambientes sem .env (ex: deploy inicial na Vercel)
 const DEFAULT_FIREBASE_CONFIG = {
@@ -100,11 +100,31 @@ export const FIRESTORE_COLLECTIONS = {
   PRODUCTS: 'produtos',
   CATEGORIES: 'categorias',
   LOGIN_ATTEMPTS: 'tentativas_login',
+  USERS: 'usuarios',
 } as const;
 
 // ==========================================
 // HELPERS DE GRAVAÇÃO (COM TRATAMENTO DE ERRO)
 // ==========================================
+
+export async function saveUserToFirestore(user: User): Promise<void> {
+  try {
+    const docRef = doc(db, FIRESTORE_COLLECTIONS.USERS, user.id);
+    const cleanData = JSON.parse(JSON.stringify(user));
+    await setDoc(docRef, cleanData, { merge: true });
+  } catch (error) {
+    console.warn('[Firestore] Falha ao salvar usuário na nuvem:', error);
+  }
+}
+
+export async function deleteUserFromFirestore(userId: string): Promise<void> {
+  try {
+    const docRef = doc(db, FIRESTORE_COLLECTIONS.USERS, userId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.warn('[Firestore] Falha ao excluir usuário na nuvem:', error);
+  }
+}
 
 export async function saveLojaToFirestore(loja: Loja): Promise<void> {
   try {

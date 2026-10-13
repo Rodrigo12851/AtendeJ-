@@ -120,6 +120,8 @@ export interface User {
   ativo: boolean;
   avatar?: string;
   telefone?: string;
+  bloqueado_ate?: string;
+  tentativas_falhas?: number;
 }
 
 export type SafeUser = Omit<User, 'senha' | 'senhaHash' | 'salt'>;

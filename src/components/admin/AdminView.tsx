@@ -39,6 +39,12 @@ import {
   Zap,
   QrCode,
   FileText,
+  Lock,
+  Unlock,
+  ShieldAlert,
+  ShieldCheck,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, Table, User, Category } from '../../types';
@@ -56,6 +62,7 @@ export const AdminView: React.FC = () => {
     categories,
     tables,
     users,
+    currentUser,
     orders,
     comandas,
     addProduct,
@@ -67,6 +74,8 @@ export const AdminView: React.FC = () => {
     updateUser,
     deleteUser,
     toggleUserStatus,
+    getUserLoginStatus,
+    resetLoginLockout,
     currentLojaId,
     currentLoja,
     updateLoja,
@@ -152,14 +161,43 @@ export const AdminView: React.FC = () => {
 
   // New User Form State
   const [userName, setUserName] = useState('');
+  const [userLogin, setUserLogin] = useState('');
   const [userRole, setUserRole] = useState<'garcom' | 'cozinha' | 'caixa' | 'admin'>('garcom');
   const [userSenha, setUserSenha] = useState('');
+  const [showAddUserPassword, setShowAddUserPassword] = useState(false);
+
+  // Edit User Modal State
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editUserName, setEditUserName] = useState('');
+  const [editUserLogin, setEditUserLogin] = useState('');
+  const [editUserRole, setEditUserRole] = useState<'garcom' | 'cozinha' | 'caixa' | 'admin'>('garcom');
+  const [editUserSenha, setEditUserSenha] = useState('');
+  const [editUserAtivo, setEditUserAtivo] = useState(true);
+  const [showEditUserPassword, setShowEditUserPassword] = useState(false);
+
+  // Quick Password Reset Modal
+  const [passwordModalUser, setPasswordModalUser] = useState<User | null>(null);
+  const [quickNewPassword, setQuickNewPassword] = useState('');
+  const [showQuickPassword, setShowQuickPassword] = useState(false);
 
   // Store-filtered users (avoids leaking staff between different stores)
   const storeUsers = useMemo(() => {
     const lojaId = currentLoja?.id || currentLojaId;
-    return users.filter((u) => u.loja_id === lojaId && u.perfil !== 'super_admin');
-  }, [users, currentLoja, currentLojaId]);
+    return users
+      .filter((u) => {
+        if (u.perfil === 'super_admin') return false;
+        if (u.loja_id) return u.loja_id === lojaId;
+        return lojaId === 'loja_centro' || lojaId === 'todas';
+      })
+      .sort((a, b) => {
+        // Coloca o usuário atual primeiro, depois administradores
+        if (currentUser && a.id === currentUser.id) return -1;
+        if (currentUser && b.id === currentUser.id) return 1;
+        if (a.perfil === 'admin' && b.perfil !== 'admin') return -1;
+        if (b.perfil === 'admin' && a.perfil !== 'admin') return 1;
+        return a.nome.localeCompare(b.nome);
+      });
+  }, [users, currentLoja, currentLojaId, currentUser]);
 
   // Helper para extrair hora inicial e final de strings como "18:00 às 23:30"
   const parseStoreHours = (horarioStr?: string) => {
@@ -588,26 +626,141 @@ export const AdminView: React.FC = () => {
   // Handle Save User
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userName.trim()) return;
-    if (userSenha.trim().length < 6) {
+    const cleanNome = userName.trim();
+    const cleanLogin = (userLogin.trim() || cleanNome.toLowerCase().replace(/\s+/g, '.')).toLowerCase();
+    const cleanSenha = userSenha.trim();
+
+    if (!cleanNome) {
+      alert('Preencha o nome do colaborador.');
+      return;
+    }
+    if (!cleanLogin) {
+      alert('Preencha o login do colaborador.');
+      return;
+    }
+    if (cleanSenha.length < 6) {
       alert('A senha do colaborador deve conter no mínimo 6 caracteres.');
       return;
     }
-    const { hash, salt } = await hashPassword(userSenha.trim());
+
+    const targetLojaId = currentLoja?.id || (currentLojaId === 'todas' ? 'loja_centro' : currentLojaId);
+
+    // Verifica se já existe esse login na mesma loja
+    const loginJaExiste = users.some(
+      (u) => u.usuario.toLowerCase() === cleanLogin && (u.loja_id === targetLojaId || !u.loja_id)
+    );
+    if (loginJaExiste) {
+      alert(`O login "${cleanLogin}" já está sendo usado por outro colaborador. Escolha outro login.`);
+      return;
+    }
+
+    const { hash, salt } = await hashPassword(cleanSenha);
     addUser({
-      nome: userName.trim(),
-      usuario: userName.trim().toLowerCase().replace(/\s+/g, '.'),
+      nome: cleanNome,
+      usuario: cleanLogin,
       senhaHash: hash,
       salt,
       senha: '',
       pin: '',
       perfil: userRole,
       ativo: true,
-      loja_id: currentLoja?.id,
+      loja_id: targetLojaId,
     });
+
+    alert(`Colaborador cadastrado com sucesso!\n\nNome: ${cleanNome}\nLogin: ${cleanLogin}\nFunção: ${userRole}\nSenha: ${cleanSenha}`);
     setUserName('');
+    setUserLogin('');
     setUserSenha('');
     setShowAddUserModal(false);
+  };
+
+  // Abrir modal de edição de usuário
+  const handleOpenEditUser = (u: User) => {
+    setEditingUser(u);
+    setEditUserName(u.nome);
+    setEditUserLogin(u.usuario);
+    setEditUserRole((u.perfil === 'super_admin' ? 'admin' : u.perfil) as any);
+    setEditUserSenha('');
+    setEditUserAtivo(u.ativo !== false);
+    setShowEditUserPassword(false);
+  };
+
+  // Salvar edição de usuário
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    const cleanNome = editUserName.trim();
+    const cleanLogin = editUserLogin.trim().toLowerCase();
+    const cleanSenha = editUserSenha.trim();
+
+    if (!cleanNome) {
+      alert('Preencha o nome do colaborador.');
+      return;
+    }
+    if (!cleanLogin) {
+      alert('Preencha o login do colaborador.');
+      return;
+    }
+
+    // Verifica se alterou o login e já existe em outro usuário da mesma loja
+    if (cleanLogin !== editingUser.usuario.toLowerCase()) {
+      const loginJaExiste = users.some(
+        (u) => u.id !== editingUser.id && u.usuario.toLowerCase() === cleanLogin
+      );
+      if (loginJaExiste) {
+        alert(`O login "${cleanLogin}" já está sendo usado por outro colaborador.`);
+        return;
+      }
+    }
+
+    let updatedUser: User = {
+      ...editingUser,
+      nome: cleanNome,
+      usuario: cleanLogin,
+      perfil: editUserRole,
+      ativo: editUserAtivo,
+    };
+
+    // Se forneceu nova senha, atualiza o hash SHA-256 + salt e limpa plain text
+    if (cleanSenha) {
+      if (cleanSenha.length < 6) {
+        alert('A nova senha deve conter no mínimo 6 caracteres.');
+        return;
+      }
+      const { hash, salt } = await hashPassword(cleanSenha);
+      updatedUser = {
+        ...updatedUser,
+        senhaHash: hash,
+        salt,
+        senha: '',
+      };
+    }
+
+    updateUser(updatedUser);
+    alert(`Dados de "${cleanNome}" atualizados com sucesso!`);
+    setEditingUser(null);
+  };
+
+  // Salvar troca rápida de senha
+  const handleSaveQuickPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordModalUser) return;
+    const cleanPass = quickNewPassword.trim();
+    if (cleanPass.length < 6) {
+      alert('A nova senha deve conter no mínimo 6 caracteres.');
+      return;
+    }
+    const { hash, salt } = await hashPassword(cleanPass);
+    updateUser({
+      ...passwordModalUser,
+      senhaHash: hash,
+      salt,
+      senha: '',
+    });
+    alert(`Senha de ${passwordModalUser.nome} atualizada com sucesso!`);
+    setPasswordModalUser(null);
+    setQuickNewPassword('');
   };
 
   return (
@@ -1559,90 +1712,208 @@ export const AdminView: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                storeUsers.map((u) => (
-                  <div
-                    key={u.id}
-                    className={`p-4 rounded-2xl border shadow-xs flex items-center justify-between transition ${
-                      u.ativo ? 'bg-white border-stone-200' : 'bg-stone-100/70 border-stone-300 opacity-75'
-                    }`}
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-stone-900 dark:text-slate-100">{u.nome}</h4>
+                storeUsers.map((u) => {
+                  const userStatus = getUserLoginStatus(u.usuario);
+                  const isLocked = userStatus.locked;
+                  const isCurrentUser = currentUser?.id === u.id;
+
+                  return (
+                    <div
+                      key={u.id}
+                      className={`p-4 rounded-2xl border shadow-xs flex flex-col justify-between gap-3 transition ${
+                        isLocked
+                          ? 'bg-red-50/70 border-red-300 dark:bg-red-950/30 dark:border-red-800'
+                          : u.ativo
+                          ? 'bg-white border-stone-200 dark:bg-stone-900 dark:border-stone-800'
+                          : 'bg-stone-100/70 border-stone-300 opacity-75 dark:bg-stone-900/50 dark:border-stone-800'
+                      }`}
+                    >
+                      {/* Top Row: User Info & Status */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+                              u.perfil === 'admin' || u.perfil === 'super_admin'
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                                : u.perfil === 'garcom'
+                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                                : u.perfil === 'cozinha'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                            }`}
+                          >
+                            {u.perfil === 'admin' || u.perfil === 'super_admin' ? (
+                              <Store className="w-4 h-4" />
+                            ) : u.perfil === 'garcom' ? (
+                              <UtensilsCrossed className="w-4 h-4" />
+                            ) : u.perfil === 'cozinha' ? (
+                              <ChefHat className="w-4 h-4" />
+                            ) : (
+                              <CircleDollarSign className="w-4 h-4" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="text-sm font-bold text-stone-900 dark:text-slate-100 truncate">
+                                {u.nome}
+                              </h4>
+                              {isCurrentUser && (
+                                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                                  Você
+                                </span>
+                              )}
+                            </div>
+                            <span
+                              className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                u.perfil === 'admin' || u.perfil === 'super_admin'
+                                  ? 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'
+                                  : u.perfil === 'garcom'
+                                  ? 'bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800'
+                                  : u.perfil === 'cozinha'
+                                  ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                              }`}
+                            >
+                              {u.perfil === 'admin'
+                                ? 'Administrador'
+                                : u.perfil === 'garcom'
+                                ? 'Garçom'
+                                : u.perfil === 'cozinha'
+                                ? 'Cozinha / Pizzaiolo'
+                                : 'Operador de Caixa'}
+                            </span>
+                          </div>
+                        </div>
+
                         <button
                           onClick={() => toggleUserStatus(u.id)}
                           title={u.ativo ? 'Clique para desativar acesso' : 'Clique para ativar acesso'}
-                          className={`px-1.5 py-0.2 rounded-md text-[9px] font-bold uppercase transition cursor-pointer ${
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase transition cursor-pointer shrink-0 ${
                             u.ativo
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-amber-100 hover:text-amber-800'
-                              : 'bg-stone-300 text-stone-700 dark:text-slate-300 hover:bg-emerald-100 hover:text-emerald-800'
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-amber-100 hover:text-amber-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                              : 'bg-stone-200 text-stone-600 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-stone-800 dark:text-stone-400'
                           }`}
                         >
                           {u.ativo ? 'Ativo' : 'Inativo'}
                         </button>
                       </div>
-                      <div className="text-xs space-y-1 pt-1 font-mono">
-                        <div className="text-stone-600 dark:text-stone-300">
-                          Login: <strong className="text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded">{u.usuario}</strong>
+
+                      {/* Middle: Login & Senha Display */}
+                      <div className="bg-stone-50 dark:bg-stone-800/60 p-2.5 rounded-xl border border-stone-200/80 dark:border-stone-700/60 text-xs font-mono space-y-1">
+                        <div className="flex items-center justify-between text-stone-600 dark:text-stone-300">
+                          <span className="font-sans text-[11px] text-stone-500">Login:</span>
+                          <div className="flex items-center gap-1.5">
+                            <strong className="text-stone-900 dark:text-white bg-white dark:bg-stone-900 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-700">
+                              {u.usuario}
+                            </strong>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(u.usuario);
+                                alert(`Login "${u.usuario}" copiado para a área de transferência!`);
+                              }}
+                              title="Copiar Login"
+                              className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="text-stone-600 dark:text-stone-300">
-                          Senha: <span className="text-stone-400 font-sans tracking-widest">••••••••</span>
+                        <div className="flex items-center justify-between text-stone-600 dark:text-stone-300">
+                          <span className="font-sans text-[11px] text-stone-500">Senha:</span>
+                          <span className="text-stone-400 font-sans tracking-widest text-xs">••••••••</span>
+                        </div>
+                      </div>
+
+                      {/* Lockout & Security Feedback */}
+                      {isLocked ? (
+                        <div className="p-2.5 bg-red-100/90 dark:bg-red-950/60 border border-red-300 dark:border-red-800 rounded-xl space-y-2">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-red-800 dark:text-red-200">
+                            <Lock className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                            <span>Bloqueado por 5 falhas consecutivas</span>
+                          </div>
+                          <p className="text-[11px] text-red-700 dark:text-red-300">
+                            Bloqueio automático restando {userStatus.remainingMinutes} min.
+                          </p>
+                          <button
+                            onClick={() => {
+                              resetLoginLockout(u.usuario);
+                              alert(`Conta de ${u.nome} (${u.usuario}) desbloqueada com sucesso! O colaborador já pode fazer login.`);
+                            }}
+                            className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+                          >
+                            <Unlock className="w-3.5 h-3.5" />
+                            <span>Desbloquear Acesso Agora</span>
+                          </button>
+                        </div>
+                      ) : userStatus.failedAttempts > 0 ? (
+                        <div className="flex items-center justify-between px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-[11px]">
+                          <span className="text-amber-800 dark:text-amber-300 font-semibold flex items-center gap-1">
+                            <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{userStatus.failedAttempts} de 5 falhas recentes</span>
+                          </span>
+                          <button
+                            onClick={() => {
+                              resetLoginLockout(u.usuario);
+                              alert(`Tentativas falhas de ${u.nome} zeradas com sucesso!`);
+                            }}
+                            className="text-stone-600 dark:text-stone-300 hover:text-stone-900 underline font-bold cursor-pointer"
+                          >
+                            Zerar falhas
+                          </button>
+                        </div>
+                      ) : null}
+
+                      {/* Bottom Actions Bar */}
+                      <div className="flex items-center justify-between pt-2 border-t border-stone-100 dark:border-stone-800">
+                        <span className="text-[11px] text-stone-400 font-medium">Ações:</span>
+                        <div className="flex items-center gap-1">
+                          {/* Editar Colaborador Completo (Nome, Login, Cargo, Senha) */}
+                          <button
+                            onClick={() => handleOpenEditUser(u)}
+                            title="Editar Dados, Cargo ou Senha"
+                            className="px-2.5 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-stone-500" />
+                            <span>Editar</span>
+                          </button>
+
+                          {/* Trocar Senha Rápido */}
+                          <button
+                            onClick={() => {
+                              setPasswordModalUser(u);
+                              setQuickNewPassword('');
+                              setShowQuickPassword(false);
+                            }}
+                            title="Alterar Senha do Colaborador"
+                            className="p-1.5 text-stone-500 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition cursor-pointer"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+
+                          {/* Excluir Colaborador (não permite excluir o usuário logado no momento) */}
+                          {!isCurrentUser && (
+                            <button
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Tem certeza que deseja excluir o colaborador "${u.nome}"? Ele perderá todo o acesso ao sistema.`
+                                  )
+                                ) {
+                                  deleteUser(u.id);
+                                }
+                              }}
+                              title="Excluir Colaborador / Revogar Acesso"
+                              className="p-1.5 text-stone-400 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                          u.perfil === 'admin' || u.perfil === 'super_admin'
-                            ? 'bg-red-50 text-red-800 border border-red-200'
-                            : u.perfil === 'garcom'
-                            ? 'bg-blue-50 text-blue-800 border border-blue-200'
-                            : u.perfil === 'cozinha'
-                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                            : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                        }`}
-                      >
-                        {u.perfil}
-                      </span>
-
-                      <div className="flex items-center gap-1">
-                        {/* Alterar Senha */}
-                        <button
-                          onClick={async () => {
-                            const newPass = prompt(`Definir nova senha para "${u.nome}" (mínimo 6 caracteres):`);
-                            if (newPass !== null) {
-                              if (newPass.trim().length < 6) {
-                                alert('A senha deve conter no mínimo 6 caracteres.');
-                                return;
-                              }
-                              const { hash, salt } = await hashPassword(newPass.trim());
-                              updateUser({ ...u, senhaHash: hash, salt, senha: '' });
-                              alert(`Senha de ${u.nome} atualizada com sucesso!`);
-                            }
-                          }}
-                          title="Alterar Senha do Colaborador"
-                          className="p-1.5 text-stone-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition cursor-pointer"
-                        >
-                          <KeyRound className="w-4 h-4" />
-                        </button>
-
-                        {/* Excluir Colaborador */}
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`Tem certeza que deseja excluir o colaborador "${u.nome}"? Ele perderá todo o acesso ao sistema.`)) {
-                              deleteUser(u.id);
-                            }
-                          }}
-                          title="Excluir Colaborador / Revogar Acesso"
-                          className="p-1.5 text-stone-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -2862,63 +3133,350 @@ export const AdminView: React.FC = () => {
       {/* Add User Modal */}
       {showAddUserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 border border-stone-200">
-            <h3 className="text-base font-bold text-stone-900 dark:text-slate-100">Cadastrar Colaborador</h3>
-            <form onSubmit={handleSaveUser} className="space-y-3">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-stone-200 dark:border-stone-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 flex items-center justify-center">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 dark:text-white">Cadastrar Colaborador</h3>
+                  <p className="text-[11px] text-stone-500">Crie o acesso para garçom, cozinha, caixa ou admin.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddUserModal(false)}
+                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUser} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Nome Completo:</label>
+                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  Nome Completo:
+                </label>
                 <input
                   type="text"
                   required
                   value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setUserName(val);
+                    if (!userLogin || userLogin === userName.trim().toLowerCase().replace(/\s+/g, '.')) {
+                      setUserLogin(val.trim().toLowerCase().replace(/\s+/g, '.'));
+                    }
+                  }}
                   placeholder="Ex: Lucas Silva"
-                  className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-stone-400 focus:bg-white transition"
+                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300 mb-1">Função / Perfil:</label>
-                <select
-                  value={userRole}
-                  onChange={(e) => setUserRole(e.target.value as any)}
-                  className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-bold capitalize text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-stone-400 focus:bg-white transition"
-                >
-                  <option value="garcom">Garçom</option>
-                  <option value="cozinha">Cozinha / Pizzaiolo</option>
-                  <option value="caixa">Operador de Caixa</option>
-                  <option value="admin">Administrador / Gerente</option>
-                </select>
-              </div>
+
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-slate-300">
-                    Senha de Acesso:
+                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Login / Usuário de Acesso:
                   </label>
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Mín. 6 chars</span>
+                  <span className="text-[10px] text-stone-400">Usado para entrar no sistema</span>
                 </div>
                 <input
                   type="text"
-                  minLength={6}
                   required
-                  value={userSenha}
-                  onChange={(e) => setUserSenha(e.target.value)}
-                  placeholder="Senha do colaborador (mín. 6 caracteres)"
-                  className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-mono text-stone-900 dark:text-slate-100 focus:outline-hidden focus:border-stone-400 focus:bg-white transition"
+                  value={userLogin}
+                  onChange={(e) => setUserLogin(e.target.value.toLowerCase().replace(/\s+/g, '.'))}
+                  placeholder="Ex: lucas.silva ou lucas"
+                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-mono text-stone-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  Função / Cargo:
+                </label>
+                <select
+                  value={userRole}
+                  onChange={(e) => setUserRole(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-bold capitalize text-stone-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition cursor-pointer"
+                >
+                  <option value="garcom">Garçom (Salão e Mesas)</option>
+                  <option value="cozinha">Cozinha / Pizzaiolo (KDS)</option>
+                  <option value="caixa">Operador de Caixa (PDV e Fechamento)</option>
+                  <option value="admin">Administrador / Gerente</option>
+                </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Senha de Acesso:
+                  </label>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Mín. 6 caracteres</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showAddUserPassword ? 'text' : 'password'}
+                    minLength={6}
+                    required
+                    value={userSenha}
+                    onChange={(e) => setUserSenha(e.target.value)}
+                    placeholder="Digite a senha (mínimo 6 caracteres)"
+                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-mono text-stone-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAddUserPassword(!showAddUserPassword)}
+                    className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
+                  >
+                    {showAddUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Informative Preview Card */}
+              <div className="p-3 bg-stone-100 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700 text-[11px] text-stone-600 dark:text-stone-300 space-y-1 font-mono">
+                <div className="font-sans font-bold text-stone-700 dark:text-stone-200">Resumo de Acesso:</div>
+                <div>Login: <strong>{userLogin || '...'}</strong></div>
+                <div>Função: <strong>{userRole}</strong></div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-stone-100 dark:border-stone-800">
                 <button
                   type="button"
                   onClick={() => setShowAddUserModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-xl transition cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-bold bg-red-700 hover:bg-red-800 text-white rounded-xl shadow-xs transition cursor-pointer"
+                  className="px-5 py-2 text-xs font-bold bg-red-700 hover:bg-red-800 text-white rounded-xl shadow-xs transition cursor-pointer"
                 >
-                  Cadastrar
+                  Cadastrar Colaborador
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal (Editar Colaborador Completo) */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-stone-200 dark:border-stone-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 flex items-center justify-center">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 dark:text-white">
+                    Editar Colaborador
+                  </h3>
+                  <p className="text-[11px] text-stone-500">
+                    Altere nome, login, função e senha de acesso.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditUser} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  Nome Completo:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editUserName}
+                  onChange={(e) => setEditUserName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  Login / Usuário de Acesso:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editUserLogin}
+                  onChange={(e) => setEditUserLogin(e.target.value.toLowerCase().replace(/\s+/g, '.'))}
+                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-mono text-stone-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  Função / Cargo:
+                </label>
+                <select
+                  value={editUserRole}
+                  onChange={(e) => setEditUserRole(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-bold capitalize text-stone-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition cursor-pointer"
+                >
+                  <option value="garcom">Garçom (Salão e Mesas)</option>
+                  <option value="cozinha">Cozinha / Pizzaiolo (KDS)</option>
+                  <option value="caixa">Operador de Caixa (PDV e Fechamento)</option>
+                  <option value="admin">Administrador / Gerente</option>
+                </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Nova Senha (Opcional):
+                  </label>
+                  <span className="text-[10px] text-stone-400">Deixe em branco para manter a atual</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showEditUserPassword ? 'text' : 'password'}
+                    minLength={6}
+                    value={editUserSenha}
+                    onChange={(e) => setEditUserSenha(e.target.value)}
+                    placeholder="Deixe em branco ou digite nova senha (mín. 6 chars)"
+                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-mono text-stone-900 dark:text-white focus:ring-2 focus:ring-red-500/20 focus:border-red-600 outline-none transition pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditUserPassword(!showEditUserPassword)}
+                    className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
+                  >
+                    {showEditUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+                  Status da Conta:
+                </label>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-xs text-stone-700 dark:text-stone-300 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editUserStatus"
+                      checked={editUserAtivo}
+                      onChange={() => setEditUserAtivo(true)}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">Ativo (Acesso Liberado)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-stone-700 dark:text-stone-300 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="editUserStatus"
+                      checked={!editUserAtivo}
+                      onChange={() => setEditUserAtivo(false)}
+                      className="text-stone-600 focus:ring-stone-500"
+                    />
+                    <span className="font-semibold text-stone-500">Inativo (Acesso Bloqueado)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-stone-100 dark:border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  Salvar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Password Change Modal */}
+      {passwordModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-stone-900 rounded-3xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-stone-200 dark:border-stone-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 dark:text-white">Alterar Senha</h3>
+                  <p className="text-[11px] text-stone-500">{passwordModalUser.nome}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPasswordModalUser(null)}
+                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickPassword} className="space-y-3.5">
+              <div className="p-2.5 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200/80 dark:border-stone-700/60 text-xs">
+                <div className="text-stone-500 text-[11px]">Colaborador:</div>
+                <div className="font-bold text-stone-900 dark:text-white">{passwordModalUser.nome}</div>
+                <div className="font-mono text-stone-600 dark:text-stone-300 text-[11px] mt-0.5">
+                  Login: <strong>{passwordModalUser.usuario}</strong>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Nova Senha:
+                  </label>
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Mín. 6 chars</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showQuickPassword ? 'text' : 'password'}
+                    minLength={6}
+                    required
+                    value={quickNewPassword}
+                    onChange={(e) => setQuickNewPassword(e.target.value)}
+                    placeholder="Digite a nova senha"
+                    className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-mono text-stone-900 dark:text-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600 outline-none transition pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickPassword(!showQuickPassword)}
+                    className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
+                  >
+                    {showQuickPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-stone-100 dark:border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setPasswordModalUser(null)}
+                  className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs transition cursor-pointer"
+                >
+                  Atualizar Senha
                 </button>
               </div>
             </form>

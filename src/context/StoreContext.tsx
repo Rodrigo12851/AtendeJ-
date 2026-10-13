@@ -55,6 +55,8 @@ import {
   deleteProductFromFirestore,
   saveCustomizationsToFirestore,
   seedInitialFirestoreIfEmpty,
+  saveUserToFirestore,
+  deleteUserFromFirestore,
 } from '../services/firebase';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
 
@@ -157,6 +159,7 @@ interface StoreContextType {
   loginAttempts: LoginAttempt[];
   recordLoginAttempt: (usuario: string, sucesso: boolean, motivo?: string, lojaId?: string, lojaNome?: string) => void;
   clearLoginAttempts: (filter?: 'todas' | 'antigas_7dias') => Promise<void>;
+  getUserLoginStatus: (usuario: string) => { locked: boolean; failedAttempts: number; remainingMinutes?: number };
   isUserLockedOut: (usuario: string) => { locked: boolean; remainingMinutes?: number };
   resetLoginLockout: (usuario: string) => void;
   createDeliveryOrder: (
@@ -212,7 +215,10 @@ const ensureLojaTokens = (stores: Loja[]): Loja[] => {
 const ensureUsersWithSecurePasswords = (userList: User[]): User[] => {
   const updated = [...userList];
   for (const initUser of INITIAL_USERS) {
-    if (!updated.some((u) => u.usuario.toLowerCase() === initUser.usuario.toLowerCase())) {
+    const exists = updated.some(
+      (u) => u.id === initUser.id || u.usuario.toLowerCase() === initUser.usuario.toLowerCase()
+    );
+    if (!exists) {
       updated.push(initUser);
     }
   }
@@ -583,12 +589,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [loginAttempts]);
 
-  // Listen to cross-tab storage changes for lojas
+  // Listen to cross-tab storage changes for lojas, users e loginAttempts
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === STORAGE_KEYS.LOJAS && e.newValue) {
         try {
           setLojas(JSON.parse(e.newValue));
+        } catch {}
+      }
+      if (e.key === STORAGE_KEYS.USERS && e.newValue) {
+        try {
+          setUsers(JSON.parse(e.newValue));
+        } catch {}
+      }
+      if (e.key === STORAGE_KEYS.LOGIN_ATTEMPTS && e.newValue) {
+        try {
+          setLoginAttempts(JSON.parse(e.newValue));
         } catch {}
       }
     };
@@ -606,6 +622,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           if (event.data?.type === 'SYNC') {
             const data = event.data.payload;
             if (data.lojas) setLojas(data.lojas);
+            if (data.users) setUsers(data.users);
+            if (data.loginAttempts) setLoginAttempts(data.loginAttempts);
             if (data.tables) setTables(data.tables);
             if (data.orders) setOrders([...data.orders].sort(sortOrdersNovosFirst));
             if (data.comandas) setComandas(data.comandas);
@@ -732,6 +750,27 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       (err) => console.warn('[Firestore Customizations Error]:', err.message)
     );
 
+    // 8. Escuta Usuários da nuvem em tempo real
+    const unsubUsers = onSnapshot(
+      collection(db, FIRESTORE_COLLECTIONS.USERS),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const remoteUsers = snapshot.docs.map((d) => d.data() as User);
+          setUsers((prev) => {
+            const map = new Map<string, User>();
+            prev.forEach((u) => map.set(u.id, u));
+            remoteUsers.forEach((u) => map.set(u.id, u));
+            const merged = Array.from(map.values());
+            try {
+              localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
+        }
+      },
+      (err) => console.warn('[Firestore Users Error]:', err.message)
+    );
+
     return () => {
       unsubLojas();
       unsubTables();
@@ -740,6 +779,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       unsubLoginAttempts();
       unsubProducts();
       unsubCustomizations();
+      unsubUsers();
     };
   }, []);
 
@@ -757,6 +797,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             notifications,
             products,
             ingredients,
+            users,
+            loginAttempts,
             ...override,
           },
         });
@@ -1628,20 +1670,43 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     const updated = [...users, newUser];
     setUsers(updated);
-    broadcastSync();
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Erro ao salvar usuários no localStorage:', e);
+    }
+    saveUserToFirestore(newUser);
+    broadcastSync({ users: updated });
   };
 
   const updateUser = (updatedUser: User) => {
     const updated = users.map((u) => (u.id === updatedUser.id ? updatedUser : u));
     setUsers(updated);
-    if (currentUser.id === updatedUser.id) {
-      setCurrentUser(updatedUser);
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Erro ao salvar usuários no localStorage:', e);
     }
+    if (currentUser && currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+      try {
+        const safeSession = sanitizeUserForSession(updatedUser);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(safeSession));
+      } catch {}
+    }
+    saveUserToFirestore(updatedUser);
+    broadcastSync({ users: updated });
   };
 
   const deleteUser = (id: string) => {
     const updated = users.filter((u) => u.id !== id);
     setUsers(updated);
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Erro ao excluir usuário no localStorage:', e);
+    }
+    deleteUserFromFirestore(id);
     broadcastSync({ users: updated });
   };
 
@@ -1914,15 +1979,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const isUserLockedOut = (usuario: string): { locked: boolean; remainingMinutes?: number } => {
-    if (!usuario) return { locked: false };
+  const getUserLoginStatus = (
+    usuario: string
+  ): { locked: boolean; failedAttempts: number; remainingMinutes?: number } => {
+    if (!usuario) return { locked: false, failedAttempts: 0 };
     const cleanUser = usuario.trim().toLowerCase();
     const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
 
-    const userAttempts = loginAttempts.filter(
-      (a) => a.usuario.toLowerCase() === cleanUser &&
-             new Date(a.data_hora).getTime() > fifteenMinutesAgo
-    );
+    const userAttempts = loginAttempts
+      .filter(
+        (a) =>
+          a.usuario.toLowerCase() === cleanUser &&
+          new Date(a.data_hora).getTime() > fifteenMinutesAgo
+      )
+      .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
 
     let consecutiveFailures = 0;
     let mostRecentFailureTime = 0;
@@ -1938,15 +2008,29 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const elapsedMs = Date.now() - mostRecentFailureTime;
       const remainingMs = 15 * 60 * 1000 - elapsedMs;
       const remainingMinutes = Math.max(1, Math.ceil(remainingMs / (60 * 1000)));
-      return { locked: true, remainingMinutes };
+      return { locked: true, failedAttempts: consecutiveFailures, remainingMinutes };
     }
 
-    return { locked: false };
+    return { locked: false, failedAttempts: consecutiveFailures };
+  };
+
+  const isUserLockedOut = (usuario: string): { locked: boolean; remainingMinutes?: number } => {
+    const status = getUserLoginStatus(usuario);
+    return { locked: status.locked, remainingMinutes: status.remainingMinutes };
   };
 
   const resetLoginLockout = (usuario: string) => {
     const cleanUser = usuario.trim().toLowerCase();
-    setLoginAttempts((prev) => prev.filter((a) => a.usuario.toLowerCase() !== cleanUser));
+    const remaining = loginAttempts.filter((a) => a.usuario.toLowerCase() !== cleanUser);
+    setLoginAttempts(remaining);
+    try {
+      localStorage.setItem(STORAGE_KEYS.LOGIN_ATTEMPTS, JSON.stringify(remaining));
+    } catch {}
+    const toDelete = loginAttempts.filter((a) => a.usuario.toLowerCase() === cleanUser);
+    if (toDelete.length > 0) {
+      clearAllLoginAttemptsFromFirestore(toDelete.map((a) => a.id));
+    }
+    broadcastSync({ loginAttempts: remaining });
   };
 
   const createDeliveryOrder = (
@@ -2293,6 +2377,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         loginAttempts,
         recordLoginAttempt,
         clearLoginAttempts,
+        getUserLoginStatus,
         isUserLockedOut,
         resetLoginLockout,
         createDeliveryOrder,
