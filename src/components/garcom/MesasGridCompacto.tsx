@@ -151,11 +151,11 @@ export const MesasGridCompacto: React.FC<MesasGridCompactoProps> = ({
       <div className="bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-800 rounded-xl shadow-xs p-3 space-y-2.5">
         {/* Status Count Buttons / Filter Chips */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+          <div className="flex items-center gap-1 sm:gap-1.5 text-xs font-bold overflow-x-auto no-scrollbar scrollbar-none w-full sm:w-auto pb-0.5 sm:pb-0">
             <button
               type="button"
               onClick={() => setFilterStatus('todas')}
-              className={`px-3 py-1.5 rounded-lg border transition cursor-pointer ${
+              className={`px-2 sm:px-3 py-1.5 rounded-lg border transition cursor-pointer whitespace-nowrap text-[11px] sm:text-xs shrink-0 ${
                 filterStatus === 'todas'
                   ? 'bg-stone-900 dark:bg-slate-800 text-white border-stone-900 dark:border-slate-700 shadow-xs'
                   : 'bg-stone-100 dark:bg-slate-950 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-800 hover:bg-stone-200/70'
@@ -167,39 +167,39 @@ export const MesasGridCompacto: React.FC<MesasGridCompactoProps> = ({
             <button
               type="button"
               onClick={() => setFilterStatus('livre')}
-              className={`px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2 sm:px-3 py-1.5 rounded-lg border transition flex items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs shrink-0 ${
                 filterStatus === 'livre'
                   ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
                   : 'bg-emerald-50 dark:bg-slate-950 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 hover:bg-emerald-100/70'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 shrink-0" />
               LIVRES ({freeCount})
             </button>
 
             <button
               type="button"
               onClick={() => setFilterStatus('ocupada')}
-              className={`px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2 sm:px-3 py-1.5 rounded-lg border transition flex items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs shrink-0 ${
                 filterStatus === 'ocupada'
                   ? 'bg-red-700 text-white border-red-800 shadow-xs'
                   : 'bg-red-50 dark:bg-slate-950 text-red-800 dark:text-red-400 border-red-200 dark:border-red-900/60 hover:bg-red-100/70'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-red-600" />
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-600 shrink-0" />
               OCUPADAS ({occupiedCount})
             </button>
 
             <button
               type="button"
               onClick={() => setFilterStatus('aguardando_fechamento')}
-              className={`px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2 sm:px-3 py-1.5 rounded-lg border transition flex items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs shrink-0 ${
                 filterStatus === 'aguardando_fechamento'
                   ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
                   : 'bg-amber-50 dark:bg-slate-950 text-amber-900 dark:text-amber-400 border-amber-200 dark:border-amber-900/60 hover:bg-amber-100/70'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
               FECHANDO ({closingCount})
             </button>
 
@@ -207,7 +207,7 @@ export const MesasGridCompacto: React.FC<MesasGridCompactoProps> = ({
               <button
                 type="button"
                 onClick={() => setFilterStatus('reservada')}
-                className={`px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2 sm:px-3 py-1.5 rounded-lg border transition flex items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs shrink-0 ${
                   filterStatus === 'reservada'
                     ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
                     : 'bg-blue-50 dark:bg-slate-950 text-blue-900 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 hover:bg-blue-100/70'

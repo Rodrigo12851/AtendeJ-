@@ -150,11 +150,11 @@ export const MesasGrid: React.FC<MesasGridProps> = ({
 
       {/* Refined Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 border border-stone-200 rounded-xl shadow-xs">
-        {/* Status Count Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        {/* Status Count Pills - Uma única linha no celular */}
+        <div className="grid grid-cols-4 sm:flex sm:flex-wrap items-center gap-1 sm:gap-1.5 w-full sm:w-auto">
           <button
             onClick={() => setFilterStatus('todas')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition cursor-pointer ${
+            className={`px-1.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg border transition cursor-pointer text-center truncate ${
               filterStatus === 'todas'
                 ? 'bg-stone-900 dark:bg-slate-800 text-white border-stone-900 dark:border-slate-700 shadow-xs'
                 : 'bg-stone-100 dark:bg-slate-900 text-stone-700 dark:text-slate-300 border-stone-200 dark:border-slate-800 hover:bg-stone-200/70 dark:hover:bg-slate-800'
@@ -164,36 +164,36 @@ export const MesasGrid: React.FC<MesasGridProps> = ({
           </button>
           <button
             onClick={() => setFilterStatus('livre')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-1.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg border transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer truncate ${
               filterStatus === 'livre'
                 ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
                 : 'bg-emerald-50 dark:bg-slate-900 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 hover:bg-emerald-100/70 dark:hover:bg-slate-800'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            Livre ({freeCount})
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 shrink-0" />
+            <span className="truncate">Livre ({freeCount})</span>
           </button>
           <button
             onClick={() => setFilterStatus('ocupada')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-1.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg border transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer truncate ${
               filterStatus === 'ocupada'
                 ? 'bg-red-700 text-white border-red-800 shadow-xs'
                 : 'bg-red-50 dark:bg-slate-900 text-red-800 dark:text-red-400 border-red-200 dark:border-red-900/60 hover:bg-red-100/70 dark:hover:bg-slate-800'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-red-600" />
-            Ocupada ({occupiedCount - closingCount})
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-600 shrink-0" />
+            <span className="truncate">Ocupada ({occupiedCount - closingCount})</span>
           </button>
           <button
             onClick={() => setFilterStatus('aguardando_fechamento')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-1.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg border transition flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer truncate ${
               filterStatus === 'aguardando_fechamento'
                 ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
                 : 'bg-amber-50 dark:bg-slate-900 text-amber-900 dark:text-amber-400 border-amber-200 dark:border-amber-900/60 hover:bg-amber-100/70 dark:hover:bg-slate-800'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            Fechar ({closingCount})
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+            <span className="truncate">Fechar ({closingCount})</span>
           </button>
         </div>
 
