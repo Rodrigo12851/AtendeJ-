@@ -379,7 +379,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
       </header>
 
       {/* Main Content Area: Cards Mode vs Compact List Mode */}
-      <main className="p-3 sm:p-4 max-w-5xl mx-auto w-full flex-1">
+      <main className="p-3 sm:p-5 max-w-[1920px] mx-auto w-full flex-1">
         {filteredProducts.length === 0 ? (
           <div className="py-16 text-center text-stone-500 space-y-2 p-6 rounded-3xl border border-dashed border-stone-300 dark:border-stone-800">
             <p className="text-sm font-bold text-stone-700 dark:text-stone-300">Nenhum produto encontrado.</p>
@@ -519,7 +519,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
           /* ========================================================== */
           /* MODO CARDS (ESTILO CARDÁPIO DO CLIENTE COM FOTO E DETALHE) */
           /* ========================================================== */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4">
             {filteredProducts.map((product) => {
               const cartInfo = getCartInfoForProduct(product.id);
               const finalPrice = product.em_promocao && product.preco_promocional ? product.preco_promocional : product.preco;
@@ -529,12 +529,12 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                 <div
                   key={product.id}
                   onClick={() => handleQuickAdd(product)}
-                  className={`rounded-2xl p-3 sm:p-3.5 border shadow-xs hover:shadow-md transition-all flex gap-3 cursor-pointer group relative bg-white border-stone-200/90 dark:bg-[#1E1E28] dark:border-stone-800 ${
+                  className={`rounded-2xl p-3.5 sm:p-4 border shadow-xs hover:shadow-md transition-all flex gap-3.5 cursor-pointer group relative bg-white border-stone-200/90 dark:bg-[#1E1E28] dark:border-stone-800 ${
                     cartInfo.inCart ? 'border-[#FF8A00] ring-2 ring-[#FF8A00]/25' : ''
                   }`}
                 >
-                  {/* Foto quadrada à esquerda com cantos arredondados */}
-                  <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700">
+                  {/* Foto generosa quadrada à esquerda com cantos arredondados */}
+                  <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden shrink-0 bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700">
                     <img
                       src={product.imagem || DEFAULT_FOOD_IMG}
                       alt={product.nome}
@@ -565,7 +565,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                   <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                     <div>
                       <div className="flex items-start justify-between gap-1">
-                        <h4 className="font-black text-sm text-stone-900 dark:text-white leading-tight line-clamp-1 flex items-center gap-1">
+                        <h4 className="font-black text-sm sm:text-base text-stone-900 dark:text-white leading-tight line-clamp-2 flex items-center gap-1">
                           <span className="truncate">{product.nome}</span>
                           {product.destaque && <span className="shrink-0 text-xs">🔥</span>}
                         </h4>
@@ -576,7 +576,7 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                         )}
                       </div>
 
-                      <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 mt-1 leading-snug">
+                      <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2 sm:line-clamp-3 mt-1.5 leading-snug">
                         {product.descricao || 'Preparado artesanalmente com ingredientes selecionados.'}
                       </p>
                     </div>
