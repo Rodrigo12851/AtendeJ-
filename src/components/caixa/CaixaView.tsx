@@ -1079,8 +1079,8 @@ export const CaixaView: React.FC = () => {
                 />
               </div>
 
-              {/* Orders List */}
-              <div className="space-y-2.5 max-h-[64vh] overflow-y-auto pr-1 flex-1">
+              {/* Orders List: cresce dinamicamente com os pedidos */}
+              <div className="space-y-2.5 min-h-[220px] max-h-[78vh] overflow-y-auto pr-1 flex-1 transition-all">
                 {deliveryOrders.length === 0 ? (
                   <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs space-y-1.5">
                     <Bike className="w-8 h-8 mx-auto opacity-50 text-emerald-600 dark:text-emerald-400" />
@@ -1413,8 +1413,8 @@ export const CaixaView: React.FC = () => {
                 />
               </div>
 
-              {/* Orders List */}
-              <div className="space-y-2.5 max-h-[64vh] overflow-y-auto pr-1 flex-1">
+              {/* Orders List: cresce dinamicamente com os pedidos */}
+              <div className="space-y-2.5 min-h-[220px] max-h-[78vh] overflow-y-auto pr-1 flex-1 transition-all">
                 {retiradaOrders.length === 0 ? (
                   <div className="py-12 text-center text-stone-400 dark:text-slate-500 text-xs space-y-1.5">
                     <ShoppingBag className="w-8 h-8 mx-auto opacity-50 text-amber-600 dark:text-amber-400" />

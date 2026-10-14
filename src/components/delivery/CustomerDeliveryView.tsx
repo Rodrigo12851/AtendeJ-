@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../../context/StoreContext';
 import { Product, OrderItem, Loja, Order, OrderStatus } from '../../types';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatPhone } from '../../utils/formatters';
 import { sortOrdersNovosFirst } from '../../utils/orderSorting';
 import { getStoreOpenStatus } from '../../utils/storeHours';
 import { PizzaCustomizerModal } from '../garcom/PizzaCustomizerModal';
@@ -2324,12 +2324,6 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
 
             {/* Cart Items & Form */}
             <form onSubmit={handleConfirmOrder} className="p-5 overflow-y-auto space-y-4 flex-1">
-              {profileLoaded && clienteNome && (
-                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center gap-2 text-[11px] text-amber-700 dark:text-amber-300">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  <span>Seus dados foram preenchidos automaticamente do seu último pedido!</span>
-                </div>
-              )}
 
               {/* Items List */}
               <div className="space-y-2 border-b border-stone-100 dark:border-stone-800 pb-4">
@@ -2381,15 +2375,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   <button
                     type="button"
                     onClick={() => setTipoPedido('delivery')}
-                    className={`p-3 rounded-2xl border-2 text-left font-bold text-xs transition flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                    className={`py-2 px-2.5 rounded-xl border text-center font-bold text-xs transition flex flex-col items-center justify-center cursor-pointer ${
                       tipoPedido === 'delivery'
-                        ? 'border-red-600 bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-200 shadow-xs'
-                        : 'border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                        ? 'border-red-600 bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-200 shadow-2xs ring-1 ring-red-500/30'
+                        : 'border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 text-stone-700 dark:text-stone-300 hover:bg-stone-100'
                     }`}
                   >
-                    <span className="text-base">🛵</span>
-                    <span>Entrega em Domicílio</span>
-                    <span className="text-[10px] font-normal text-stone-500 dark:text-stone-400">
+                    <span className="leading-tight">Entrega em Domicílio</span>
+                    <span className="text-[10px] font-normal text-stone-500 dark:text-stone-400 mt-0.5">
                       Taxa: {targetLoja.taxa_entrega ? formatCurrency(targetLoja.taxa_entrega) : 'Grátis'}
                     </span>
                   </button>
@@ -2397,15 +2390,14 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                   <button
                     type="button"
                     onClick={() => setTipoPedido('retirada')}
-                    className={`p-3 rounded-2xl border-2 text-left font-bold text-xs transition flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                    className={`py-2 px-2.5 rounded-xl border text-center font-bold text-xs transition flex flex-col items-center justify-center cursor-pointer ${
                       tipoPedido === 'retirada'
-                        ? 'border-red-600 bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-200 shadow-xs'
-                        : 'border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
+                        ? 'border-red-600 bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-200 shadow-2xs ring-1 ring-red-500/30'
+                        : 'border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 text-stone-700 dark:text-stone-300 hover:bg-stone-100'
                     }`}
                   >
-                    <span className="text-base">🛍️</span>
-                    <span>Buscar no Local (Retirada)</span>
-                    <span className="text-[10px] font-normal text-emerald-600 font-bold">Sem taxa de entrega</span>
+                    <span className="leading-tight">Buscar no Local (Retirada)</span>
+                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">Sem taxa de entrega</span>
                   </button>
                 </div>
 
@@ -2442,12 +2434,16 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                       Telefone / WhatsApp: <span className="text-red-500">*</span>
                     </label>
                     <input
-                      type="text"
+                      type="tel"
                       required
                       value={clienteTelefone}
-                      onChange={(e) => setClienteTelefone(e.target.value)}
-                      placeholder="Ex: (11) 98765-4321"
-                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs ${inputBgClass}`}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
+                        setClienteTelefone(formatPhone(raw));
+                      }}
+                      placeholder="(DD) 99999-9999"
+                      maxLength={15}
+                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-mono ${inputBgClass}`}
                     />
                   </div>
 
@@ -2549,55 +2545,6 @@ export const CustomerDeliveryView: React.FC<CustomerDeliveryViewProps> = ({ loja
                         <span>Crédito (Cartão)</span>
                       </button>
                     </div>
-
-                    {formaPagamento === 'pix' && (
-                      <div className="mt-2.5 p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 space-y-2 animate-in fade-in duration-200 shadow-2xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-                            <QrCode className="w-4 h-4 text-emerald-600" />
-                            <span>PAGAMENTO VIA PIX</span>
-                          </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/80 dark:bg-emerald-800 text-emerald-950 dark:text-emerald-100">
-                            Aprovação Rápida
-                          </span>
-                        </div>
-
-                        {targetLoja?.pix_chave ? (
-                          <div className="space-y-2">
-                            <div className="bg-white dark:bg-stone-900/90 p-3 rounded-xl border border-emerald-200/80 dark:border-emerald-800/40 flex items-center justify-between gap-2 shadow-2xs">
-                              <div className="min-w-0">
-                                <span className="text-[10px] text-stone-500 block uppercase font-bold tracking-wide">
-                                  Chave PIX da Loja ({(targetLoja.pix_tipo_chave || 'Chave').toUpperCase()}):
-                                </span>
-                                <span className="font-mono font-bold text-xs sm:text-sm text-stone-900 dark:text-stone-100 truncate block">
-                                  {formatPixKeyDisplay(targetLoja.pix_chave, targetLoja.pix_tipo_chave)}
-                                </span>
-                                {targetLoja.pix_titular && (
-                                  <span className="text-[10px] text-stone-500 block truncate font-medium">
-                                    Titular: {targetLoja.pix_titular}
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleCopyPixKey(targetLoja.pix_chave!)}
-                                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
-                              >
-                                {pixKeyCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                <span>{pixKeyCopied ? 'Copiada!' : 'Copiar Chave'}</span>
-                              </button>
-                            </div>
-                            <p className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-tight">
-                              💡 Você pode copiar a chave agora ou após finalizar o pedido. Na próxima tela você também terá o código <strong>Pix Copia e Cola</strong> com o valor exato e o botão para enviar o comprovante no WhatsApp da loja!
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">
-                            A chave Pix será confirmada pela loja no WhatsApp ou poderá ser paga via maquininha/QR Code na entrega/retirada.
-                          </p>
-                        )}
-                      </div>
-                    )}
 
                     {formaPagamento === 'dinheiro' && (
                       <div className="pt-1">
