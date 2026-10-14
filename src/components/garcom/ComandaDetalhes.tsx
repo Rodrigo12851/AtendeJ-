@@ -49,12 +49,19 @@ export const ComandaDetalhes: React.FC<ComandaDetalhesProps> = ({
   );
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showBillToast, setShowBillToast] = useState(false);
 
   // All orders tied to this comanda
   const comandaOrders = orders.filter((o) => comanda.pedidos_ids.includes(o.id));
 
   // Check if any order is ready
   const readyOrders = comandaOrders.filter((o) => o.status === 'pronto');
+
+  const handleRequestBillWithFeedback = () => {
+    onRequestBill();
+    setShowBillToast(true);
+    setTimeout(() => setShowBillToast(false), 4000);
+  };
 
   const handleConfirmCancel = (motivo: string) => {
     if (cancellingItem) {
@@ -97,7 +104,37 @@ export const ComandaDetalhes: React.FC<ComandaDetalhesProps> = ({
         </div>
       </header>
 
+      {/* Floating Notification Toast when Bill is requested */}
+      {showBillToast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-full shadow-lg text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-3 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-white" />
+          <span>Solicitação enviada ao Caixa com sucesso!</span>
+        </div>
+      )}
+
       <main className="max-w-5xl mx-auto w-full p-4 space-y-4">
+        {/* Banner de Conta Solicitada / Aguardando Fechamento */}
+        {table.status === 'aguardando_fechamento' && (
+          <div className="bg-amber-500 text-stone-950 p-3.5 rounded-2xl shadow-xs flex items-center justify-between gap-3 border border-amber-600 animate-in fade-in">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-stone-950 text-amber-400 rounded-xl shrink-0">
+                <Clock className="w-5 h-5 animate-spin" style={{ animationDuration: '4s' }} />
+              </div>
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-wider">
+                  Conta já solicitada ao Caixa!
+                </h4>
+                <p className="text-xs font-semibold text-stone-900 mt-0.5">
+                  O operador do caixa já foi notificado para fechar e emitir o pagamento desta mesa.
+                </p>
+              </div>
+            </div>
+            <span className="bg-stone-950 text-amber-400 text-[10px] font-black px-2.5 py-1 rounded-lg uppercase shrink-0">
+              No Caixa
+            </span>
+          </div>
+        )}
+
         {/* Status Notification Banner for Waiter */}
         {readyOrders.length > 0 && (
           <div className="bg-emerald-600 text-white p-3.5 rounded-xl shadow-xs flex items-center justify-between gap-3 animate-pulse">
@@ -182,15 +219,16 @@ export const ComandaDetalhes: React.FC<ComandaDetalhesProps> = ({
 
           {table.status !== 'aguardando_fechamento' ? (
             <button
-              onClick={onRequestBill}
+              onClick={handleRequestBillWithFeedback}
               className="py-3 px-3 bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-stone-900 font-bold text-xs rounded-xl shadow-2xs flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer"
             >
               <Clock className="w-4 h-4" />
               <span>Pedir Conta</span>
             </button>
           ) : (
-            <div className="py-3 px-3 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-xl font-semibold text-xs flex items-center justify-center gap-1 text-center">
-              <span>Aguardando Caixa</span>
+            <div className="py-3 px-3 bg-amber-500/15 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 border-2 border-amber-500 rounded-xl font-bold text-xs flex items-center justify-center gap-2 text-center shadow-xs">
+              <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Conta Solicitada</span>
             </div>
           )}
         </div>

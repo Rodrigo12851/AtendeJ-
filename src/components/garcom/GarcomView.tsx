@@ -23,10 +23,13 @@ export const GarcomView: React.FC = () => {
     updateTable,
   } = useStore();
 
-  const [activeTable, setActiveTable] = useState<Table | null>(null);
+  const [activeTableId, setActiveTableId] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'mesas' | 'comanda' | 'cardapio'>('mesas');
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);
   const [showCartModal, setShowCartModal] = useState(false);
+
+  // Deriva a mesa ativa diretamente do estado global para reatividade em tempo real
+  const activeTable = activeTableId ? tables.find((t) => t.id === activeTableId) || null : null;
 
   // Active comanda for the active table
   const activeComanda = activeTable
@@ -34,22 +37,13 @@ export const GarcomView: React.FC = () => {
     : null;
 
   const handleSelectTable = (table: Table) => {
-    setActiveTable(table);
+    setActiveTableId(table.id);
     setCurrentView('comanda');
   };
 
   const handleOpenComanda = (table: Table, clienteNome?: string) => {
     const newComanda = openComanda(table.id, currentUser.id, currentUser.nome, clienteNome);
-    const updatedTable = {
-      ...table,
-      status: 'ocupada' as const,
-      garcom_atual_id: currentUser.id,
-      garcom_atual_nome: currentUser.nome,
-      cliente_atual_nome: clienteNome,
-      comanda_atual_id: newComanda.id,
-      comanda_atual_numero: newComanda.numero,
-    };
-    setActiveTable(updatedTable);
+    setActiveTableId(table.id);
     setCurrentView('comanda');
   };
 
@@ -129,7 +123,7 @@ export const GarcomView: React.FC = () => {
           availableTables={tables.filter((t) => t.status === 'livre')}
           onBack={() => {
             setCurrentView('mesas');
-            setActiveTable(null);
+            setActiveTableId(null);
           }}
           onAddNewOrder={() => setCurrentView('cardapio')}
           onCancelItem={(orderId, itemId, motivo) =>
