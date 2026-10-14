@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutorial Passo a Passo - Como Fazer Seu Pedido</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .phone-mockup {
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4);
+    }
+  </style>
+</head>
+<body class="bg-stone-900 text-stone-100 min-h-screen py-10 px-4 flex flex-col items-center justify-center">
+
+  <!-- Header do Roteiro -->
+  <header class="text-center max-w-2xl mb-10">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-wider mb-3">
+      <span>🎬 Roteiro Oficial para Vídeo / Gemini</span>
+    </div>
+    <h1 class="text-3xl sm:text-4xl font-black text-white tracking-tight">
+      Como Fazer Seu Pedido Passo a Passo
+    </h1>
+    <p class="text-stone-400 text-sm sm:text-base mt-2">
+      Tutorial visual e interativo demonstrando cada tela e ação do cliente no cardápio digital.
+    </p>
+  </header>
+
+  <!-- Container Principal: Simulador de Celular + Controles do Tutorial -->
+  <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+    
+    <!-- LADO ESQUERDO: Etapas do Tutorial (Guia de Cenas) -->
+    <div class="lg:col-span-7 space-y-3">
+      <h2 class="text-xs font-black uppercase tracking-widest text-stone-400 mb-2">Cenas do Vídeo / Roteiro</h2>
+
+      <!-- Cena 1 -->
+      <div id="step-btn-1" onclick="goToStep(1)" class="step-card p-4 rounded-2xl border transition-all cursor-pointer bg-stone-800/90 border-[#FF8A00] ring-2 ring-[#FF8A00]/20">
+        <div class="flex items-start gap-3.5">
+          <span class="w-7 h-7 rounded-xl bg-[#FF8A00] text-stone-950 font-black text-xs flex items-center justify-center shrink-0">1</span>
+          <div>
+            <h3 class="font-bold text-white text-sm">Cena 1: Acesso ao Cardápio e Bairro</h3>
+            <p class="text-xs text-stone-400 mt-0.5">O cliente entra no link, confere o status de "Loja Aberta" e seleciona seu bairro com a taxa de entrega automática.</p>
+            <div class="mt-2 text-[11px] font-mono text-amber-300 bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-900/50 inline-block">
+              🗣️ "Acesse o link do nosso cardápio e confira as delícias de hoje!"
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cena 2 -->
+      <div id="step-btn-2" onclick="goToStep(2)" class="step-card p-4 rounded-2xl border transition-all cursor-pointer bg-stone-800/40 border-stone-700/60 hover:bg-stone-800/80">
+        <div class="flex items-start gap-3.5">
+          <span class="w-7 h-7 rounded-xl bg-stone-700 text-white font-bold text-xs flex items-center justify-center shrink-0">2</span>
+          <div>
+            <h3 class="font-bold text-white text-sm">Cena 2: Personalização do Lanche/Pizza</h3>
+            <p class="text-xs text-stone-400 mt-0.5">Clica no item desejado, escolhe adicionais (bacon, cheddar extra), insere observações e adiciona à sacola.</p>
+            <div class="mt-2 text-[11px] font-mono text-stone-400 bg-stone-900/60 px-2.5 py-1 rounded-lg inline-block">
+              🗣️ "Personalize do seu jeito com adicionais saborosos e observações."
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cena 3 -->
+      <div id="step-btn-3" onclick="goToStep(3)" class="step-card p-4 rounded-2xl border transition-all cursor-pointer bg-stone-800/40 border-stone-700/60 hover:bg-stone-800/80">
+        <div class="flex items-start gap-3.5">
+          <span class="w-7 h-7 rounded-xl bg-stone-700 text-white font-bold text-xs flex items-center justify-center shrink-0">3</span>
+          <div>
+            <h3 class="font-bold text-white text-sm">Cena 3: Revisão da Sacola e Endereço</h3>
+            <p class="text-xs text-stone-400 mt-0.5">Abre a sacola, confere os valores e preenche nome, WhatsApp e endereço completo de entrega.</p>
+            <div class="mt-2 text-[11px] font-mono text-stone-400 bg-stone-900/60 px-2.5 py-1 rounded-lg inline-block">
+              🗣️ "Confira seus itens na sacola e informe o endereço para entrega."
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cena 4 -->
+      <div id="step-btn-4" onclick="goToStep(4)" class="step-card p-4 rounded-2xl border transition-all cursor-pointer bg-stone-800/40 border-stone-700/60 hover:bg-stone-800/80">
+        <div class="flex items-start gap-3.5">
+          <span class="w-7 h-7 rounded-xl bg-stone-700 text-white font-bold text-xs flex items-center justify-center shrink-0">4</span>
+          <div>
+            <h3 class="font-bold text-white text-sm">Cena 4: Forma de Pagamento (PIX / Cartão)</h3>
+            <p class="text-xs text-stone-400 mt-0.5">Escolhe PIX, Cartão ou Dinheiro na entrega e clica em "Confirmar e Enviar Pedido".</p>
+            <div class="mt-2 text-[11px] font-mono text-stone-400 bg-stone-900/60 px-2.5 py-1 rounded-lg inline-block">
+              🗣️ "Selecione o pagamento no PIX ou na entrega e conclua o pedido."
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cena 5 -->
+      <div id="step-btn-5" onclick="goToStep(5)" class="step-card p-4 rounded-2xl border transition-all cursor-pointer bg-stone-800/40 border-stone-700/60 hover:bg-stone-800/80">
+        <div class="flex items-start gap-3.5">
+          <span class="w-7 h-7 rounded-xl bg-stone-700 text-white font-bold text-xs flex items-center justify-center shrink-0">5</span>
+          <div>
+            <h3 class="font-bold text-white text-sm">Cena 5: Acompanhamento em Tempo Real</h3>
+            <p class="text-xs text-stone-400 mt-0.5">Recebe o número do pedido e acompanha cada status: Recebido ➔ Em Preparo ➔ A Caminho!</p>
+            <div class="mt-2 text-[11px] font-mono text-stone-400 bg-stone-900/60 px-2.5 py-1 rounded-lg inline-block">
+              🗣️ "Pronto! O pedido vai para a cozinha e você acompanha cada passo."
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de Controle Interativo -->
+      <div class="pt-4 flex items-center justify-between border-t border-stone-800">
+        <button onclick="prevStep()" class="px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-xs font-bold text-white transition flex items-center gap-1.5 cursor-pointer">
+          ◀ Cena Anterior
+        </button>
+        <span id="step-counter" class="text-xs font-mono font-bold text-amber-400">Cena 1 de 5</span>
+        <button onclick="nextStep()" class="px-4 py-2 rounded-xl bg-[#FF8A00] hover:bg-[#E07A00] text-xs font-bold text-stone-950 transition flex items-center gap-1.5 cursor-pointer">
+          Próxima Cena ▶
+        </button>
+      </div>
+    </div>
+
+    <!-- LADO DIREITO: Mockup do Smartphone (Visual Interativo) -->
+    <div class="lg:col-span-5 flex justify-center">
+      <div class="phone-mockup w-[320px] sm:w-[350px] h-[640px] bg-stone-950 rounded-[44px] border-[10px] border-stone-800 p-2 relative flex flex-col overflow-hidden shadow-2xl">
+        
+        <!-- Notch Superior -->
+        <div class="w-28 h-4 bg-stone-800 rounded-full mx-auto mb-2 shrink-0"></div>
+
+        <!-- Tela do Celular (Conteúdo que Muda Conforme a Etapa) -->
+        <div class="flex-1 bg-[#FAF7F2] text-stone-900 rounded-[32px] overflow-hidden flex flex-col relative text-xs">
+          
+          <!-- Top Bar do Restaurante -->
+          <div class="bg-stone-900 text-white p-3 flex items-center justify-between shrink-0 shadow-md">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-[#FF8A00] flex items-center justify-center font-black text-stone-950 text-xs">🍔</div>
+              <div>
+                <p class="font-extrabold text-[11px] leading-tight text-white">Smash Burger House</p>
+                <span class="inline-flex items-center gap-1 text-[9px] text-emerald-400 font-bold">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Aberto Agora
+                </span>
+              </div>
+            </div>
+            <div class="w-6 h-6 rounded-full bg-stone-800 flex items-center justify-center text-[10px]">🛍️</div>
+          </div>
+
+          <!-- TELAS DINÂMICAS -->
+          <div id="screen-container" class="flex-1 p-3 overflow-y-auto">
+
+            <!-- TELA 1: Cardápio e Bairro -->
+            <div id="screen-1" class="screen-view space-y-3">
+              <div class="bg-white p-2.5 rounded-xl border border-stone-200 shadow-2xs">
+                <span class="text-[9px] uppercase font-bold text-stone-400 block">Entregar em:</span>
+                <div class="flex items-center justify-between font-bold text-[11px] text-stone-800 mt-0.5">
+                  <span>📍 Centro / Shopping</span>
+                  <span class="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">Taxa: R$ 9,00</span>
+                </div>
+              </div>
+
+              <!-- Categorias -->
+              <div class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[10px] font-bold">
+                <span class="px-2.5 py-1 bg-[#FF8A00] text-white rounded-full shrink-0">Todas</span>
+                <span class="px-2.5 py-1 bg-stone-200 text-stone-700 rounded-full shrink-0">Lanches</span>
+                <span class="px-2.5 py-1 bg-stone-200 text-stone-700 rounded-full shrink-0">Bebidas</span>
+              </div>
+
+              <!-- Produto Card -->
+              <div class="bg-white p-2.5 rounded-xl border border-stone-200 shadow-2xs flex gap-2.5 items-center">
+                <div class="w-16 h-16 rounded-xl bg-amber-100 flex items-center justify-center text-2xl shrink-0">🍔</div>
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-bold text-stone-900 truncate text-[11px]">Monster Triple Burger</h4>
+                  <p class="text-[9px] text-stone-500 line-clamp-1">3x smash 90g, queijo cheddar...</p>
+                  <div class="flex items-center justify-between mt-1">
+                    <span class="font-extrabold text-[#FF8A00]">R$ 39,00</span>
+                    <button class="w-6 h-6 rounded-lg bg-[#FF8A00] text-white font-bold flex items-center justify-center text-xs shadow-xs">+</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-white p-2.5 rounded-xl border border-stone-200 shadow-2xs flex gap-2.5 items-center">
+                <div class="w-16 h-16 rounded-xl bg-red-100 flex items-center justify-center text-2xl shrink-0">🥤</div>
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-bold text-stone-900 truncate text-[11px]">Coca-Cola Lata 350ml</h4>
+                  <p class="text-[9px] text-stone-500">Refrigerante lata gelada</p>
+                  <div class="flex items-center justify-between mt-1">
+                    <span class="font-extrabold text-[#FF8A00]">R$ 5,00</span>
+                    <button class="w-6 h-6 rounded-lg bg-[#FF8A00] text-white font-bold flex items-center justify-center text-xs shadow-xs">+</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TELA 2: Modal de Adicionais -->
+            <div id="screen-2" class="screen-view hidden space-y-3">
+              <div class="bg-white p-3 rounded-2xl border border-stone-200 shadow-sm">
+                <span class="text-[10px] font-bold text-amber-600 uppercase">Personalizar</span>
+                <h4 class="font-black text-sm text-stone-900 mt-0.5">Monster Triple Burger</h4>
+                <p class="text-[10px] text-[#FF8A00] font-black">R$ 39,00</p>
+
+                <p class="text-[10px] font-bold text-stone-700 mt-2.5 mb-1.5 border-t pt-2">Escolha seus adicionais:</p>
+                <div class="space-y-1.5">
+                  <label class="flex items-center justify-between p-1.5 bg-stone-50 rounded-lg border text-[10px]">
+                    <span class="flex items-center gap-1.5 font-medium">
+                      <input type="checkbox" checked class="accent-[#FF8A00]"> Bacon Crocante Extra
+                    </span>
+                    <span class="font-bold text-[#FF8A00]">+R$ 5,00</span>
+                  </label>
+                  <label class="flex items-center justify-between p-1.5 bg-stone-50 rounded-lg border text-[10px]">
+                    <span class="flex items-center gap-1.5 font-medium">
+                      <input type="checkbox" checked class="accent-[#FF8A00]"> Cheddar Cremoso Melt
+                    </span>
+                    <span class="font-bold text-[#FF8A00]">+R$ 4,50</span>
+                  </label>
+                </div>
+
+                <div class="mt-2.5">
+                  <span class="text-[9px] font-bold text-stone-500">Observações:</span>
+                  <input type="text" value="Sem cebola, por favor" class="w-full mt-1 p-1.5 text-[10px] rounded-lg border bg-stone-50 text-stone-800" readonly>
+                </div>
+
+                <button class="w-full mt-3 py-2 bg-[#FF8A00] text-white rounded-xl font-black text-[11px] shadow-xs">
+                  Adicionar à Sacola • R$ 48,50
+                </button>
+              </div>
+            </div>
+
+            <!-- TELA 3: Sacola e Endereço -->
+            <div id="screen-3" class="screen-view hidden space-y-3">
+              <div class="bg-white p-3 rounded-2xl border border-stone-200 shadow-sm space-y-2">
+                <h4 class="font-black text-xs text-stone-900 border-b pb-1">Sua Sacola (1 item)</h4>
+                
+                <div class="flex justify-between items-start text-[10px]">
+                  <div>
+                    <span class="font-bold">1x Monster Triple Burger</span>
+                    <p class="text-[8px] text-stone-500">+ Bacon, Cheddar extra</p>
+                  </div>
+                  <span class="font-bold text-[#FF8A00]">R$ 48,50</span>
+                </div>
+
+                <div class="border-t pt-2 space-y-1 text-[10px]">
+                  <p class="font-bold text-stone-700">Dados de Entrega:</p>
+                  <input type="text" value="Rodrigo Souza" class="w-full p-1.5 rounded-lg border bg-stone-50" readonly>
+                  <input type="text" value="61 98542-9584" class="w-full p-1.5 rounded-lg border bg-stone-50" readonly>
+                  <input type="text" value="Setor E, Q. 04 Lote 08 (Centro)" class="w-full p-1.5 rounded-lg border bg-stone-50" readonly>
+                </div>
+              </div>
+            </div>
+
+            <!-- TELA 4: Pagamento -->
+            <div id="screen-4" class="screen-view hidden space-y-3">
+              <div class="bg-white p-3 rounded-2xl border border-stone-200 shadow-sm space-y-2.5">
+                <h4 class="font-black text-xs text-stone-900">Forma de Pagamento</h4>
+                
+                <div class="space-y-1.5">
+                  <div class="p-2 rounded-xl border-2 border-emerald-500 bg-emerald-50 flex items-center justify-between">
+                    <span class="font-black text-[11px] text-emerald-900 flex items-center gap-1.5">
+                      ⚡ PIX (Aprovação Instantânea)
+                    </span>
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  </div>
+                  <div class="p-2 rounded-xl border border-stone-200 text-stone-600 text-[10px] flex items-center justify-between">
+                    <span>💳 Cartão de Crédito / Débito</span>
+                  </div>
+                  <div class="p-2 rounded-xl border border-stone-200 text-stone-600 text-[10px] flex items-center justify-between">
+                    <span>💵 Dinheiro</span>
+                  </div>
+                </div>
+
+                <div class="border-t pt-2 flex justify-between font-black text-xs">
+                  <span>Total com Entrega:</span>
+                  <span class="text-[#FF8A00] text-sm">R$ 57,50</span>
+                </div>
+
+                <button class="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-black text-xs shadow-md">
+                  Confirmar e Enviar Pedido ➔
+                </button>
+              </div>
+            </div>
+
+            <!-- TELA 5: Status em Tempo Real -->
+            <div id="screen-5" class="screen-view hidden space-y-3 text-center">
+              <div class="bg-white p-4 rounded-2xl border border-stone-200 shadow-sm space-y-3">
+                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-xl mx-auto">✓</div>
+                <div>
+                  <span class="text-[10px] font-bold text-stone-400">PEDIDO ENVIADO!</span>
+                  <h4 class="text-base font-black text-stone-900">Pedido #204</h4>
+                </div>
+
+                <!-- Barra de Status Dinâmico -->
+                <div class="space-y-2 text-left pt-2 border-t">
+                  <div class="flex items-center gap-2 text-[10px] text-emerald-700 font-bold">
+                    <span>✅</span> <span>1. Pedido Recebido</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-[10px] text-amber-600 font-bold animate-pulse">
+                    <span>🔥</span> <span>2. Em Preparo na Cozinha</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-[10px] text-stone-400">
+                    <span>🛵</span> <span>3. A Caminho com o Motoboy</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-[10px] text-stone-400">
+                    <span>🏠</span> <span>4. Entregue</span>
+                  </div>
+                </div>
+
+                <div class="p-2 bg-stone-50 rounded-xl border text-[9px] text-stone-500 font-medium">
+                  Você também recebe atualizações no WhatsApp cadastrado!
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Rodapé do Mockup -->
+          <div class="p-2 bg-white border-t text-center text-[9px] text-stone-400 font-bold shrink-0">
+            AtendeJá Delivery • Sistema Inteligente
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentStep = 1;
+    const totalSteps = 5;
+
+    function goToStep(step) {
+      currentStep = step;
+      updateUI();
+    }
+
+    function nextStep() {
+      if (currentStep < totalSteps) currentStep++;
+      else currentStep = 1;
+      updateUI();
+    }
+
+    function prevStep() {
+      if (currentStep > 1) currentStep--;
+      else currentStep = totalSteps;
+      updateUI();
+    }
+
+    function updateUI() {
+      // Atualiza Telas do Celular
+      for (let i = 1; i <= totalSteps; i++) {
+        const screen = document.getElementById(`screen-${i}`);
+        const btn = document.getElementById(`step-btn-${i}`);
+        
+        if (i === currentStep) {
+          screen.classList.remove('hidden');
+          btn.classList.add('bg-stone-800/90', 'border-[#FF8A00]', 'ring-2', 'ring-[#FF8A00]/20');
+          btn.classList.remove('bg-stone-800/40', 'border-stone-700/60');
+          btn.querySelector('span').classList.add('bg-[#FF8A00]', 'text-stone-950');
+          btn.querySelector('span').classList.remove('bg-stone-700', 'text-white');
+        } else {
+          screen.classList.add('hidden');
+          btn.classList.remove('bg-stone-800/90', 'border-[#FF8A00]', 'ring-2', 'ring-[#FF8A00]/20');
+          btn.classList.add('bg-stone-800/40', 'border-stone-700/60');
+          btn.querySelector('span').classList.remove('bg-[#FF8A00]', 'text-stone-950');
+          btn.querySelector('span').classList.add('bg-stone-700', 'text-white');
+        }
+      }
+
+      // Atualiza contador
+      document.getElementById('step-counter').innerText = `Cena ${currentStep} de ${totalSteps}`;
+    }
+  </script>
+</body>
+</html>
