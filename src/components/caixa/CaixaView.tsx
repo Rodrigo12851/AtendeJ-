@@ -1093,6 +1093,7 @@ export const CaixaView: React.FC = () => {
                     const isPreparo = order.status === 'em_preparo';
                     const isPronto = order.status === 'pronto';
                     const isACaminho = order.status === 'a_caminho';
+                    const isEntregue = order.status === 'entregue';
                     const orderTotal =
                       order.itens
                         .filter((it) => it.status === 'ativo')
@@ -1244,6 +1245,7 @@ export const CaixaView: React.FC = () => {
                               <Printer className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                             </button>
 
+                            {/* BOTÃO PRINCIPAL PROGRESSIVO: Confirmar -> Despachar -> Confirmar Entrega */}
                             {isNovo && (
                               <button
                                 type="button"
@@ -1251,62 +1253,68 @@ export const CaixaView: React.FC = () => {
                                   e.stopPropagation();
                                   handleConfirmOrder(order);
                                 }}
-                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
-                                title="Confirmar pedido e imprimir comanda"
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs active:scale-95"
+                                title="Confirmar recebimento do pedido e imprimir"
                               >
-                                <Printer className="w-3 h-3 text-amber-300" />
+                                <Printer className="w-3.5 h-3.5 text-amber-300" />
                                 <span>Confirmar</span>
                               </button>
                             )}
 
-                            {isPreparo && (
+                            {/* Link do Motoboy: Disponível a partir do momento em que o pedido foi confirmado (em preparo, pronto ou a caminho) */}
+                            {!isNovo && !isEntregue && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleShareMotoboyLink(order);
+                                }}
+                                className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                                title="Copiar link do motoboy ou enviar para o WhatsApp dele"
+                              >
+                                <Bike className="w-3.5 h-3.5 text-purple-200" />
+                                <span>Link Motoboy</span>
+                              </button>
+                            )}
+
+                            {/* Despachar: Quando está em preparo ou pronto para sair para entrega */}
+                            {(isPreparo || isPronto) && (
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   updateOrderStatus(order.id, 'a_caminho');
                                 }}
-                                className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
+                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-stone-950 rounded-lg text-[11px] font-black flex items-center gap-1.5 transition cursor-pointer shadow-2xs active:scale-95"
+                                title="Despachar pedido para entrega com o motoboy"
                               >
-                                <Bike className="w-3 h-3" />
+                                <Bike className="w-3.5 h-3.5" />
                                 <span>Despachar</span>
                               </button>
                             )}
 
-                            {/* Link do Motoboy */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleShareMotoboyLink(order);
-                              }}
-                              className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
-                              title="Copiar link do motoboy ou enviar para o WhatsApp dele"
-                            >
-                              <Bike className="w-3 h-3 text-emerald-200" />
-                              <span>Link Motoboy</span>
-                            </button>
-
-                            {/* Confirmar Entrega (caso o motoboy esqueceu de finalizar pelo link) */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const confirmOk = window.confirm(
-                                  `Confirmar que o Pedido Delivery #${order.id} foi entregue com sucesso ao cliente?`
-                                );
-                                if (!confirmOk) return;
-                                updateOrderStatus(order.id, 'entregue');
-                                if (order.comanda_id) {
-                                  closeComanda(order.comanda_id);
-                                }
-                              }}
-                              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs active:scale-95"
-                              title="Confirmar entrega do pedido (caso o motoboy tenha esquecido de finalizar pelo link)"
-                            >
-                              <Check className="w-3 h-3 text-white stroke-[2.5]" />
-                              <span>Confirmar Entrega</span>
-                            </button>
+                            {/* Confirmar Entrega: Quando o pedido já foi despachado (a caminho) e caso o motoboy esqueça de confirmar pelo link */}
+                            {isACaminho && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const confirmOk = window.confirm(
+                                    `Confirmar que o Pedido Delivery #${order.id} foi entregue com sucesso ao cliente?`
+                                  );
+                                  if (!confirmOk) return;
+                                  updateOrderStatus(order.id, 'entregue');
+                                  if (order.comanda_id) {
+                                    closeComanda(order.comanda_id);
+                                  }
+                                }}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs active:scale-95"
+                                title="Confirmar entrega do pedido (caso o motoboy tenha esquecido de finalizar pelo link)"
+                              >
+                                <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                                <span>Confirmar Entrega</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -3746,20 +3754,32 @@ export const CaixaView: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <button type="button" onClick={() => setPrintingOrder({ order, autoPrint: false })} className="px-3 py-2 bg-white dark:bg-slate-900 border border-stone-200 dark:border-slate-700 rounded-xl text-xs font-semibold cursor-pointer shadow-2xs"><Printer className="w-3.5 h-3.5 text-amber-500" /></button>
-                        {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">Confirmar 🖨️</button>}
-                        {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'pronto')} className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">Pronto 🍕</button>}
+                        {isNovo && <button type="button" onClick={() => handleConfirmOrder(order)} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">Confirmar</button>}
                         {order.tipo_pedido === 'delivery' ? (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => handleShareMotoboyLink(order)}
-                              className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
-                              title="Link do Motoboy"
-                            >
-                              <Bike className="w-3.5 h-3.5 text-purple-200" />
-                              <span>Link Motoboy</span>
-                            </button>
-                            {!isEntregue && (
+                            {!isNovo && !isEntregue && (
+                              <button
+                                type="button"
+                                onClick={() => handleShareMotoboyLink(order)}
+                                className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                                title="Link do Motoboy"
+                              >
+                                <Bike className="w-3.5 h-3.5 text-purple-200" />
+                                <span>Link Motoboy</span>
+                              </button>
+                            )}
+                            {(isPreparo || isPronto) && (
+                              <button
+                                type="button"
+                                onClick={() => updateOrderStatus(order.id, 'a_caminho')}
+                                className="px-3 py-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-stone-950 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer shadow-xs"
+                                title="Despachar com o motoboy"
+                              >
+                                <Bike className="w-3.5 h-3.5" />
+                                <span>Despachar</span>
+                              </button>
+                            )}
+                            {isACaminho && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -3771,22 +3791,26 @@ export const CaixaView: React.FC = () => {
                                 className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
                               >
                                 <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                                <span>Entregue</span>
+                                <span>Confirmar Entrega</span>
                               </button>
                             )}
                           </>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleSelectOrder(order);
-                              setCaixaActiveTab('comandas');
-                            }}
-                            className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
-                          >
-                            <Receipt className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>Caixa ➔</span>
-                          </button>
+                          <>
+                            {isPreparo && <button type="button" onClick={() => updateOrderStatus(order.id, 'pronto')} className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">Pronto</button>}
+                            {isPronto && <button type="button" onClick={() => updateOrderStatus(order.id, 'entregue')} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs">Entregue</button>}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSelectOrder(order);
+                                setCaixaActiveTab('comandas');
+                              }}
+                              className="px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                            >
+                              <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Caixa ➔</span>
+                            </button>
+                          </>
                         )}
                         <button
                           type="button"
