@@ -2154,11 +2154,11 @@ export const AdminView: React.FC = () => {
                         {/* Link de Acesso Exclusivo do Responsável */}
                         <div className="pt-2 border-t border-stone-200/80 dark:border-stone-700/80 space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <span className="font-sans text-[11px] font-bold text-stone-700 dark:text-stone-200 flex items-center gap-1">
-                              <Link2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                            <span className="font-sans text-[11px] font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1">
+                              <Link2 className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
                               <span>Link de Acesso:</span>
                             </span>
-                            <span className="text-[9px] font-sans font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+                            <span className="text-[9px] font-sans font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded border border-stone-200 dark:border-stone-700">
                               Token Seguro
                             </span>
                           </div>
@@ -2167,10 +2167,10 @@ export const AdminView: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleCopyUserAccessLink(u)}
-                              className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+                              className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs border ${
                                 copiedUserLinkId === u.id
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-purple-600 hover:bg-purple-700 text-white dark:bg-purple-700 dark:hover:bg-purple-600'
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 dark:text-stone-200 dark:border-stone-700'
                               }`}
                               title="Copiar link de acesso exclusivo deste responsável"
                             >
