@@ -387,9 +387,9 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
           </div>
         ) : layoutMode === 'compact' ? (
           /* ========================================================== */
-          /* MODO COMPACTO (LISTA RÁPIDA PARA GARÇOM)                   */
+          /* MODO COMPACTO (LISTA RÁPIDA: 2 COLUNAS NO COMPUTADOR)     */
           /* ========================================================== */
-          <div className="bg-white dark:bg-[#1E1E28] rounded-2xl border border-stone-200/90 dark:border-stone-800 shadow-xs divide-y divide-stone-100 dark:divide-stone-800/80 overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-2.5">
             {filteredProducts.map((product) => {
               const cartInfo = getCartInfoForProduct(product.id);
               const finalPrice = product.em_promocao && product.preco_promocional ? product.preco_promocional : product.preco;
@@ -399,8 +399,8 @@ export const CardapioGarcom: React.FC<CardapioGarcomProps> = ({
                 <div
                   key={product.id}
                   onClick={() => handleQuickAdd(product)}
-                  className={`p-2.5 sm:p-3 flex items-center justify-between gap-2.5 hover:bg-stone-50/80 dark:hover:bg-stone-800/50 transition cursor-pointer ${
-                    cartInfo.inCart ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''
+                  className={`bg-white dark:bg-[#1E1E28] rounded-xl border border-stone-200/90 dark:border-stone-800 shadow-2xs p-2.5 sm:p-3 flex items-center justify-between gap-2.5 hover:bg-stone-50/80 dark:hover:bg-stone-800/50 hover:border-amber-400/60 dark:hover:border-amber-500/60 transition cursor-pointer ${
+                    cartInfo.inCart ? 'bg-amber-50/50 dark:bg-amber-950/20 border-[#FF8A00] ring-1 ring-[#FF8A00]/30' : ''
                   }`}
                 >
                   {/* Foto Mini e Nome */}
